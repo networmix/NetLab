@@ -1,0 +1,1175 @@
+{
+  "graph_type": "site_network",
+  "nodes": [
+    {
+      "id": "metro1/pop1",
+      "metro_idx": 1,
+      "metro_name": "new-york-jersey-city-newark",
+      "site_kind": "pop",
+      "site_ordinal": 1,
+      "site_blueprint": "Clos_L16_S4",
+      "pos_x": 1851539.3,
+      "pos_y": 2173703.3,
+      "center_x": 1815314.3,
+      "center_y": 2173703.3,
+      "radius_m": 51750.0
+    },
+    {
+      "id": "metro1/pop2",
+      "metro_idx": 1,
+      "metro_name": "new-york-jersey-city-newark",
+      "site_kind": "pop",
+      "site_ordinal": 2,
+      "site_blueprint": "Clos_L16_S4",
+      "pos_x": 1779089.3,
+      "pos_y": 2173703.3,
+      "center_x": 1815314.3,
+      "center_y": 2173703.3,
+      "radius_m": 51750.0
+    },
+    {
+      "id": "metro1/dc1",
+      "metro_idx": 1,
+      "metro_name": "new-york-jersey-city-newark",
+      "site_kind": "dc",
+      "site_ordinal": 1,
+      "site_blueprint": "DCRegion",
+      "pos_x": 1829951.4103705615,
+      "pos_y": 2188340.4103705613,
+      "center_x": 1815314.3,
+      "center_y": 2173703.3,
+      "radius_m": 51750.0
+    },
+    {
+      "id": "metro2/pop1",
+      "metro_idx": 2,
+      "metro_name": "washington-arlington",
+      "site_kind": "pop",
+      "site_ordinal": 1,
+      "site_blueprint": "Clos_L16_S4",
+      "pos_x": 1625616.8,
+      "pos_y": 1921533.9,
+      "center_x": 1602747.8,
+      "center_y": 1921533.9,
+      "radius_m": 32670.0
+    },
+    {
+      "id": "metro2/pop2",
+      "metro_idx": 2,
+      "metro_name": "washington-arlington",
+      "site_kind": "pop",
+      "site_ordinal": 2,
+      "site_blueprint": "Clos_L16_S4",
+      "pos_x": 1579878.8,
+      "pos_y": 1921533.9,
+      "center_x": 1602747.8,
+      "center_y": 1921533.9,
+      "radius_m": 32670.0
+    },
+    {
+      "id": "metro2/dc1",
+      "metro_idx": 2,
+      "metro_name": "washington-arlington",
+      "site_kind": "dc",
+      "site_ordinal": 1,
+      "site_blueprint": "DCRegion",
+      "pos_x": 1611988.2714165458,
+      "pos_y": 1930774.3714165457,
+      "center_x": 1602747.8,
+      "center_y": 1921533.9,
+      "radius_m": 32670.0
+    },
+    {
+      "id": "metro3/pop1",
+      "metro_idx": 3,
+      "metro_name": "chicago",
+      "site_kind": "pop",
+      "site_ordinal": 1,
+      "site_blueprint": "SingleRouter",
+      "pos_x": 695142.8,
+      "pos_y": 2133983.6,
+      "center_x": 664412.8,
+      "center_y": 2133983.6,
+      "radius_m": 43900.0
+    },
+    {
+      "id": "metro3/pop2",
+      "metro_idx": 3,
+      "metro_name": "chicago",
+      "site_kind": "pop",
+      "site_ordinal": 2,
+      "site_blueprint": "SingleRouter",
+      "pos_x": 633682.8,
+      "pos_y": 2133983.6,
+      "center_x": 664412.8,
+      "center_y": 2133983.6,
+      "radius_m": 43900.0
+    },
+    {
+      "id": "metro4/pop1",
+      "metro_idx": 4,
+      "metro_name": "atlanta",
+      "site_kind": "pop",
+      "site_ordinal": 1,
+      "site_blueprint": "SingleRouter",
+      "pos_x": 1088163.7,
+      "pos_y": 1255491.7,
+      "center_x": 1056698.7,
+      "center_y": 1255491.7,
+      "radius_m": 44950.0
+    },
+    {
+      "id": "metro4/pop2",
+      "metro_idx": 4,
+      "metro_name": "atlanta",
+      "site_kind": "pop",
+      "site_ordinal": 2,
+      "site_blueprint": "SingleRouter",
+      "pos_x": 1025233.7,
+      "pos_y": 1255491.7,
+      "center_x": 1056698.7,
+      "center_y": 1255491.7,
+      "radius_m": 44950.0
+    },
+    {
+      "id": "metro5/pop1",
+      "metro_idx": 5,
+      "metro_name": "columbus",
+      "site_kind": "pop",
+      "site_ordinal": 1,
+      "site_blueprint": "Clos_L16_S4",
+      "pos_x": 1111609.9,
+      "pos_y": 1967599.1,
+      "center_x": 1097168.9,
+      "center_y": 1967599.1,
+      "radius_m": 20630.0
+    },
+    {
+      "id": "metro5/pop2",
+      "metro_idx": 5,
+      "metro_name": "columbus",
+      "site_kind": "pop",
+      "site_ordinal": 2,
+      "site_blueprint": "Clos_L16_S4",
+      "pos_x": 1082727.9,
+      "pos_y": 1967599.1,
+      "center_x": 1097168.9,
+      "center_y": 1967599.1,
+      "radius_m": 20630.0
+    },
+    {
+      "id": "metro5/dc1",
+      "metro_idx": 5,
+      "metro_name": "columbus",
+      "site_kind": "dc",
+      "site_ordinal": 1,
+      "site_blueprint": "DCRegion",
+      "pos_x": 1103003.9451583512,
+      "pos_y": 1973434.1451583514,
+      "center_x": 1097168.9,
+      "center_y": 1967599.1,
+      "radius_m": 20630.0
+    }
+  ],
+  "edges": [
+    {
+      "source": "metro1/pop1",
+      "target": "metro1/pop2",
+      "key": "intra_metro:new-york-jersey-city-newark:1-2",
+      "link_type": "intra_metro",
+      "base_capacity": 22400.0,
+      "target_capacity": 22400.0,
+      "cost": 163,
+      "adjacency_id": "intra_metro:new-york-jersey-city-newark",
+      "distance_km": 163,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "new-york-jersey-city-newark",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ]
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 1400.0
+    },
+    {
+      "source": "metro1/pop1",
+      "target": "metro1/dc1",
+      "key": "dc_to_pop:new-york-jersey-city-newark:1-1",
+      "link_type": "dc_to_pop",
+      "base_capacity": 32000.0,
+      "target_capacity": 32000.0,
+      "cost": 1,
+      "adjacency_id": "dc_to_pop:new-york-jersey-city-newark",
+      "distance_km": 1,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "new-york-jersey-city-newark",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "dc"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "dc|core",
+        "dc|leaf"
+      ],
+      "capacity": 2000.0
+    },
+    {
+      "source": "metro1/pop1",
+      "target": "metro2/pop1",
+      "key": "inter_metro:1-2:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 412,
+      "adjacency_id": "inter_metro:1-2",
+      "distance_km": 412,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "washington-arlington",
+      "risk_groups": [
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_new-york-jersey-city-newark_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 800.0
+    },
+    {
+      "source": "metro1/pop1",
+      "target": "metro5/pop1",
+      "key": "inter_metro:1-5:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 977,
+      "adjacency_id": "inter_metro:1-5",
+      "distance_km": 977,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_chicago_washington-arlington",
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_columbus_washington-arlington",
+        "corridor_risk_new-york-jersey-city-newark_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 800.0
+    },
+    {
+      "source": "metro1/pop2",
+      "target": "metro1/dc1",
+      "key": "dc_to_pop:new-york-jersey-city-newark:1-2",
+      "link_type": "dc_to_pop",
+      "base_capacity": 32000.0,
+      "target_capacity": 32000.0,
+      "cost": 163,
+      "adjacency_id": "dc_to_pop:new-york-jersey-city-newark",
+      "distance_km": 163,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "new-york-jersey-city-newark",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "dc"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "dc|core",
+        "dc|leaf"
+      ],
+      "capacity": 2000.0
+    },
+    {
+      "source": "metro1/pop2",
+      "target": "metro2/pop2",
+      "key": "inter_metro:1-2:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 412,
+      "adjacency_id": "inter_metro:1-2",
+      "distance_km": 412,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "washington-arlington",
+      "risk_groups": [
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_new-york-jersey-city-newark_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 800.0
+    },
+    {
+      "source": "metro1/pop2",
+      "target": "metro5/pop2",
+      "key": "inter_metro:1-5:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 977,
+      "adjacency_id": "inter_metro:1-5",
+      "distance_km": 977,
+      "source_metro": "new-york-jersey-city-newark",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_chicago_washington-arlington",
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_columbus_washington-arlington",
+        "corridor_risk_new-york-jersey-city-newark_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 800.0
+    },
+    {
+      "source": "metro2/pop1",
+      "target": "metro2/pop2",
+      "key": "intra_metro:washington-arlington:1-2",
+      "link_type": "intra_metro",
+      "base_capacity": 25600.0,
+      "target_capacity": 25600.0,
+      "cost": 103,
+      "adjacency_id": "intra_metro:washington-arlington",
+      "distance_km": 103,
+      "source_metro": "washington-arlington",
+      "target_metro": "washington-arlington",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ]
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 1600.0
+    },
+    {
+      "source": "metro2/pop1",
+      "target": "metro2/dc1",
+      "key": "dc_to_pop:washington-arlington:1-1",
+      "link_type": "dc_to_pop",
+      "base_capacity": 38400.0,
+      "target_capacity": 38400.0,
+      "cost": 1,
+      "adjacency_id": "dc_to_pop:washington-arlington",
+      "distance_km": 1,
+      "source_metro": "washington-arlington",
+      "target_metro": "washington-arlington",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "dc"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "dc|core",
+        "dc|leaf"
+      ],
+      "capacity": 2400.0
+    },
+    {
+      "source": "metro2/pop1",
+      "target": "metro3/pop1",
+      "key": "inter_metro:2-3:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1261,
+      "adjacency_id": "inter_metro:2-3",
+      "distance_km": 1261,
+      "source_metro": "washington-arlington",
+      "target_metro": "chicago",
+      "risk_groups": [
+        "corridor_risk_chicago_washington-arlington",
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_columbus_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro2/pop1",
+      "target": "metro4/pop1",
+      "key": "inter_metro:2-4:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1216,
+      "adjacency_id": "inter_metro:2-4",
+      "distance_km": 1216,
+      "source_metro": "washington-arlington",
+      "target_metro": "atlanta",
+      "risk_groups": [
+        "corridor_risk_atlanta_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro2/pop1",
+      "target": "metro5/pop1",
+      "key": "inter_metro:2-5:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 733,
+      "adjacency_id": "inter_metro:2-5",
+      "distance_km": 733,
+      "source_metro": "washington-arlington",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_chicago_washington-arlington",
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_columbus_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 800.0
+    },
+    {
+      "source": "metro2/pop2",
+      "target": "metro2/dc1",
+      "key": "dc_to_pop:washington-arlington:1-2",
+      "link_type": "dc_to_pop",
+      "base_capacity": 38400.0,
+      "target_capacity": 38400.0,
+      "cost": 103,
+      "adjacency_id": "dc_to_pop:washington-arlington",
+      "distance_km": 103,
+      "source_metro": "washington-arlington",
+      "target_metro": "washington-arlington",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "dc"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "dc|core",
+        "dc|leaf"
+      ],
+      "capacity": 2400.0
+    },
+    {
+      "source": "metro2/pop2",
+      "target": "metro3/pop2",
+      "key": "inter_metro:2-3:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1261,
+      "adjacency_id": "inter_metro:2-3",
+      "distance_km": 1261,
+      "source_metro": "washington-arlington",
+      "target_metro": "chicago",
+      "risk_groups": [
+        "corridor_risk_chicago_washington-arlington",
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_columbus_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro2/pop2",
+      "target": "metro4/pop2",
+      "key": "inter_metro:2-4:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1216,
+      "adjacency_id": "inter_metro:2-4",
+      "distance_km": 1216,
+      "source_metro": "washington-arlington",
+      "target_metro": "atlanta",
+      "risk_groups": [
+        "corridor_risk_atlanta_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro2/pop2",
+      "target": "metro5/pop2",
+      "key": "inter_metro:2-5:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 733,
+      "adjacency_id": "inter_metro:2-5",
+      "distance_km": 733,
+      "source_metro": "washington-arlington",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_chicago_washington-arlington",
+        "corridor_risk_columbus_new-york-jersey-city-newark",
+        "corridor_risk_columbus_washington-arlington"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 800.0
+    },
+    {
+      "source": "metro3/pop1",
+      "target": "metro3/pop2",
+      "key": "intra_metro:chicago:1-2",
+      "link_type": "intra_metro",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 138,
+      "adjacency_id": "intra_metro:chicago",
+      "distance_km": 138,
+      "source_metro": "chicago",
+      "target_metro": "chicago",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ]
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 12800.0
+    },
+    {
+      "source": "metro3/pop1",
+      "target": "metro5/pop1",
+      "key": "inter_metro:3-5:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 658,
+      "adjacency_id": "inter_metro:3-5",
+      "distance_km": 658,
+      "source_metro": "chicago",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_atlanta_chicago",
+        "corridor_risk_chicago_columbus"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro3/pop1",
+      "target": "metro4/pop1",
+      "key": "inter_metro:3-4:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1302,
+      "adjacency_id": "inter_metro:3-4",
+      "distance_km": 1302,
+      "source_metro": "chicago",
+      "target_metro": "atlanta",
+      "risk_groups": [
+        "corridor_risk_atlanta_chicago",
+        "corridor_risk_atlanta_columbus",
+        "corridor_risk_chicago_columbus"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 3200.0
+    },
+    {
+      "source": "metro3/pop2",
+      "target": "metro5/pop2",
+      "key": "inter_metro:3-5:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 658,
+      "adjacency_id": "inter_metro:3-5",
+      "distance_km": 658,
+      "source_metro": "chicago",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_atlanta_chicago",
+        "corridor_risk_chicago_columbus"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro3/pop2",
+      "target": "metro4/pop2",
+      "key": "inter_metro:3-4:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1302,
+      "adjacency_id": "inter_metro:3-4",
+      "distance_km": 1302,
+      "source_metro": "chicago",
+      "target_metro": "atlanta",
+      "risk_groups": [
+        "corridor_risk_atlanta_chicago",
+        "corridor_risk_atlanta_columbus",
+        "corridor_risk_chicago_columbus"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 3200.0
+    },
+    {
+      "source": "metro4/pop1",
+      "target": "metro4/pop2",
+      "key": "intra_metro:atlanta:1-2",
+      "link_type": "intra_metro",
+      "base_capacity": 12800.0,
+      "target_capacity": 12800.0,
+      "cost": 142,
+      "adjacency_id": "intra_metro:atlanta",
+      "distance_km": 142,
+      "source_metro": "atlanta",
+      "target_metro": "atlanta",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ]
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 12800.0
+    },
+    {
+      "source": "metro4/pop1",
+      "target": "metro5/pop1",
+      "key": "inter_metro:4-5:1-1",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1028,
+      "adjacency_id": "inter_metro:4-5",
+      "distance_km": 1028,
+      "source_metro": "atlanta",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_atlanta_chicago",
+        "corridor_risk_atlanta_columbus"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro4/pop2",
+      "target": "metro5/pop2",
+      "key": "inter_metro:4-5:2-2",
+      "link_type": "inter_metro_corridor",
+      "base_capacity": 3200,
+      "target_capacity": 3200,
+      "cost": 1028,
+      "adjacency_id": "inter_metro:4-5",
+      "distance_km": 1028,
+      "source_metro": "atlanta",
+      "target_metro": "columbus",
+      "risk_groups": [
+        "corridor_risk_atlanta_chicago",
+        "corridor_risk_atlanta_columbus"
+      ],
+      "euclidean_km": null,
+      "detour_ratio": null,
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 200.0
+    },
+    {
+      "source": "metro5/pop1",
+      "target": "metro5/pop2",
+      "key": "intra_metro:columbus:1-2",
+      "link_type": "intra_metro",
+      "base_capacity": 25600.0,
+      "target_capacity": 25600.0,
+      "cost": 65,
+      "adjacency_id": "intra_metro:columbus",
+      "distance_km": 65,
+      "source_metro": "columbus",
+      "target_metro": "columbus",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ]
+      },
+      "role_pairs": [
+        "core|leaf"
+      ],
+      "capacity": 1600.0
+    },
+    {
+      "source": "metro5/pop1",
+      "target": "metro5/dc1",
+      "key": "dc_to_pop:columbus:1-1",
+      "link_type": "dc_to_pop",
+      "base_capacity": 38400.0,
+      "target_capacity": 38400.0,
+      "cost": 1,
+      "adjacency_id": "dc_to_pop:columbus",
+      "distance_km": 1,
+      "source_metro": "columbus",
+      "target_metro": "columbus",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "dc"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "dc|core",
+        "dc|leaf"
+      ],
+      "capacity": 2400.0
+    },
+    {
+      "source": "metro5/pop2",
+      "target": "metro5/dc1",
+      "key": "dc_to_pop:columbus:1-2",
+      "link_type": "dc_to_pop",
+      "base_capacity": 38400.0,
+      "target_capacity": 38400.0,
+      "cost": 65,
+      "adjacency_id": "dc_to_pop:columbus",
+      "distance_km": 65,
+      "source_metro": "columbus",
+      "target_metro": "columbus",
+      "match": {
+        "conditions": [
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "core"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "dc"
+          },
+          {
+            "attr": "role",
+            "operator": "==",
+            "value": "leaf"
+          }
+        ],
+        "logic": "or"
+      },
+      "role_pairs": [
+        "dc|core",
+        "dc|leaf"
+      ],
+      "capacity": 2400.0
+    }
+  ]
+}

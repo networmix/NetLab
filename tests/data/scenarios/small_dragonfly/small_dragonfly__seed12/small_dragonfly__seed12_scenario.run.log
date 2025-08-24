@@ -1,0 +1,41 @@
+2025-08-24 18:03:13,308 - ngraph.cli - INFO - Loading scenario from: /Users/networmix/ws/project/NetLab/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.yml
+2025-08-24 18:03:13,394 - ngraph.cli - INFO - Starting scenario execution
+2025-08-24 18:03:13,394 - ngraph.workflow.base - INFO - Starting workflow step: network_statistics (NetworkStats)
+2025-08-24 18:03:13,395 - ngraph.workflow.network_stats - INFO - NetworkStats summary: name=network_statistics nodes=133 links=739 total_capacity=627200.0 mean_degree=11.11
+2025-08-24 18:03:13,395 - ngraph.workflow.base - INFO - Completed workflow step: network_statistics (NetworkStats) in 0.001 seconds
+2025-08-24 18:03:13,395 - ngraph.workflow.base - INFO - Starting workflow step: msd_baseline (MaximumSupportedDemand)
+2025-08-24 18:03:13,395 - ngraph.workflow.maximum_supported_demand_step - INFO - Starting MSD: name=msd_baseline matrix=baseline_traffic_matrix alpha_start=1 growth=2.000 seeds=1 resolution=0.05
+2025-08-24 18:03:13,480 - ngraph.workflow.maximum_supported_demand_step - INFO - MSD completed: name=msd_baseline matrix=baseline_traffic_matrix alpha_star=1.6875 iterations=32 duration=0.085s
+2025-08-24 18:03:13,480 - ngraph.workflow.base - INFO - Completed workflow step: msd_baseline (MaximumSupportedDemand) in 0.085 seconds
+2025-08-24 18:03:13,480 - ngraph.workflow.base - INFO - Starting workflow step: tm_placement (TrafficMatrixPlacement)
+2025-08-24 18:03:13,480 - ngraph.workflow.traffic_matrix_placement_step - INFO - Starting traffic-matrix placement: tm_placement
+2025-08-24 18:03:13,480 - ngraph.workflow.traffic_matrix_placement_step - INFO - Using alpha: value=1.6875 source=msd_baseline
+2025-08-24 18:03:13,649 - ngraph.failure.manager.manager - INFO - Running 1000 Monte-Carlo iterations
+2025-08-24 18:03:14,384 - ngraph.failure.manager.manager - INFO - Monte-Carlo deduplication: 586 unique patterns from 1000 iterations
+2025-08-24 18:03:14,385 - ngraph.failure.manager.manager - INFO - Running parallel analysis with 7 workers for 586 iterations
+2025-08-24 18:03:14,391 - ngraph.failure.manager.manager - INFO - Starting parallel execution of 586 iterations
+2025-08-24 18:03:15,402 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 58/586 tasks completed
+2025-08-24 18:03:15,402 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 116/586 tasks completed
+2025-08-24 18:03:15,525 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 174/586 tasks completed
+2025-08-24 18:03:15,652 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 232/586 tasks completed
+2025-08-24 18:03:15,800 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 290/586 tasks completed
+2025-08-24 18:03:15,823 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 348/586 tasks completed
+2025-08-24 18:03:15,890 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 406/586 tasks completed
+2025-08-24 18:03:16,014 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 464/586 tasks completed
+2025-08-24 18:03:16,074 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 522/586 tasks completed
+2025-08-24 18:03:16,163 - ngraph.failure.manager.manager - INFO - Parallel analysis progress: 580/586 tasks completed
+2025-08-24 18:03:16,235 - ngraph.failure.manager.manager - INFO - Parallel analysis completed in 1.85 seconds
+2025-08-24 18:03:16,342 - ngraph.workflow.traffic_matrix_placement_step - INFO - Placement summary: name=tm_placement alpha=1.6875 source=msd_baseline iters=1000 workers=7 rounds=auto baseline=True seed=12 delivered_mean=135098.5524 duration=2.861s
+2025-08-24 18:03:16,342 - ngraph.workflow.traffic_matrix_placement_step - INFO - Traffic-matrix placement completed: tm_placement
+2025-08-24 18:03:16,342 - ngraph.workflow.base - INFO - Completed workflow step: tm_placement (TrafficMatrixPlacement) in 2.862 seconds
+2025-08-24 18:03:16,342 - ngraph.workflow.base - INFO - Starting workflow step: cost_power (CostPower)
+2025-08-24 18:03:16,342 - ngraph.workflow.cost_power - INFO - Starting CostPower: name=cost_power include_disabled=True levels=0..2
+2025-08-24 18:03:16,362 - ngraph.workflow.cost_power - INFO - CostPower complete: name=cost_power capex=33662000.000 power=384488.000 platform_capex=13310000.000 optics_capex=20352000.000 duration=0.019s
+2025-08-24 18:03:16,362 - ngraph.workflow.base - INFO - Completed workflow step: cost_power (CostPower) in 0.019 seconds
+2025-08-24 18:03:16,362 - ngraph.cli - INFO - Scenario execution completed successfully
+✅ Scenario execution completed
+2025-08-24 18:03:16,362 - ngraph.cli - INFO - Serializing results to JSON
+2025-08-24 18:03:16,396 - ngraph.cli - INFO - Writing results to: /Users/networmix/ws/project/NetLab/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json
+2025-08-24 18:03:16,397 - ngraph.cli - INFO - Results written successfully
+✅ Results written to: /Users/networmix/ws/project/NetLab/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json
+2025-08-24 18:03:16,397 - ngraph.cli - INFO - Scenario run completed successfully in 3.09 s

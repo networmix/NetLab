@@ -24,3 +24,5 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-added-large-files
+        args: [--maxkb=10000]
+        exclude: ^tests/data/.*

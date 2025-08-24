@@ -1,0 +1,139 @@
+2025-08-24 18:03:06,052 - ngraph.cli - INFO - Inspecting scenario from: /Users/networmix/ws/project/NetLab/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.yml
+2025-08-24 18:03:06,054 - ngraph.cli - INFO - ✓ YAML file loaded successfully
+2025-08-24 18:03:06,131 - ngraph.cli - INFO - ✓ Scenario validated and loaded successfully
+
+============================================================
+NETGRAPH SCENARIO INSPECTION
+============================================================
+
+OVERVIEW
+------------------------------
+   Metric                | Value
+   ----------------------+---------------------------------------
+   Nodes                 | 127
+   Links                 | 756
+   Enabled               | 127 nodes (100.0%), 756 links (100.0%)
+   Capacity (enabled)    | 1,654,400.0
+   Demand (all matrices) | 90,000.0 (6 demands across 1 matrices)
+   Utilization           | 5.44%
+   Risk groups           | 8 total; 0 disabled
+   Workflow steps        | 4
+
+1. SCENARIO METADATA
+------------------------------
+   Seed: 12 (deterministic)
+   All workflow step seeds are derived deterministically from scenario seed
+
+2. NETWORK STRUCTURE
+------------------------------
+   Total Nodes: 127
+   Total Links: 756
+   Enabled Nodes: 127 (100.0%)
+   Enabled Links: 756 (100.0%)
+
+   Network Hierarchy:
+   Legend: counts are for enabled (active) nodes/links; cost/power are
+           aggregated from components if defined.
+   - root | Nodes=127, Links=756, CapEx=36,032,000, Power=401,008
+     - metro1 | Nodes=41, Links=240, CapEx=9,464,000, Power=101,088
+       - pop1 | Nodes=20, Links=128, CapEx=4,732,000, Power=50,544
+       - pop2 | Nodes=20, Links=128, CapEx=4,732,000, Power=50,544
+       - dc1 | Nodes=1, Links=32, CapEx=0, Power=0
+     - metro2 | Nodes=41, Links=304, CapEx=10,424,000, Power=102,944
+       - pop1 | Nodes=20, Links=160, CapEx=5,212,000, Power=51,472
+       - pop2 | Nodes=20, Links=160, CapEx=5,212,000, Power=51,472
+       - dc1 | Nodes=1, Links=32, CapEx=0, Power=0
+     - metro3 | Nodes=2, Links=67, CapEx=2,860,000, Power=47,016
+       - pop1 | Nodes=1, Links=34, CapEx=1,430,000, Power=23,508
+       - pop2 | Nodes=1, Links=34, CapEx=1,430,000, Power=23,508
+     - metro4 | Nodes=2, Links=67, CapEx=2,860,000, Power=47,016
+       - pop1 | Nodes=1, Links=34, CapEx=1,430,000, Power=23,508
+       - pop2 | Nodes=1, Links=34, CapEx=1,430,000, Power=23,508
+     - metro5 | Nodes=41, Links=304, CapEx=10,424,000, Power=102,944
+       - pop1 | Nodes=20, Links=160, CapEx=5,212,000, Power=51,472
+       - pop2 | Nodes=20, Links=160, CapEx=5,212,000, Power=51,472
+       - dc1 | Nodes=1, Links=32, CapEx=0, Power=0
+
+   Validation & Hardware Utilization:
+     nodes with capacity violations: 0; ports violations: 0
+
+   Link Capacity Statistics:
+   Metric   | Value
+   ---------+------------
+   Min      | 200.0
+   Max      | 12,800.0
+   Mean     | 2,188.4
+   Median   | 3,200.0
+   Total    | 1,654,400.0
+
+   Node Capacity Statistics:
+   Metric   | Value
+   ---------+------------
+   Min      | 17,800.0
+   Max      | 76,800.0
+   Mean     | 26,053.5
+   Median   | 18,800.0
+   Total    | 3,308,800.0
+
+3. RISK GROUPS
+------------------------------
+   Total: 8
+     corridor_risk_atlanta_chicago (enabled)
+     corridor_risk_atlanta_columbus (enabled)
+     corridor_risk_atlanta_washington-arlington (enabled)
+     corridor_risk_chicago_columbus (enabled)
+     corridor_risk_chicago_washington-arlington (enabled)
+     ... and 3 more
+
+4. COMPONENTS LIBRARY
+------------------------------
+   Total: 6
+     1600G-2xDR4
+     800G-DR4
+     800G-ZR+
+     CoreRouter
+     LeafRouter
+     ... and 1 more
+
+5. FAILURE POLICIES
+------------------------------
+   Total: 1
+     mc_baseline: 4 modes
+
+6. TRAFFIC MATRICES
+------------------------------
+   Total: 1
+
+   Capacity vs Demand:
+     enabled link capacity: 1,654,400.0
+     total demand (all matrices): 90,000.0 (6 demands)
+     capacity/demand: 18.38x
+     demand/capacity: 5.44%
+     baseline_traffic_matrix: 6 demands
+       total demand: 90,000
+       Node selection preview:
+         source ^metro1/dc1/.*: 1 groups, 1 nodes (1 enabled)
+         source ^metro2/dc1/.*: 1 groups, 1 nodes (1 enabled)
+         sink ^metro2/dc1/.*: 1 groups, 1 nodes (1 enabled)
+         sink ^metro1/dc1/.*: 1 groups, 1 nodes (1 enabled)
+
+7. WORKFLOW STEPS
+------------------------------
+   Total: 4
+   #        | Name               | Type                   | Determinism
+   ---------+--------------------+------------------------+--------------
+   1        | network_statistics | NetworkStats           | deterministic
+   2        | msd_baseline       | MaximumSupportedDemand | deterministic
+   3        | tm_placement       | TrafficMatrixPlacement | deterministic
+   4        | cost_power         | CostPower              | deterministic
+
+   Node selection preview:
+     (no node selection fields in workflow steps)
+
+============================================================
+INSPECTION COMPLETE
+============================================================
+
+Ready to run with 4 workflow steps
+Usage: python -m ngraph run /Users/networmix/ws/project/NetLab/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.yml
+2025-08-24 18:03:06,149 - ngraph.cli - INFO - Scenario inspection completed successfully in 96.7 ms

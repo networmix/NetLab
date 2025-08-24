@@ -1,0 +1,64 @@
+18:59:11 [INFO] topogen.config: Loading configuration from: /Users/networmix/ws/project/NetLab/topogen_configs_small/small_baseline.yml
+18:59:11 [INFO] topogen.cli: Loaded configuration from /Users/networmix/ws/project/NetLab/topogen_configs_small/small_baseline.yml
+18:59:11 [INFO] topogen.cli: Starting Topology generation pipeline
+18:59:11 [INFO] topogen.integrated_graph: Loading integrated graph from JSON: scenarios/small_baseline/small_baseline/small_baseline_integrated_graph.json
+18:59:11 [INFO] topogen.integrated_graph: Loaded integrated graph: 5 nodes, 8 edges
+18:59:11 [INFO] topogen.cli: Starting Generate NetGraph scenario
+18:59:11 [INFO] topogen.scenario.assembly: Building NetGraph scenario from integrated graph
+18:59:11 [INFO] topogen.scenario.assembly: Found 5 metro nodes
+18:59:11 [INFO] topogen.scenario.assembly: Maximum sites per metro: 2
+18:59:11 [INFO] topogen.scenario.assembly: Maximum DC regions per metro: 1
+18:59:11 [INFO] topogen.scenario.assembly: Building site-level MultiGraph
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Building site-level MultiGraph
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Forming intra-metro PoP mesh edges for 5 metros
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Forming DC-to-PoP edges where DC regions exist
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Forming inter-metro corridor edges from integrated graph
+18:59:11 [INFO] topogen.scenario.graph_pipeline: MultiGraph built: 13 nodes, 27 edges (multi-edges counted)
+18:59:11 [INFO] topogen.scenario.graph_pipeline: TM sizing: generating early traffic matrix
+18:59:11 [INFO] topogen.scenario.graph_pipeline: TM sizing: corridor capacity totals (Gbps) before=51,200.0 after=108,800.0 delta=57,600.0
+18:59:11 [INFO] topogen.scenario.graph_pipeline: TM sizing: new-york-jersey-city-newark -> columbus corridor capacity 6,400.0 -> 25,600.0 (delta=19,200.0, x4.00)
+18:59:11 [INFO] topogen.scenario.graph_pipeline: TM sizing: new-york-jersey-city-newark -> washington-arlington corridor capacity 6,400.0 -> 25,600.0 (delta=19,200.0, x4.00)
+18:59:11 [INFO] topogen.scenario.graph_pipeline: TM sizing: washington-arlington -> columbus corridor capacity 6,400.0 -> 25,600.0 (delta=19,200.0, x4.00)
+18:59:11 [INFO] topogen.scenario.graph_pipeline: TM sizing: applied capacities (Q=3200 Gb/s, h=1.300, alpha=1.200, beta=0.800)
+18:59:11 [INFO] topogen.scenario.assembly: Assigning per-link capacities after TM-based sizing
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Assigning per-link capacities by splitting base over expansion size
+18:59:11 [INFO] topogen.scenario.assembly: Saving site-level network graph to JSON: scenarios/small_baseline/small_baseline/small_baseline_network_graph.json
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Saving site-level network graph to JSON: scenarios/small_baseline/small_baseline/small_baseline_network_graph.json
+18:59:11 [INFO] topogen.scenario.graph_pipeline: Saved site network graph JSON (0.03 MB) → scenarios/small_baseline/small_baseline/small_baseline_network_graph.json
+18:59:11 [INFO] topogen.scenario.assembly: Exporting site-level graph visualization to: scenarios/small_baseline/small_baseline/small_baseline_site_graph.jpg
+18:59:11 [INFO] topogen.visualization: Exporting site graph visualization to scenarios/small_baseline/small_baseline/small_baseline_site_graph.jpg
+18:59:16 [INFO] topogen.visualization: Saved site graph visualization → scenarios/small_baseline/small_baseline/small_baseline_site_graph.jpg (489.2 KB)
+18:59:16 [INFO] topogen.scenario.libraries: HW: node blueprint=SingleRouter group=core role=core platform=CoreRouter
+18:59:16 [INFO] topogen.scenario.libraries: Node hardware assigned for 1 of 2 blueprint groups (with_role=2)
+18:59:16 [INFO] topogen.scenario.assembly: Serializing network sections from MultiGraph
+18:59:16 [INFO] topogen.scenario.graph_pipeline: Serializing MultiGraph to scenario network sections
+18:59:16 [INFO] topogen.scenario.graph_pipeline: Serialized network: 8 groups, 27 adjacency entries
+18:59:16 [INFO] topogen.scenario.risk: Generated 8 risk group definitions
+18:59:16 [INFO] topogen.scenario.assembly: HW: applied optics to 27 adjacencies (top role-pairs: (core,core)=21, (core,dc)=6)
+18:59:16 [INFO] topogen.visualization: Saved blueprint diagram → scenarios/small_baseline/small_baseline/small_baseline_blueprint_DCRegion.jpg
+18:59:16 [INFO] topogen.visualization: Saved blueprint diagram → scenarios/small_baseline/small_baseline/small_baseline_blueprint_SingleRouter.jpg
+18:59:16 [INFO] topogen.scenario.assembly: Generated NetGraph scenario YAML
+18:59:16 [INFO] topogen.cli: Completed Generate NetGraph scenario in 4.4s
+18:59:16 [INFO] topogen.cli: Starting Write scenario to scenarios/small_baseline/small_baseline/small_baseline_scenario.yml
+18:59:16 [INFO] topogen.cli: Completed Write scenario to scenarios/small_baseline/small_baseline/small_baseline_scenario.yml in 0.0s
+18:59:16 [INFO] topogen.validation.scenario_dict: dc capacity check: metro1/dc1 capacity=64,000.0 egress_demand=30,000.0 ingress_demand=30,000.0
+18:59:16 [INFO] topogen.validation.scenario_dict: dc capacity check: metro2/dc1 capacity=76,800.0 egress_demand=30,000.0 ingress_demand=30,000.0
+18:59:16 [INFO] topogen.validation.scenario_dict: dc capacity check: metro5/dc1 capacity=76,800.0 egress_demand=30,000.0 ingress_demand=30,000.0
+18:59:16 [INFO] topogen.cli: Completed Topology generation pipeline in 4.5s
+🔄 Topology generation pipeline...
+Topology Generation Pipeline
+==================================================
+🔄 Loading integrated graph...
+📊 Graph loaded: 5 nodes, 8 edges
+   Metro nodes: 5
+   Highway nodes: 0
+🔄 Generate NetGraph scenario...
+✅ Generate NetGraph scenario (completed in 4.4s)
+🔄 Write scenario to scenarios/small_baseline/small_baseline/small_baseline_scenario.yml...
+✅ Write scenario to scenarios/small_baseline/small_baseline/small_baseline_scenario.yml (completed in 0.0s)
+
+📄 Scenario written to: scenarios/small_baseline/small_baseline/small_baseline_scenario.yml
+🔄 Validating generated scenario...
+✅ Scenario validation passed
+✅ Topology generation pipeline (completed in 4.5s)
+🎉 SUCCESS! Generated topology: scenarios/small_baseline/small_baseline/small_baseline_scenario.yml

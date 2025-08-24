@@ -17,12 +17,21 @@ from metrics.summary import (
 )
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+def _data_root() -> Path:
+    return Path(__file__).resolve().parents[1] / "data"
+
+
+def _metrics_root() -> Path:
+    base = _data_root()
+    for name in ("scenarios_metrics_", "scenarios_metrics"):
+        p = base / name
+        if p.exists():
+            return p
+    return base / "scenarios_metrics_"
 
 
 def test_build_project_summary_table_matches_csv() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     df = build_project_summary_table(root).sort_index()
     ref = pd.read_csv(root / "project.csv").set_index("scenario").sort_index()
     # Column set may evolve; require at least the expected ones present
@@ -44,7 +53,7 @@ def test_build_project_summary_table_matches_csv() -> None:
 
 
 def test_build_baseline_normalized_table_has_expected_columns() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     df = build_baseline_normalized_table(root).sort_index()
     assert "baseline" in df.columns
     # A few key normalized metrics should be present
@@ -53,7 +62,7 @@ def test_build_baseline_normalized_table_has_expected_columns() -> None:
 
 
 def test_print_pretty_table_does_not_crash(capsys) -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _data_root() / "scenarios_metrics"
     df = build_project_summary_table(root)
     print_pretty_table(df, title="Consolidated project metrics")
     out = capsys.readouterr().out
@@ -67,7 +76,7 @@ def test_print_pretty_table_fallback_no_rich(monkeypatch, capsys) -> None:
     # Force fallback path by nulling Console/RichTable
     monkeypatch.setattr(summ, "Console", None)
     monkeypatch.setattr(summ, "RichTable", None)
-    root = _repo_root() / "scenarios_metrics"
+    root = _data_root() / "scenarios_metrics"
     df = build_project_summary_table(root)
     print_pretty_table(df, title="Consolidated project metrics")
     out = capsys.readouterr().out
@@ -88,7 +97,7 @@ def test_save_project_csv_incremental(tmp_path: Path) -> None:
 
 
 def test_build_normalized_insights_shape() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _data_root() / "scenarios_metrics"
     data = _build_normalized_insights(root)
     # Returns a list of dicts with scenario key
     assert isinstance(data, list)
@@ -123,7 +132,7 @@ def test_holm_and_paired_t_helpers() -> None:
 
 
 def test_normalized_table_respects_env_baseline(monkeypatch) -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _data_root() / "scenarios_metrics"
     # Force baseline to a non-default scenario and verify ratios/deltas for baseline row
     monkeypatch.setenv("NGRAPH_BASELINE_SCENARIO", "small_clos")
     df = build_baseline_normalized_table(root)
@@ -145,7 +154,7 @@ def test_normalized_table_heuristic_baseline_when_missing_baseline_dir(
     tmp_path: Path,
 ) -> None:
     # Create a temp analysis root with only two non-baseline scenarios
-    repo_root = _repo_root() / "scenarios_metrics"
+    repo_root = _metrics_root()
     for scen in ("small_clos", "small_dragonfly"):
         src = repo_root / scen
         dst = tmp_path / scen
@@ -174,7 +183,7 @@ def test_normalized_table_heuristic_baseline_when_missing_baseline_dir(
 
 
 def test_print_normalized_insights_smoke(capsys) -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     _print_normalized_insights(root)
     out = capsys.readouterr().out
     # Either table header or explicit absence message

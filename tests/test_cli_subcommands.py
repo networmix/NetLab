@@ -34,9 +34,9 @@ def test_cli_run_no_yamls_exits_early(tmp_path: Path, capsys) -> None:
 
 
 def test_cli_metrics_summary_smoke(capsys) -> None:
-    # Uses existing scenarios/scenarios_metrics in repo
-    repo_root = Path(__file__).resolve().parents[1]
-    scen = repo_root / "scenarios"
+    # Uses bundled test data under tests/data
+    data_root = Path(__file__).resolve().parent / "data"
+    scen = data_root / "scenarios"
     code = _run_cli(["metrics", str(scen), "--summary"])  # print-only path
     out = capsys.readouterr().out
     assert code == 0
@@ -44,9 +44,9 @@ def test_cli_metrics_summary_smoke(capsys) -> None:
 
 
 def test_cli_metrics_run_on_temp_copy(tmp_path: Path) -> None:
-    # Copy scenarios into a temp dir and run metrics without plots
-    repo_root = Path(__file__).resolve().parents[1]
-    src = repo_root / "scenarios"
+    # Copy scenarios from tests/data into a temp dir and run metrics without plots
+    data_root = Path(__file__).resolve().parent / "data"
+    src = data_root / "scenarios"
     dst = tmp_path / "scenarios"
     dst.mkdir(parents=True, exist_ok=True)
     for p in src.rglob("*.results.json"):
@@ -61,8 +61,8 @@ def test_cli_metrics_run_on_temp_copy(tmp_path: Path) -> None:
 
 
 def test_cli_test_subcommand_smoke(capsys) -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    scen = repo_root / "scenarios"
+    data_root = Path(__file__).resolve().parent / "data"
+    scen = data_root / "scenarios"
     code = _run_cli(["test", str(scen), "small_baseline", "small_clos"])  # no crash
     out = capsys.readouterr().out
     assert code == 0

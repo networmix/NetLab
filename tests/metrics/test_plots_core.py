@@ -28,12 +28,21 @@ from metrics.plot_cross_seed_latency import (
 )
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+def _data_root() -> Path:
+    return Path(__file__).resolve().parents[1] / "data"
+
+
+def _metrics_root() -> Path:
+    base = _data_root()
+    for name in ("scenarios_metrics_", "scenarios_metrics"):
+        p = base / name
+        if p.exists():
+            return p
+    return base / "scenarios_metrics_"
 
 
 def test_cross_seed_bac_core_curves_match_pooled_grid() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     for scen_dir in sorted(
         [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")]
     ):
@@ -61,7 +70,7 @@ def test_cross_seed_bac_core_curves_match_pooled_grid() -> None:
 
 
 def test_bac_delta_vs_baseline_core_matches_reference() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     baseline = "small_baseline"
     base_x, base_a = _pooled_availability_curve(root / baseline)
     assert base_x.size > 0
@@ -104,7 +113,7 @@ def test_bac_delta_vs_baseline_core_matches_reference() -> None:
 
 
 def test_iterops_medians_match_project_csv() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     proj = pd.read_csv(root / "project.csv").set_index("scenario")
     for scen_dir in sorted(
         [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")]
@@ -134,7 +143,7 @@ def test_iterops_medians_match_project_csv() -> None:
 
 
 def test_cross_seed_latency_core_shapes() -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _metrics_root()
     for scen_dir in sorted(
         [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")]
     ):
@@ -153,7 +162,7 @@ def test_cross_seed_latency_core_shapes() -> None:
 
 
 def test_plot_functions_save_files(tmp_path: Path) -> None:
-    root = _repo_root() / "scenarios_metrics"
+    root = _data_root() / "scenarios_metrics"
     # Save BAC figure
     bac_png = tmp_path / "BAC.png"
     out = plot_cross_seed_bac(

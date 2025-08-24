@@ -56,8 +56,8 @@ def _assert_project_csv_equal(a_path: Path, b_path: Path) -> None:
 
 
 def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    src_scen = repo_root / "scenarios"
+    data_root = Path(__file__).resolve().parent / "data"
+    src_scen = data_root / "scenarios"
     dst_scen = tmp_path / "scenarios"
     _copy_results_json_tree(src_scen, dst_scen)
 
@@ -65,7 +65,13 @@ def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
     run_metrics(root=dst_scen, no_plots=True, enable_maxflow=False)
 
     out_root = tmp_path / "scenarios_metrics"
-    ref_root = repo_root / "scenarios_metrics"
+    # Allow either scenarios_metrics_ or scenarios_metrics
+    ref_base = data_root
+    ref_root = (
+        ref_base / "scenarios_metrics_"
+        if (ref_base / "scenarios_metrics_").exists()
+        else ref_base / "scenarios_metrics"
+    )
 
     # Compare project-level CSVs (values should match exactly)
     _assert_project_csv_equal(out_root / "project.csv", ref_root / "project.csv")
@@ -100,8 +106,13 @@ def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
 
 
 def test_summary_tables_match_reference() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    ref_root = repo_root / "scenarios_metrics"
+    data_root = Path(__file__).resolve().parent / "data"
+    ref_base = data_root
+    ref_root = (
+        ref_base / "scenarios_metrics_"
+        if (ref_base / "scenarios_metrics_").exists()
+        else ref_base / "scenarios_metrics"
+    )
 
     # Build tables from the reference metrics dir and compare to the saved CSVs
     df_proj = build_project_summary_table(ref_root).sort_index()
@@ -173,8 +184,8 @@ def _assert_csv_equal(a: Path, b: Path) -> None:
 
 
 def test_all_scenario_metrics_match_reference(tmp_path: Path) -> None:
-    repo_root = Path(__file__).resolve().parents[1]
-    src_scen = repo_root / "scenarios"
+    data_root = Path(__file__).resolve().parent / "data"
+    src_scen = data_root / "scenarios"
     dst_scen = tmp_path / "scenarios"
     _copy_results_json_tree(src_scen, dst_scen)
 
@@ -182,7 +193,12 @@ def test_all_scenario_metrics_match_reference(tmp_path: Path) -> None:
     run_metrics(root=dst_scen, no_plots=True, enable_maxflow=False)
 
     out_root = tmp_path / "scenarios_metrics"
-    ref_root = repo_root / "scenarios_metrics"
+    ref_base = data_root
+    ref_root = (
+        ref_base / "scenarios_metrics_"
+        if (ref_base / "scenarios_metrics_").exists()
+        else ref_base / "scenarios_metrics"
+    )
 
     # For each scenario dir in reference, compare expected per-scenario files and per-seed files
     for scen_dir in sorted(

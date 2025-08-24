@@ -1,0 +1,1181 @@
+seed: 11
+blueprints:
+  DCRegion:
+    groups:
+      dc:
+        node_count: 1
+        name_template: dc
+        attrs:
+          role: dc
+    adjacency: []
+  SingleRouter:
+    groups:
+      core:
+        node_count: 1
+        name_template: core
+        attrs:
+          role: core
+          hardware:
+            component: CoreRouter
+            count: 1
+    adjacency: []
+components:
+  1600G-2xDR4:
+    component_type: optic
+    description: 1600G 2xDR4 pluggable optic
+    capex: 5500.0
+    power_watts: 25.0
+    power_watts_max: 28.0
+    capacity: 1600.0
+    ports: 1
+    attrs: {}
+  800G-DR4:
+    component_type: optic
+    description: 800G DR4 pluggable optic
+    capex: 3000.0
+    power_watts: 16.0
+    power_watts_max: 18.0
+    capacity: 800.0
+    ports: 1
+    attrs: {}
+  800G-ZR+:
+    component_type: optic
+    description: 800G ZR+ pluggable optic
+    capex: 15000.0
+    power_watts: 29.0
+    power_watts_max: 30.0
+    capacity: 800.0
+    ports: 1
+    attrs: {}
+  CoreRouter:
+    component_type: chassis
+    description: 16 slot, 32x800G ports per slot, 512 ports total
+    capex: 650000.0
+    power_watts: 22000.0
+    power_watts_max: 29000.0
+    capacity: 409600.0
+    ports: 512
+    attrs:
+      role: core
+  LeafRouter:
+    component_type: chassis
+    description: 64x800G ports, Q4D chipset
+    capex: 85000.0
+    power_watts: 2000.0
+    power_watts_max: 3000.0
+    capacity: 51200.0
+    ports: 64
+    attrs:
+      role: leaf
+  SpineRouter:
+    component_type: chassis
+    description: 64x1600G ports, TH6 chipset
+    capex: 55000.0
+    power_watts: 2000.0
+    power_watts_max: 3000.0
+    capacity: 102400.0
+    ports: 64
+    attrs:
+      role: spine
+network:
+  groups:
+    metro1/pop[1-2]:
+      use_blueprint: SingleRouter
+      attrs:
+        metro_name: new-york-jersey-city-newark
+        metro_name_orig: New York--Jersey City--Newark, NY--NJ
+        metro_id: '63217'
+        location_x: 1815314.3
+        location_y: 2173703.3
+        radius_km: 51.75
+        node_type: pop
+    metro1/dc[1-1]:
+      use_blueprint: DCRegion
+      attrs:
+        metro_name: new-york-jersey-city-newark
+        metro_name_orig: New York--Jersey City--Newark, NY--NJ
+        metro_id: '63217'
+        location_x: 1815314.3
+        location_y: 2173703.3
+        radius_km: 51.75
+        node_type: dc_region
+        mw_per_dc_region: 150.0
+        gbps_per_mw: 200.0
+    metro2/pop[1-2]:
+      use_blueprint: SingleRouter
+      attrs:
+        metro_name: washington-arlington
+        metro_name_orig: Washington--Arlington, DC--VA--MD
+        metro_id: '92242'
+        location_x: 1602747.8
+        location_y: 1921533.9
+        radius_km: 32.67
+        node_type: pop
+    metro2/dc[1-1]:
+      use_blueprint: DCRegion
+      attrs:
+        metro_name: washington-arlington
+        metro_name_orig: Washington--Arlington, DC--VA--MD
+        metro_id: '92242'
+        location_x: 1602747.8
+        location_y: 1921533.9
+        radius_km: 32.67
+        node_type: dc_region
+        mw_per_dc_region: 150.0
+        gbps_per_mw: 200.0
+    metro3/pop[1-2]:
+      use_blueprint: SingleRouter
+      attrs:
+        metro_name: chicago
+        metro_name_orig: Chicago, IL--IN
+        metro_id: '16264'
+        location_x: 664412.8
+        location_y: 2133983.6
+        radius_km: 43.9
+        node_type: pop
+    metro4/pop[1-2]:
+      use_blueprint: SingleRouter
+      attrs:
+        metro_name: atlanta
+        metro_name_orig: Atlanta, GA
+        metro_id: 03817
+        location_x: 1056698.7
+        location_y: 1255491.7
+        radius_km: 44.95
+        node_type: pop
+    metro5/pop[1-2]:
+      use_blueprint: SingleRouter
+      attrs:
+        metro_name: columbus
+        metro_name_orig: Columbus, OH
+        metro_id: '19234'
+        location_x: 1097168.9
+        location_y: 1967599.1
+        radius_km: 20.63
+        node_type: pop
+    metro5/dc[1-1]:
+      use_blueprint: DCRegion
+      attrs:
+        metro_name: columbus
+        metro_name_orig: Columbus, OH
+        metro_id: '19234'
+        location_x: 1097168.9
+        location_y: 1967599.1
+        radius_km: 20.63
+        node_type: dc_region
+        mw_per_dc_region: 150.0
+        gbps_per_mw: 200.0
+  adjacency:
+  - source:
+      path: metro1/pop1
+      match: &id001
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+    target:
+      path: metro1/pop2
+      match: *id001
+    pattern: one_to_one
+    link_params:
+      capacity: 22400.0
+      cost: 163
+      attrs:
+        link_type: intra_metro
+        source_metro: new-york-jersey-city-newark
+        target_metro: new-york-jersey-city-newark
+        target_capacity: 22400.0
+        site_edge: metro1/pop1|metro1/pop2|intra_metro:new-york-jersey-city-newark:1-2
+        adjacency_id: intra_metro:new-york-jersey-city-newark
+        distance_km: 163
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 28.0
+          target:
+            component: 800G-ZR+
+            count: 28.0
+  - source:
+      path: metro1/pop1
+      match: &id002
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: dc
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro1/dc1
+      match: *id002
+    pattern: one_to_one
+    link_params:
+      capacity: 32000.0
+      cost: 1
+      attrs:
+        link_type: dc_to_pop
+        source_metro: new-york-jersey-city-newark
+        target_metro: new-york-jersey-city-newark
+        target_capacity: 32000.0
+        site_edge: metro1/pop1|metro1/dc1|dc_to_pop:new-york-jersey-city-newark:1-1
+        adjacency_id: dc_to_pop:new-york-jersey-city-newark
+        distance_km: 1
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 40.0
+          target:
+            component: 800G-ZR+
+            count: 40.0
+  - source:
+      path: metro1/pop1
+      match: &id003
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro2/pop1
+      match: *id003
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 412
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: new-york-jersey-city-newark
+        target_metro: washington-arlington
+        target_capacity: 12800.0
+        site_edge: metro1/pop1|metro2/pop1|inter_metro:1-2:1-1
+        adjacency_id: inter_metro:1-2
+        distance_km: 412
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+      risk_groups: &id005
+      - corridor_risk_columbus_new-york-jersey-city-newark
+      - corridor_risk_new-york-jersey-city-newark_washington-arlington
+  - source:
+      path: metro1/pop1
+      match: &id004
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro5/pop1
+      match: *id004
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 977
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: new-york-jersey-city-newark
+        target_metro: columbus
+        target_capacity: 12800.0
+        site_edge: metro1/pop1|metro5/pop1|inter_metro:1-5:1-1
+        adjacency_id: inter_metro:1-5
+        distance_km: 977
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+      risk_groups: &id006
+      - corridor_risk_chicago_washington-arlington
+      - corridor_risk_columbus_new-york-jersey-city-newark
+      - corridor_risk_columbus_washington-arlington
+      - corridor_risk_new-york-jersey-city-newark_washington-arlington
+  - source:
+      path: metro1/pop2
+      match: *id002
+    target:
+      path: metro1/dc1
+      match: *id002
+    pattern: one_to_one
+    link_params:
+      capacity: 32000.0
+      cost: 163
+      attrs:
+        link_type: dc_to_pop
+        source_metro: new-york-jersey-city-newark
+        target_metro: new-york-jersey-city-newark
+        target_capacity: 32000.0
+        site_edge: metro1/pop2|metro1/dc1|dc_to_pop:new-york-jersey-city-newark:1-2
+        adjacency_id: dc_to_pop:new-york-jersey-city-newark
+        distance_km: 163
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 40.0
+          target:
+            component: 800G-ZR+
+            count: 40.0
+  # Inter-metro corridor connectivity (backbone links between metros)
+  - source:
+      path: metro1/pop2
+      match: *id003
+    target:
+      path: metro2/pop2
+      match: *id003
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 412
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: new-york-jersey-city-newark
+        target_metro: washington-arlington
+        target_capacity: 12800.0
+        site_edge: metro1/pop2|metro2/pop2|inter_metro:1-2:2-2
+        adjacency_id: inter_metro:1-2
+        distance_km: 412
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+      risk_groups: *id005
+  - source:
+      path: metro1/pop2
+      match: *id004
+    target:
+      path: metro5/pop2
+      match: *id004
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 977
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: new-york-jersey-city-newark
+        target_metro: columbus
+        target_capacity: 12800.0
+        site_edge: metro1/pop2|metro5/pop2|inter_metro:1-5:2-2
+        adjacency_id: inter_metro:1-5
+        distance_km: 977
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+      risk_groups: *id006
+  - source:
+      path: metro2/pop1
+      match: &id007
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+    target:
+      path: metro2/pop2
+      match: *id007
+    pattern: one_to_one
+    link_params:
+      capacity: 25600.0
+      cost: 103
+      attrs:
+        link_type: intra_metro
+        source_metro: washington-arlington
+        target_metro: washington-arlington
+        target_capacity: 25600.0
+        site_edge: metro2/pop1|metro2/pop2|intra_metro:washington-arlington:1-2
+        adjacency_id: intra_metro:washington-arlington
+        distance_km: 103
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 32.0
+          target:
+            component: 800G-ZR+
+            count: 32.0
+  - source:
+      path: metro2/pop1
+      match: &id008
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: dc
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro2/dc1
+      match: *id008
+    pattern: one_to_one
+    link_params:
+      capacity: 38400.0
+      cost: 1
+      attrs:
+        link_type: dc_to_pop
+        source_metro: washington-arlington
+        target_metro: washington-arlington
+        target_capacity: 38400.0
+        site_edge: metro2/pop1|metro2/dc1|dc_to_pop:washington-arlington:1-1
+        adjacency_id: dc_to_pop:washington-arlington
+        distance_km: 1
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 48.0
+          target:
+            component: 800G-ZR+
+            count: 48.0
+  - source:
+      path: metro2/pop1
+      match: &id009
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro3/pop1
+      match: *id009
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1261
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: washington-arlington
+        target_metro: chicago
+        target_capacity: 3200.0
+        site_edge: metro2/pop1|metro3/pop1|inter_metro:2-3:1-1
+        adjacency_id: inter_metro:2-3
+        distance_km: 1261
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: &id012
+      - corridor_risk_chicago_washington-arlington
+      - corridor_risk_columbus_new-york-jersey-city-newark
+      - corridor_risk_columbus_washington-arlington
+  - source:
+      path: metro2/pop1
+      match: &id010
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro4/pop1
+      match: *id010
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1216
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: washington-arlington
+        target_metro: atlanta
+        target_capacity: 3200.0
+        site_edge: metro2/pop1|metro4/pop1|inter_metro:2-4:1-1
+        adjacency_id: inter_metro:2-4
+        distance_km: 1216
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: &id013
+      - corridor_risk_atlanta_washington-arlington
+  - source:
+      path: metro2/pop1
+      match: &id011
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro5/pop1
+      match: *id011
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 733
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: washington-arlington
+        target_metro: columbus
+        target_capacity: 12800.0
+        site_edge: metro2/pop1|metro5/pop1|inter_metro:2-5:1-1
+        adjacency_id: inter_metro:2-5
+        distance_km: 733
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+      risk_groups: &id014
+      - corridor_risk_chicago_washington-arlington
+      - corridor_risk_columbus_new-york-jersey-city-newark
+      - corridor_risk_columbus_washington-arlington
+  - source:
+      path: metro2/pop2
+      match: *id008
+    target:
+      path: metro2/dc1
+      match: *id008
+    pattern: one_to_one
+    link_params:
+      capacity: 38400.0
+      cost: 103
+      attrs:
+        link_type: dc_to_pop
+        source_metro: washington-arlington
+        target_metro: washington-arlington
+        target_capacity: 38400.0
+        site_edge: metro2/pop2|metro2/dc1|dc_to_pop:washington-arlington:1-2
+        adjacency_id: dc_to_pop:washington-arlington
+        distance_km: 103
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 48.0
+          target:
+            component: 800G-ZR+
+            count: 48.0
+  - source:
+      path: metro2/pop2
+      match: *id009
+    target:
+      path: metro3/pop2
+      match: *id009
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1261
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: washington-arlington
+        target_metro: chicago
+        target_capacity: 3200.0
+        site_edge: metro2/pop2|metro3/pop2|inter_metro:2-3:2-2
+        adjacency_id: inter_metro:2-3
+        distance_km: 1261
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: *id012
+  - source:
+      path: metro2/pop2
+      match: *id010
+    target:
+      path: metro4/pop2
+      match: *id010
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1216
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: washington-arlington
+        target_metro: atlanta
+        target_capacity: 3200.0
+        site_edge: metro2/pop2|metro4/pop2|inter_metro:2-4:2-2
+        adjacency_id: inter_metro:2-4
+        distance_km: 1216
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: *id013
+  - source:
+      path: metro2/pop2
+      match: *id011
+    target:
+      path: metro5/pop2
+      match: *id011
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 733
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: washington-arlington
+        target_metro: columbus
+        target_capacity: 12800.0
+        site_edge: metro2/pop2|metro5/pop2|inter_metro:2-5:2-2
+        adjacency_id: inter_metro:2-5
+        distance_km: 733
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+      risk_groups: *id014
+  - source:
+      path: metro3/pop1
+      match: &id015
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+    target:
+      path: metro3/pop2
+      match: *id015
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 138
+      attrs:
+        link_type: intra_metro
+        source_metro: chicago
+        target_metro: chicago
+        target_capacity: 12800.0
+        site_edge: metro3/pop1|metro3/pop2|intra_metro:chicago:1-2
+        adjacency_id: intra_metro:chicago
+        distance_km: 138
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+  - source:
+      path: metro3/pop1
+      match: &id016
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro5/pop1
+      match: *id016
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 658
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: chicago
+        target_metro: columbus
+        target_capacity: 3200.0
+        site_edge: metro3/pop1|metro5/pop1|inter_metro:3-5:1-1
+        adjacency_id: inter_metro:3-5
+        distance_km: 658
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: &id018
+      - corridor_risk_atlanta_chicago
+      - corridor_risk_chicago_columbus
+  - source:
+      path: metro3/pop1
+      match: &id017
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro4/pop1
+      match: *id017
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1302
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: chicago
+        target_metro: atlanta
+        target_capacity: 3200.0
+        site_edge: metro3/pop1|metro4/pop1|inter_metro:3-4:1-1
+        adjacency_id: inter_metro:3-4
+        distance_km: 1302
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: &id019
+      - corridor_risk_atlanta_chicago
+      - corridor_risk_atlanta_columbus
+      - corridor_risk_chicago_columbus
+  - source:
+      path: metro3/pop2
+      match: *id016
+    target:
+      path: metro5/pop2
+      match: *id016
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 658
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: chicago
+        target_metro: columbus
+        target_capacity: 3200.0
+        site_edge: metro3/pop2|metro5/pop2|inter_metro:3-5:2-2
+        adjacency_id: inter_metro:3-5
+        distance_km: 658
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: *id018
+  - source:
+      path: metro3/pop2
+      match: *id017
+    target:
+      path: metro4/pop2
+      match: *id017
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1302
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: chicago
+        target_metro: atlanta
+        target_capacity: 3200.0
+        site_edge: metro3/pop2|metro4/pop2|inter_metro:3-4:2-2
+        adjacency_id: inter_metro:3-4
+        distance_km: 1302
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: *id019
+  - source:
+      path: metro4/pop1
+      match: &id020
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+    target:
+      path: metro4/pop2
+      match: *id020
+    pattern: one_to_one
+    link_params:
+      capacity: 12800.0
+      cost: 142
+      attrs:
+        link_type: intra_metro
+        source_metro: atlanta
+        target_metro: atlanta
+        target_capacity: 12800.0
+        site_edge: metro4/pop1|metro4/pop2|intra_metro:atlanta:1-2
+        adjacency_id: intra_metro:atlanta
+        distance_km: 142
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 16.0
+          target:
+            component: 800G-ZR+
+            count: 16.0
+  - source:
+      path: metro4/pop1
+      match: &id021
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro5/pop1
+      match: *id021
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1028
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: atlanta
+        target_metro: columbus
+        target_capacity: 3200.0
+        site_edge: metro4/pop1|metro5/pop1|inter_metro:4-5:1-1
+        adjacency_id: inter_metro:4-5
+        distance_km: 1028
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: &id022
+      - corridor_risk_atlanta_chicago
+      - corridor_risk_atlanta_columbus
+  - source:
+      path: metro4/pop2
+      match: *id021
+    target:
+      path: metro5/pop2
+      match: *id021
+    pattern: one_to_one
+    link_params:
+      capacity: 3200.0
+      cost: 1028
+      attrs:
+        link_type: inter_metro_corridor
+        source_metro: atlanta
+        target_metro: columbus
+        target_capacity: 3200.0
+        site_edge: metro4/pop2|metro5/pop2|inter_metro:4-5:2-2
+        adjacency_id: inter_metro:4-5
+        distance_km: 1028
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 4.0
+          target:
+            component: 800G-ZR+
+            count: 4.0
+      risk_groups: *id022
+  - source:
+      path: metro5/pop1
+      match: &id023
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: leaf
+    target:
+      path: metro5/pop2
+      match: *id023
+    pattern: one_to_one
+    link_params:
+      capacity: 25600.0
+      cost: 65
+      attrs:
+        link_type: intra_metro
+        source_metro: columbus
+        target_metro: columbus
+        target_capacity: 25600.0
+        site_edge: metro5/pop1|metro5/pop2|intra_metro:columbus:1-2
+        adjacency_id: intra_metro:columbus
+        distance_km: 65
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 32.0
+          target:
+            component: 800G-ZR+
+            count: 32.0
+  - source:
+      path: metro5/pop1
+      match: &id024
+        conditions:
+        - attr: role
+          operator: ==
+          value: core
+        - attr: role
+          operator: ==
+          value: dc
+        - attr: role
+          operator: ==
+          value: leaf
+        logic: or
+    target:
+      path: metro5/dc1
+      match: *id024
+    pattern: one_to_one
+    link_params:
+      capacity: 38400.0
+      cost: 1
+      attrs:
+        link_type: dc_to_pop
+        source_metro: columbus
+        target_metro: columbus
+        target_capacity: 38400.0
+        site_edge: metro5/pop1|metro5/dc1|dc_to_pop:columbus:1-1
+        adjacency_id: dc_to_pop:columbus
+        distance_km: 1
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 48.0
+          target:
+            component: 800G-ZR+
+            count: 48.0
+  - source:
+      path: metro5/pop2
+      match: *id024
+    target:
+      path: metro5/dc1
+      match: *id024
+    pattern: one_to_one
+    link_params:
+      capacity: 38400.0
+      cost: 65
+      attrs:
+        link_type: dc_to_pop
+        source_metro: columbus
+        target_metro: columbus
+        target_capacity: 38400.0
+        site_edge: metro5/pop2|metro5/dc1|dc_to_pop:columbus:1-2
+        adjacency_id: dc_to_pop:columbus
+        distance_km: 65
+        hardware:
+          source:
+            component: 800G-ZR+
+            count: 48.0
+          target:
+            component: 800G-ZR+
+            count: 48.0
+risk_groups:
+- name: corridor_risk_atlanta_chicago
+  attrs:
+    type: corridor_risk
+    distance_km: 1302
+- name: corridor_risk_atlanta_columbus
+  attrs:
+    type: corridor_risk
+    distance_km: 1028
+- name: corridor_risk_atlanta_washington-arlington
+  attrs:
+    type: corridor_risk
+    distance_km: 1216
+- name: corridor_risk_chicago_columbus
+  attrs:
+    type: corridor_risk
+    distance_km: 658
+- name: corridor_risk_chicago_washington-arlington
+  attrs:
+    type: corridor_risk
+    distance_km: 1261
+- name: corridor_risk_columbus_new-york-jersey-city-newark
+  attrs:
+    type: corridor_risk
+    distance_km: 977
+- name: corridor_risk_columbus_washington-arlington
+  attrs:
+    type: corridor_risk
+    distance_km: 733
+- name: corridor_risk_new-york-jersey-city-newark_washington-arlington
+  attrs:
+    type: corridor_risk
+    distance_km: 412
+failure_policy_set:
+  mc_baseline:
+    attrs:
+      description: 'Balanced MC: SRLG + DC->PoP + node(maint) + intra-site fabric'
+    modes:
+    - weight: 0.3
+      rules:
+      - entity_scope: risk_group
+        rule_type: choice
+        count: 1
+        weight_by: distance_km
+    - weight: 0.35
+      rules:
+      - entity_scope: link
+        rule_type: choice
+        count: 3
+        conditions:
+        - attr: link_type
+          operator: ==
+          value: dc_to_pop
+        logic: and
+        weight_by: target_capacity
+    - weight: 0.25
+      rules:
+      - entity_scope: node
+        rule_type: choice
+        count: 1
+        conditions:
+        - attr: node_type
+          operator: '!='
+          value: dc_region
+        logic: and
+        weight_by: attached_capacity_gbps
+    - weight: 0.1
+      rules:
+      - entity_scope: link
+        rule_type: choice
+        count: 4
+        conditions:
+        - attr: link_type
+          operator: ==
+          value: leaf_spine
+        - attr: link_type
+          operator: ==
+          value: intra_group
+        - attr: link_type
+          operator: ==
+          value: inter_group
+        - attr: link_type
+          operator: ==
+          value: internal_mesh
+        logic: or
+traffic_matrix_set:
+  baseline_traffic_matrix:
+  - source_path: ^metro1/dc1/.*
+    sink_path: ^metro2/dc1/.*
+    mode: pairwise
+    priority: 0
+    demand: 15000.0
+    attrs:
+      euclidean_km: 330
+    flow_policy_config: TE_WCMP_UNLIM
+  - source_path: ^metro2/dc1/.*
+    sink_path: ^metro1/dc1/.*
+    mode: pairwise
+    priority: 0
+    demand: 15000.0
+    attrs:
+      euclidean_km: 330
+    flow_policy_config: TE_WCMP_UNLIM
+  - source_path: ^metro1/dc1/.*
+    sink_path: ^metro5/dc1/.*
+    mode: pairwise
+    priority: 0
+    demand: 15000.0
+    attrs:
+      euclidean_km: 748
+    flow_policy_config: TE_WCMP_UNLIM
+  - source_path: ^metro5/dc1/.*
+    sink_path: ^metro1/dc1/.*
+    mode: pairwise
+    priority: 0
+    demand: 15000.0
+    attrs:
+      euclidean_km: 748
+    flow_policy_config: TE_WCMP_UNLIM
+  - source_path: ^metro2/dc1/.*
+    sink_path: ^metro5/dc1/.*
+    mode: pairwise
+    priority: 0
+    demand: 15000.0
+    attrs:
+      euclidean_km: 508
+    flow_policy_config: TE_WCMP_UNLIM
+  - source_path: ^metro5/dc1/.*
+    sink_path: ^metro2/dc1/.*
+    mode: pairwise
+    priority: 0
+    demand: 15000.0
+    attrs:
+      euclidean_km: 508
+    flow_policy_config: TE_WCMP_UNLIM
+workflow:
+- step_type: NetworkStats
+  name: network_statistics
+- step_type: MaximumSupportedDemand
+  name: msd_baseline
+  matrix_name: baseline_traffic_matrix
+  acceptance_rule: hard
+  alpha_start: 1.0
+  growth_factor: 2.0
+  alpha_min: 0.001
+  alpha_max: 1000000.0
+  resolution: 0.05
+  max_bracket_iters: 16
+  max_bisect_iters: 32
+  seeds_per_alpha: 1
+  placement_rounds: 2
+- step_type: TrafficMatrixPlacement
+  name: tm_placement
+  seed: 11
+  matrix_name: baseline_traffic_matrix
+  failure_policy: mc_baseline
+  iterations: 1000
+  parallelism: 7
+  placement_rounds: auto
+  baseline: true
+  store_failure_patterns: false
+  include_flow_details: true
+  include_used_edges: false
+  alpha_from_step: msd_baseline
+  alpha_from_field: data.alpha_star
+- step_type: CostPower
+  name: cost_power
+  include_disabled: true
+  aggregation_level: 2

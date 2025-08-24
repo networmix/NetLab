@@ -117,6 +117,7 @@ notebooks/private/
 
 # Data files (to be on the safe side)
 data/
+!tests/data/
 datasets/
 output/
 exports/
@@ -138,6 +139,14 @@ analysis*.ipynb
 analysis*.html
 *_analysis.html
 scenarios*/
+!tests/data/scenarios/
+!tests/data/scenarios/**
+!tests/data/scenarios_metrics/
+!tests/data/scenarios_metrics/**
+!tests/data/scenarios_metrics_/
+!tests/data/scenarios_metrics_/**
+tests/data/**/*.png
+tests/data/**/*.jpg
 
 # Performance analysis results
 dev/perf_results/
