@@ -1,0 +1,59 @@
+mc_fabric_heavy:
+  attrs:
+    description: "Fabric-heavy failures to stress intra-site topology differences"
+  modes:
+    # Mode A: many fabric links across blueprint-specific link types
+    - weight: 0.6
+      rules:
+        - entity_scope: link
+          rule_type: choice
+          count: 16
+          conditions:
+            - { attr: link_type, operator: "==", value: leaf_spine }
+            - { attr: link_type, operator: "==", value: intra_group }
+            - { attr: link_type, operator: "==", value: inter_group }
+            - { attr: link_type, operator: "==", value: internal_mesh }
+          logic: or
+    # Mode B: non-DC node failure weighted by attached capacity
+    - weight: 0.3
+      rules:
+        - entity_scope: node
+          rule_type: choice
+          count: 2
+          conditions:
+            - { attr: node_type, operator: "!=", value: dc_region }
+          logic: and
+          weight_by: attached_capacity_gbps
+    # Mode C: light DC->PoP outages to combine with fabric stress
+    - weight: 0.1
+      rules:
+        - entity_scope: link
+          rule_type: choice
+          count: 2
+          conditions:
+            - { attr: link_type, operator: "==", value: dc_to_pop }
+          logic: and
+          weight_by: target_capacity
+
+fabric_only:
+  attrs:
+    description: "Fabric-only failures (no corridor SRLG/DC outages) for BAC sensitivity"
+  modes:
+    - weight: 1.0
+      rules:
+        - entity_scope: link
+          rule_type: choice
+          count: 24
+          conditions:
+            - { attr: link_type, operator: "==", value: leaf_spine }
+            - { attr: link_type, operator: "==", value: intra_group }
+            - { attr: link_type, operator: "==", value: inter_group }
+            - { attr: link_type, operator: "==", value: internal_mesh }
+          logic: or
+        - entity_scope: node
+          rule_type: choice
+          count: 1
+          conditions:
+            - { attr: node_type, operator: "!=", value: dc_region }
+          logic: and
+          weight_by: attached_capacity_gbps

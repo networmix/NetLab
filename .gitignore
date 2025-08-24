@@ -1,0 +1,144 @@
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# -----------------------------------------------------------------------------
+# Testing & Coverage
+# -----------------------------------------------------------------------------
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+tests/*no_publish*
+
+# -----------------------------------------------------------------------------
+# Development Environments & Tools
+# -----------------------------------------------------------------------------
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+ngraph-venv/
+
+# Python version management
+.python-version
+
+# Package managers
+__pypackages__/
+
+# Type checkers & linters
+.ruff_cache/
+
+# -----------------------------------------------------------------------------
+# IDEs & Editors
+# -----------------------------------------------------------------------------
+# VSCode
+**/.vscode
+
+# IntelliJ IDEA
+.idea/
+
+# Vim/Emacs
+*.swp
+*.swo
+*~
+
+# Cursor
+.cursorrules
+
+# -----------------------------------------------------------------------------
+# Jupyter Notebooks
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints
+.virtual_documents/
+
+# -----------------------------------------------------------------------------
+# Documentation
+# -----------------------------------------------------------------------------
+# MkDocs
+/site
+
+# -----------------------------------------------------------------------------
+# OS Specific
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------------------------------------------------------------
+# Private content
+# -----------------------------------------------------------------------------
+private/
+notebooks/private/
+*_private/
+*.private.*
+
+# Data files (to be on the safe side)
+data/
+datasets/
+output/
+exports/
+*.h5
+*.hdf5
+*.pickle
+*.pkl
+
+# Temporary analysis & CLI output
+*_results.json
+results*.json
+scratch/
+temp/
+temporary/
+analysis_temp/
+tmp/
+analysis*.ipynb
+*_analysis.ipynb
+analysis*.html
+*_analysis.html
+scenarios*/
+
+# Performance analysis results
+dev/perf_results/
+dev/perf_plots/
