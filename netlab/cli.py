@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import hashlib
 import logging
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -27,6 +29,8 @@ from pathlib import Path
 from typing import Dict, List, NoReturn, Optional, Tuple
 
 import yaml
+
+from metrics.aggregate import write_json_atomic
 
 from .log_config import configure_from_env, set_global_log_level
 
@@ -38,6 +42,53 @@ def die(msg: str, code: int = 1) -> NoReturn:
 
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
+
+
+def _create_run_provenance(
+    masters: List[Path], seeds: List[int], scenarios_dir: Path
+) -> Dict[str, object]:
+    """Create comprehensive provenance information for a netlab run."""
+    provenance = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "python": sys.version,
+        "platform": platform.platform(),
+        "seeds": sorted(seeds),
+        "topogen_configs": {},
+        "scenarios_dir": str(scenarios_dir),
+    }
+
+    # Get git commit if available
+    try:
+        commit = (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
+            )
+            .decode("utf-8")
+            .strip()
+        )
+        provenance["git_commit"] = commit
+    except Exception as e:
+        logging.warning("Failed to retrieve git commit: %s", e)
+        provenance["git_commit_error"] = str(e)
+
+    # Add topogen config file information with hashes
+    for master_yaml in masters:
+        try:
+            config_content = master_yaml.read_bytes()
+            config_hash = hashlib.sha256(config_content).hexdigest()
+            provenance["topogen_configs"][master_yaml.name] = {
+                "path": str(master_yaml),  # Use relative path instead of absolute
+                "sha256": config_hash,
+                "size_bytes": len(config_content),
+            }
+        except Exception as e:
+            logging.warning("Failed to hash config %s: %s", master_yaml, e)
+            provenance["topogen_configs"][master_yaml.name] = {
+                "path": str(master_yaml),  # Use relative path instead of absolute
+                "hash_error": str(e),
+            }
+
+    return provenance
 
 
 def _detect_topogen_invoke() -> List[str]:
@@ -337,6 +388,15 @@ def _cmd_build(args: argparse.Namespace) -> None:
     if build_errors:
         die("One or more builds failed: " + "; ".join(build_errors))
 
+    # Create and save comprehensive provenance information for build
+    build_provenance = _create_run_provenance(masters, [], scenarios_dir)
+    build_provenance["command"] = "build"
+    build_provenance["seeds"] = []  # No seeds for build command
+    provenance_path = scenarios_dir / "_build_provenance.json"
+    write_json_atomic(provenance_path, build_provenance)
+    print(f"📋 Build provenance saved to: {provenance_path}")
+    print("✅ All builds completed successfully")
+
 
 def _cmd_run(args: argparse.Namespace) -> None:
     masters_dir: Path = args.configs
@@ -470,6 +530,13 @@ def _cmd_run(args: argparse.Namespace) -> None:
         encoding="utf-8",
     )
     print(f"⏱️ Overall ngraph run time: {ngraph_elapsed:.3f}s")
+
+    # Create and save comprehensive provenance information
+    provenance = _create_run_provenance(masters, seeds, scenarios_dir)
+    provenance["command"] = "run"
+    provenance_path = scenarios_dir / "provenance.json"
+    write_json_atomic(provenance_path, provenance)
+    print(f"📋 Run provenance saved to: {provenance_path}")
 
 
 def main() -> None:

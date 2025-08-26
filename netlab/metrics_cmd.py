@@ -8,6 +8,7 @@ function callable from the netlab CLI.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import logging
@@ -18,9 +19,9 @@ import subprocess
 import sys
 from contextlib import redirect_stdout
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -795,7 +796,7 @@ def run_metrics(
         write_csv_atomic(scen_dir / "network_stats_summary.csv", ns_df)
 
         provenance = {
-            "generated_at": datetime.now(UTC).isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "python": sys.version,
             "platform": platform.platform(),
         }
@@ -910,6 +911,18 @@ def run_metrics(
     print(f"Wrote text summary: {summary_txt}")
     print(text, end="")
     print(f"Wrote project CSV: {project_csv}")
+
+    # Create and save comprehensive provenance information for metrics run
+    metrics_provenance = _create_metrics_provenance(root, out_root, files, only)
+
+    # Add scenarios and seeds analyzed
+    for scenario_stem, seed_map in grouped.items():
+        metrics_provenance["scenarios_analyzed"].append(scenario_stem)
+        metrics_provenance["seeds_analyzed"][scenario_stem] = sorted(seed_map.keys())
+
+    provenance_path = out_root / "provenance.json"
+    write_json_atomic(provenance_path, metrics_provenance)
+    print(f"📋 Metrics provenance saved to: {provenance_path}")
 
 
 def print_summary_from_csv(
@@ -1042,6 +1055,8 @@ def print_summary_from_csv(
                 "lat_fail_p99": "lat_fail_p99",
                 "USD_per_Gbit_offered": "USD_per_Gbit_offered",
                 "USD_per_Gbit_p999": "USD_per_Gbit_p999",
+                "Watt_per_Gbit_offered": "Watt_per_Gbit_offered",
+                "Watt_per_Gbit_p999": "Watt_per_Gbit_p999",
                 "capex_total": "capex_total",
                 "node_count": "node_count",
                 "link_count": "link_count",
@@ -1178,6 +1193,18 @@ def print_summary_from_csv(
             fname="abs_USD_per_Gbit_p999.png",
         )
         _plot_dist_abs(
+            "Watt_per_Gbit_offered",
+            title="Power per Gbps (offered)",
+            ylabel="W/Gbps",
+            fname="abs_Watt_per_Gbit_offered.png",
+        )
+        _plot_dist_abs(
+            "Watt_per_Gbit_p999",
+            title="Power per Gbps at p99.9",
+            ylabel="W/Gbps",
+            fname="abs_Watt_per_Gbit_p999.png",
+        )
+        _plot_dist_abs(
             "lat_fail_p99",
             title="Latency p99 under failures (median across seeds)",
             ylabel="stretch (×)",
@@ -1218,8 +1245,74 @@ def print_summary_from_csv(
             "norm_USD_per_Gbit_p999.png",
         )
         _plot_dist_norm(
+            "Watt_per_Gbit_offered_r",
+            "Power per Gbps (offered, relative)",
+            "ratio",
+            "norm_Watt_per_Gbit_offered.png",
+        )
+        _plot_dist_norm(
+            "Watt_per_Gbit_p999_r",
+            "Power per Gbps p99.9 (relative)",
+            "ratio",
+            "norm_Watt_per_Gbit_p999.png",
+        )
+        _plot_dist_norm(
             "lat_fail_p99_r",
             "Latency p99 under failures (relative)",
             "ratio",
             "norm_Latency_fail_p99.png",
         )
+
+
+def _create_metrics_provenance(
+    root: Path, out_root: Path, files: List[Path], only: Optional[str] = None
+) -> Dict[str, Any]:
+    """Create comprehensive provenance information for a metrics run."""
+    provenance: Dict[str, Any] = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "python": sys.version,
+        "platform": platform.platform(),
+        "command": "metrics",
+        "source_root": str(root),
+        "output_root": str(out_root),
+        "source_files": {},
+        "scenarios_analyzed": [],
+        "seeds_analyzed": {},
+    }
+
+    # Get git commit if available
+    try:
+        commit = (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
+            )
+            .decode("utf-8")
+            .strip()
+        )
+        provenance["git_commit"] = commit
+    except Exception as e:
+        logging.warning("Failed to retrieve git commit: %s", e)
+        provenance["git_commit_error"] = str(e)
+
+    # Add source file information with hashes
+    for file_path in files:
+        try:
+            file_content = file_path.read_bytes()
+            file_hash = hashlib.sha256(file_content).hexdigest()
+            provenance["source_files"][str(file_path.relative_to(root))] = {
+                "path": str(file_path.relative_to(root)),
+                "sha256": file_hash,
+                "size_bytes": len(file_content),
+            }
+        except Exception as e:
+            logging.warning("Failed to hash source file %s: %s", file_path, e)
+            provenance["source_files"][str(file_path.relative_to(root))] = {
+                "path": str(file_path.relative_to(root)),
+                "hash_error": str(e),
+            }
+
+    # Add analysis scope information
+    if only:
+        provenance["only_scenarios"] = [s.strip() for s in only.split(",") if s.strip()]
+
+    return provenance
