@@ -45,17 +45,44 @@ def ensure_dir(p: Path) -> None:
 
 
 def _create_run_provenance(
-    masters: List[Path], seeds: List[int], scenarios_dir: Path
+    masters: List[Path],
+    seeds: List[int],
+    scenarios_dir: Path,
+    configs_root: Optional[Path] = None,
+    build_jobs: Optional[int] = None,
+    run_jobs: Optional[int] = None,
+    build_timeout: Optional[int] = None,
+    force: Optional[bool] = None,
+    force_run: Optional[bool] = None,
+    topogen_invoke: Optional[List[str]] = None,
+    ngraph_invoke: Optional[List[str]] = None,
 ) -> Dict[str, object]:
     """Create comprehensive provenance information for a netlab run."""
+    cwd = Path.cwd()
     provenance = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
         "platform": platform.platform(),
         "seeds": sorted(seeds),
         "topogen_configs": {},
-        "scenarios_dir": str(scenarios_dir),
+        "scenarios_dir": os.path.relpath(scenarios_dir, start=cwd),
     }
+    if configs_root is not None:
+        provenance["configs_root"] = os.path.relpath(configs_root, start=cwd)
+    if build_jobs is not None:
+        provenance["build_jobs"] = int(build_jobs)
+    if run_jobs is not None:
+        provenance["run_jobs"] = int(run_jobs)
+    if build_timeout is not None:
+        provenance["build_timeout"] = int(build_timeout)
+    if force is not None:
+        provenance["force"] = bool(force)
+    if force_run is not None:
+        provenance["force_run"] = bool(force_run)
+    if topogen_invoke is not None:
+        provenance["topogen_invoke"] = list(topogen_invoke)
+    if ngraph_invoke is not None:
+        provenance["ngraph_invoke"] = list(ngraph_invoke)
 
     # Get git commit if available
     try:
@@ -76,17 +103,26 @@ def _create_run_provenance(
         try:
             config_content = master_yaml.read_bytes()
             config_hash = hashlib.sha256(config_content).hexdigest()
+            rel_path = os.path.relpath(master_yaml, start=cwd)
             provenance["topogen_configs"][master_yaml.name] = {
-                "path": str(master_yaml),  # Use relative path instead of absolute
+                "path": rel_path,
                 "sha256": config_hash,
                 "size_bytes": len(config_content),
             }
         except Exception as e:
             logging.warning("Failed to hash config %s: %s", master_yaml, e)
+            rel_path = os.path.relpath(master_yaml, start=cwd)
             provenance["topogen_configs"][master_yaml.name] = {
-                "path": str(master_yaml),  # Use relative path instead of absolute
+                "path": rel_path,
                 "hash_error": str(e),
             }
+
+    # Record seeds planned per master
+    if masters and seeds:
+        seeds_per_master: Dict[str, List[int]] = {
+            m.stem: sorted(seeds) for m in masters
+        }
+        provenance["seeds_per_master"] = seeds_per_master
 
     return provenance
 
@@ -389,9 +425,20 @@ def _cmd_build(args: argparse.Namespace) -> None:
         die("One or more builds failed: " + "; ".join(build_errors))
 
     # Create and save comprehensive provenance information for build
-    build_provenance = _create_run_provenance(masters, [], scenarios_dir)
+    build_provenance = _create_run_provenance(
+        masters=masters,
+        seeds=[],
+        scenarios_dir=scenarios_dir,
+        configs_root=masters_dir,
+        build_jobs=args.build_jobs,
+        run_jobs=None,
+        build_timeout=args.build_timeout,
+        force=args.force,
+        force_run=None,
+        topogen_invoke=topogen_invoke,
+        ngraph_invoke=None,
+    )
     build_provenance["command"] = "build"
-    build_provenance["seeds"] = []  # No seeds for build command
     provenance_path = scenarios_dir / "_build_provenance.json"
     write_json_atomic(provenance_path, build_provenance)
     print(f"📋 Build provenance saved to: {provenance_path}")
@@ -532,8 +579,54 @@ def _cmd_run(args: argparse.Namespace) -> None:
     print(f"⏱️ Overall ngraph run time: {ngraph_elapsed:.3f}s")
 
     # Create and save comprehensive provenance information
-    provenance = _create_run_provenance(masters, seeds, scenarios_dir)
+    provenance = _create_run_provenance(
+        masters=masters,
+        seeds=seeds,
+        scenarios_dir=scenarios_dir,
+        configs_root=masters_dir,
+        build_jobs=args.build_jobs,
+        run_jobs=args.run_jobs,
+        build_timeout=args.build_timeout,
+        force=args.force,
+        force_run=args.force_run,
+        topogen_invoke=topogen_invoke,
+        ngraph_invoke=ngraph_invoke,
+    )
     provenance["command"] = "run"
+
+    # List results JSON files with hashes (relative to scenarios_dir)
+    results_files: Dict[str, Dict[str, object]] = {}
+    for ctx in master_contexts:
+        scenarios_list: List[Path] = ctx.get("scenarios", [])  # type: ignore[assignment]
+        for scn in scenarios_list:
+            try:
+                _, _, results_json = _scenario_io_paths(scn)
+                rel_path = os.path.relpath(results_json, start=Path.cwd())
+                try:
+                    content = results_json.read_bytes()
+                    results_files[rel_path] = {
+                        "path": rel_path,
+                        "sha256": hashlib.sha256(content).hexdigest(),
+                        "size_bytes": len(content),
+                    }
+                except Exception as e:
+                    results_files[rel_path] = {
+                        "path": rel_path,
+                        "hash_error": str(e),
+                    }
+            except Exception as outer:
+                # Associate error with unknown path (should be rare)
+                results_files.setdefault("<unknown>", {"errors": []})  # type: ignore[index]
+                try:
+                    # Append error detail
+                    errs = results_files["<unknown>"]["errors"]  # type: ignore[index]
+                    if isinstance(errs, list):
+                        errs.append(str(outer))
+                except Exception:
+                    results_files["<unknown>"] = {"errors": [str(outer)]}
+    if results_files:
+        provenance["results_files"] = results_files
+
     provenance_path = scenarios_dir / "provenance.json"
     write_json_atomic(provenance_path, provenance)
     print(f"📋 Run provenance saved to: {provenance_path}")

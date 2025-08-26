@@ -147,6 +147,7 @@ scenarios*/
 !tests/data/scenarios_metrics_/**
 tests/data/**/*.png
 tests/data/**/*.jpg
+papers/
 
 # Performance analysis results
 dev/perf_results/

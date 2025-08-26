@@ -799,6 +799,8 @@ def run_metrics(
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "python": sys.version,
             "platform": platform.platform(),
+            "scenarios_root": os.path.relpath(root, start=Path.cwd()),
+            "output_root": os.path.relpath(out_root, start=Path.cwd()),
         }
         try:
             commit = (
@@ -1268,13 +1270,14 @@ def _create_metrics_provenance(
     root: Path, out_root: Path, files: List[Path], only: Optional[str] = None
 ) -> Dict[str, Any]:
     """Create comprehensive provenance information for a metrics run."""
+    cwd = Path.cwd()
     provenance: Dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
         "platform": platform.platform(),
         "command": "metrics",
-        "source_root": str(root),
-        "output_root": str(out_root),
+        "source_root": os.path.relpath(root, start=cwd),
+        "output_root": os.path.relpath(out_root, start=cwd),
         "source_files": {},
         "scenarios_analyzed": [],
         "seeds_analyzed": {},
@@ -1299,15 +1302,17 @@ def _create_metrics_provenance(
         try:
             file_content = file_path.read_bytes()
             file_hash = hashlib.sha256(file_content).hexdigest()
-            provenance["source_files"][str(file_path.relative_to(root))] = {
-                "path": str(file_path.relative_to(root)),
+            rel_path = os.path.relpath(file_path, start=cwd)
+            provenance["source_files"][rel_path] = {
+                "path": rel_path,
                 "sha256": file_hash,
                 "size_bytes": len(file_content),
             }
         except Exception as e:
             logging.warning("Failed to hash source file %s: %s", file_path, e)
-            provenance["source_files"][str(file_path.relative_to(root))] = {
-                "path": str(file_path.relative_to(root)),
+            rel_path = os.path.relpath(file_path, start=cwd)
+            provenance["source_files"][rel_path] = {
+                "path": rel_path,
                 "hash_error": str(e),
             }
 
