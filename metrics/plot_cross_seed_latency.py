@@ -1,9 +1,9 @@
-"""Cross-seed latency availability-style curves (publishable figure).
+"""Cross-seed latency exceedance curves (publishable figure).
 
 Approach: pooled empirical (like BAC). For each seed, take per-iteration
 latency tail (e.g., p99 stretch) across failure iterations, pool across seeds,
-and plot availability of "stretch ≤ x" (1 − CDF of stretch). Also show IQR band
-by computing seed-wise availability on a common x-grid.
+and plot exceedance probability P(stretch > x) = 1 − CDF(stretch). Also show an
+IQR band by computing seed-wise exceedance on a common x-grid.
 
 Usage:
     python3 -m metrics.plot_cross_seed_latency scenarios_metrics \
@@ -117,10 +117,10 @@ def plot_cross_seed_latency(
             ax.step(grid, sc, where="post", color=color, alpha=0.12, linewidth=0.6)
 
     ax.set_xlabel("Latency stretch (× baseline)")
-    ax.set_ylabel("Availability  (stretch ≤ x)")
+    ax.set_ylabel("Exceedance probability (stretch > x)")
     ax.set_ylim(0.0, 1.0)
     ax.legend(title="Scenario", loc="lower right", frameon=True)
-    ax.set_title(f"Cross-seed latency availability (metric={metric})")
+    ax.set_title(f"Cross-seed latency exceedance (metric={metric})")
     if save_to is not None:
         save_to = save_to.resolve()
         save_to.parent.mkdir(parents=True, exist_ok=True)

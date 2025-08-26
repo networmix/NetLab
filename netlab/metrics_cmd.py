@@ -131,6 +131,7 @@ def analyze_one_seed(
     LatencyResult,
     CostPowerResult,
     IterOpsResult,
+    Optional[SpsResult],
 ]:
     def _require_steps(res: dict, require_maxflow: bool) -> None:
         steps = res.get("steps", {})
@@ -373,8 +374,9 @@ def analyze_one_seed(
     latency = compute_latency_stretch(results)
     iterops = compute_iter_ops(results)
 
+    sps_res: Optional[SpsResult] = None
     if require_maxflow:
-        _ = compute_sps(results)
+        sps_res = compute_sps(results)
 
     offered_alpha_star = None
     if not np.isnan(alpha.base_total_demand) and np.isfinite(alpha.alpha_star):
@@ -395,7 +397,7 @@ def analyze_one_seed(
         plot_latency(latency, save_to=out_dir / "latency.png")
         plot_cost_power(costpower, save_to=out_dir / "costpower.png")
 
-    return alpha, bac_place, bac_max, latency, costpower, iterops
+    return alpha, bac_place, bac_max, latency, costpower, iterops, sps_res
 
 
 def run_metrics(
@@ -431,7 +433,7 @@ def run_metrics(
             seed_dir = out_root / scenario_stem / f"seed{seed}"
             seed_dir.mkdir(parents=True, exist_ok=True)
 
-            alpha, bac_p, bac_m, latency, cp, itops = analyze_one_seed(
+            alpha, bac_p, bac_m, latency, cp, itops, sps_opt = analyze_one_seed(
                 results, seed_dir, do_plots
             )
             scenario_out.alpha[seed] = alpha
@@ -451,6 +453,67 @@ def run_metrics(
             write_json_atomic(seed_dir / "latency.json", latency.to_jsonable())
             write_json_atomic(seed_dir / "costpower.json", cp.to_jsonable())
             write_json_atomic(seed_dir / "iterops.json", itops.to_jsonable())
+            if sps_opt is not None:
+                write_json_atomic(seed_dir / "sps.json", sps_opt.to_jsonable())
+            # Export per-seed per-iteration latency (long format) with baseline deltas/ratios
+            try:
+                per_it = getattr(latency, "per_iteration", None) or {}
+                if per_it:
+                    rows_pi: list[dict] = []
+                    base_vals = getattr(latency, "baseline", {}) or {}
+                    for metric_key, series in per_it.items():
+                        if not isinstance(series, list):
+                            continue
+                        for idx, val in enumerate(series):
+                            try:
+                                v = float(val)
+                            except Exception:
+                                continue
+                            if not np.isfinite(v):
+                                continue
+                            b_raw = base_vals.get(metric_key)
+                            b_val = _safe_float(b_raw)
+                            delta = v - b_val if (pd.notna(b_val)) else float("nan")
+                            ratio = (
+                                (v / b_val)
+                                if (pd.notna(b_val) and float(b_val) != 0.0)
+                                else float("nan")
+                            )
+                            drop = (b_val - v) if pd.notna(b_val) else float("nan")
+                            rows_pi.append(
+                                {
+                                    "metric": str(metric_key),
+                                    "iter": int(idx),
+                                    "value": float(v),
+                                    "base": float(b_val)
+                                    if pd.notna(b_val)
+                                    else float("nan"),
+                                    "delta": float(delta),
+                                    "drop": float(drop),
+                                    "ratio": float(ratio),
+                                }
+                            )
+                    if rows_pi:
+                        df_pi = pd.DataFrame(rows_pi)[
+                            [
+                                "metric",
+                                "iter",
+                                "value",
+                                "base",
+                                "delta",
+                                "drop",
+                                "ratio",
+                            ]
+                        ]
+                        write_csv_atomic(
+                            seed_dir / "latency_per_iteration_long.csv", df_pi
+                        )
+            except Exception as e:
+                logging.warning(
+                    "Failed to write per-iteration latency CSV for %s: %s",
+                    seed_dir,
+                    e,
+                )
             tm_abs, tm_norm, mf_abs, mf_norm = compute_pair_matrices(
                 results, include_maxflow=require_maxflow
             )
@@ -619,6 +682,86 @@ def run_metrics(
         if rows:
             lat_sum = pd.DataFrame(rows).set_index("seed").sort_index()
             write_csv_atomic(scen_dir / "latency_summary.csv", lat_sum)
+
+        # Persist scenario-level pooled latency exceedance (p95 and p99)
+        try:
+
+            def _availability_curve(
+                samples: np.ndarray,
+            ) -> tuple[np.ndarray, np.ndarray]:
+                xs = np.asarray(samples, dtype=float)
+                xs = xs[np.isfinite(xs)]
+                if xs.size == 0:
+                    return np.array([], dtype=float), np.array([], dtype=float)
+                xs_sorted = np.sort(xs)
+                cdf = np.arange(1, xs_sorted.size + 1, dtype=float) / float(
+                    xs_sorted.size
+                )
+                avail = 1.0 - cdf
+                return xs_sorted, avail
+
+            for metric in ("p95", "p99"):
+                pooled: list[float] = []
+                seed_curves: list[np.ndarray] = []
+                grid = np.linspace(1.0, 5.0, 401)
+                for _seed, s in sorted(scenario_out.latency.items()):
+                    per_it = getattr(s, "per_iteration", None) or {}
+                    series = per_it.get(metric)
+                    if not isinstance(series, list) or not series:
+                        continue
+                    vals: list[float] = []
+                    for v in series:
+                        try:
+                            vv = float(v)
+                        except Exception:
+                            continue
+                        if np.isfinite(vv):
+                            vals.append(vv)
+                    if not vals:
+                        continue
+                    pooled.extend(vals)
+                    xs, a = _availability_curve(np.asarray(vals, dtype=float))
+                    if xs.size > 0 and a.size > 0:
+                        agrid = np.interp(grid, xs, a, left=a[0], right=a[-1])
+                        seed_curves.append(agrid)
+
+                if not pooled:
+                    continue
+
+                x_sorted, a_sorted = _availability_curve(
+                    np.asarray(pooled, dtype=float)
+                )
+                if x_sorted.size > 0 and a_sorted.size > 0:
+                    df_exc = pd.DataFrame(
+                        {
+                            "x": x_sorted.astype(float),
+                            "availability": a_sorted.astype(float),
+                        }
+                    )
+                    write_csv_atomic(
+                        scen_dir / f"latency_pooled_exceedance_{metric}.csv", df_exc
+                    )
+
+                if len(seed_curves) >= 3:
+                    mat = np.vstack(seed_curves)
+                    q25 = np.nanpercentile(mat, 25, axis=0)
+                    q75 = np.nanpercentile(mat, 75, axis=0)
+                    df_iqr = pd.DataFrame(
+                        {
+                            "x": grid.astype(float),
+                            "a_q25": q25.astype(float),
+                            "a_q75": q75.astype(float),
+                        }
+                    )
+                    write_csv_atomic(
+                        scen_dir / f"latency_pooled_iqr_{metric}.csv", df_iqr
+                    )
+        except Exception as e:
+            logging.warning(
+                "Failed to write pooled latency exceedance CSVs for %s: %s",
+                scen_dir,
+                e,
+            )
 
         io_rows = []
         for seed, it in scenario_out.iterops.items():
