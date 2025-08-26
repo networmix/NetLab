@@ -75,7 +75,7 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
     """
     Build a consolidated summary across all scenarios under analysis_root.
 
-    Expected per-scenario files produced by analysis.py:
+    Expected per-scenario files produced by `netlab metrics` (metrics_cmd.run_metrics):
       - alpha_summary.json
       - bac_summary.json ({"per_seed": ..., "tail": {p50,p90,p99,p999,p9999,auc_norm}})
       - latency_summary.csv (per-seed rows with columns p50..p9999)
@@ -113,6 +113,9 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         spf_per_iter = float("nan")
         flows_created_per_iter = float("nan")
         reopt_calls_per_iter = float("nan")
+        # tm_placement timing (seconds): total and per-iteration median across seeds
+        tm_duration_total_sec = float("nan")
+        tm_duration_per_iter_sec = float("nan")
 
         # alpha*
         ap = scen_dir / "alpha_summary.json"
@@ -196,6 +199,8 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             spf_per_iter = _med_col("spf_calls_total_per_iter")
             flows_created_per_iter = _med_col("flows_created_total_per_iter")
             reopt_calls_per_iter = _med_col("reopt_calls_total_per_iter")
+            tm_duration_total_sec = _med_col("tm_duration_total_sec")
+            tm_duration_per_iter_sec = _med_col("tm_duration_per_iter_sec")
             # seeds counted from rows (keep max with other sources)
             seeds_count = max(seeds_count, int(df_io.shape[0]))
 
@@ -248,6 +253,9 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             "spf_calls_per_iter": spf_per_iter,
             "flows_created_per_iter": flows_created_per_iter,
             "reopt_calls_per_iter": reopt_calls_per_iter,
+            # tm_placement timing (seconds)
+            "tm_duration_total_sec": tm_duration_total_sec,
+            "tm_duration_per_iter_sec": tm_duration_per_iter_sec,
             # paircap: intentionally omitted from project table
             "USD_per_Gbit_offered": usd_per_gbit_offered,
             "Watt_per_Gbit_offered": watt_per_gbit_offered,
@@ -282,6 +290,9 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         "spf_calls_per_iter",
         "flows_created_per_iter",
         "reopt_calls_per_iter",
+        # tm_placement timing
+        "tm_duration_total_sec",
+        "tm_duration_per_iter_sec",
         # paircap removed
         # Cost/Power at offered and reliable
         "USD_per_Gbit_offered",
@@ -326,10 +337,10 @@ def print_pretty_table(
             "flows_created_per_iter": "flows created/iter",
             "reopt_calls_per_iter": "reopt/iter",
             # paircap removed
-            "USD_per_Gbit_offered": "USD/Gb offered",
-            "Watt_per_Gbit_offered": "W/Gb offered",
-            "USD_per_Gbit_p999": "USD/Gb p99.9",
-            "Watt_per_Gbit_p999": "W/Gb p99.9",
+            "USD_per_Gbit_offered": "USD/Gbps offered",
+            "Watt_per_Gbit_offered": "W/Gbps offered",
+            "USD_per_Gbit_p999": "USD/Gbps p99.9",
+            "Watt_per_Gbit_p999": "W/Gbps p99.9",
             "capex_total": "CapEx (USD)",
         }
         index_label = str(df.index.name) if df.index.name is not None else "scenario"
@@ -367,10 +378,10 @@ def print_pretty_table(
             "flows_created_per_iter": "flows created/iter",
             "reopt_calls_per_iter": "reopt/iter",
             # paircap removed
-            "USD_per_Gbit_offered": "USD/Gb offered",
-            "Watt_per_Gbit_offered": "W/Gb offered",
-            "USD_per_Gbit_p999": "USD/Gb p99.9",
-            "Watt_per_Gbit_p999": "W/Gb p99.9",
+            "USD_per_Gbit_offered": "USD/Gbps offered",
+            "Watt_per_Gbit_offered": "W/Gbps offered",
+            "USD_per_Gbit_p999": "USD/Gbps p99.9",
+            "Watt_per_Gbit_p999": "W/Gbps p99.9",
             "capex_total": "CapEx (USD)",
         }
         # Pre-format values
@@ -441,6 +452,177 @@ def summarize_and_print(
 
 
 # -------------------- Baseline-normalized insights only --------------------
+
+
+def write_normalized_insights_csv(analysis_root: Path) -> Optional[Path]:
+    """Compute baseline-normalized insights and write them to normalized_insights.csv.
+
+    The output is a wide CSV with one row per scenario and columns of the form
+    <metric_base_name>__mean, <metric_base_name>__n, <metric_base_name>__p.
+    Returns the path if written, else None when no insights are available.
+    """
+    res = _build_normalized_insights(analysis_root)
+    if not res:
+        return None
+    df = pd.DataFrame(res).set_index("scenario").sort_index()
+
+    # Add Holm-adjusted p-values per metric base across scenarios (within-metric family)
+    # For each column trio base__mean/base__n/base__p, compute base__p_adj
+    def _holm_adjust_1d(p_series: pd.Series) -> pd.Series:
+        # p_series indexed by scenario; returns adjusted p indexed the same
+        pairs = sorted(
+            [(idx, float(p)) for idx, p in p_series.items() if np.isfinite(float(p))],
+            key=lambda x: x[1],
+        )
+        m = len(pairs)
+        out: Dict[str, float] = {}
+        prev = 0.0
+        for i, (sc, p) in enumerate(pairs, start=1):
+            adj = min(1.0, (m - i + 1) * p)
+            adj = max(prev, adj)
+            out[str(sc)] = float(adj)
+            prev = 0.0 if math.isnan(adj) else adj
+        # fill others with NaN
+        return pd.Series({k: out.get(str(k), float("nan")) for k in p_series.index})
+
+    p_adj_cols: Dict[str, pd.Series] = {}
+    for c in sorted(df.columns):
+        if c.endswith("__p"):
+            base = c[:-3]
+            p_adj_cols[f"{base}__p_adj"] = _holm_adjust_1d(
+                pd.to_numeric(df[c], errors="coerce")
+            )
+    for name, series in p_adj_cols.items():
+        df[name] = series
+    out_path = analysis_root / "normalized_insights.csv"
+    write_csv_atomic(out_path, df.reset_index())
+    return out_path
+
+
+def write_project_per_seed_abs_csv(analysis_root: Path) -> Optional[Path]:
+    """Write per-seed absolute (non-baseline-normalized) metrics across all scenarios.
+
+    Columns: scenario, seed, node_count, link_count, auc_norm, bw_p99_pct,
+    lat_fail_p99, USD_per_Gbit_offered, Watt_per_Gbit_offered,
+    USD_per_Gbit_p999, Watt_per_Gbit_p999, capex_total.
+    """
+    scenarios = [
+        p
+        for p in sorted(analysis_root.iterdir())
+        if p.is_dir() and not p.name.startswith("_")
+    ]
+    if not scenarios:
+        return None
+    rows: List[Dict[str, Any]] = []
+    for scen_dir in scenarios:
+        scen = scen_dir.name
+        # Network stats (per-seed)
+        ns_csv = scen_dir / "network_stats_summary.csv"
+        ns_map: Dict[int, Tuple[float, float]] = {}
+        if ns_csv.exists():
+            df_ns = pd.read_csv(ns_csv)
+            for _, r in df_ns.iterrows():
+                seed_val = r.get("seed")
+                try:
+                    s = int(seed_val) if seed_val is not None else None
+                except Exception:
+                    s = None
+                if s is None:
+                    continue
+                ns_map[s] = (
+                    float(r.get("node_count", float("nan"))),
+                    float(r.get("link_count", float("nan"))),
+                )
+        # Per-seed JSONs
+        for seed_dir in sorted([p for p in scen_dir.glob("seed*") if p.is_dir()]):
+            try:
+                seed = int(seed_dir.name.replace("seed", ""))
+            except Exception:
+                continue
+            rec: Dict[str, Any] = {"scenario": scen, "seed": int(seed)}
+            # Node/link
+            if seed in ns_map:
+                rec["node_count"], rec["link_count"] = ns_map[seed]
+            # BAC
+            try:
+                import json as _json
+
+                bj = _json.loads((seed_dir / "bac.json").read_text(encoding="utf-8"))
+            except Exception:
+                bj = {}
+            if bj:
+                auc = bj.get("auc_normalized")
+                if isinstance(auc, (int, float)):
+                    rec["auc_norm"] = float(auc)
+                bwp = bj.get("bw_at_probability_pct", {}) or {}
+                v = bwp.get("99.0") if "99.0" in bwp else bwp.get(99.0)
+                if isinstance(v, (int, float)):
+                    rec["bw_p99_pct"] = float(v)
+            # Latency
+            try:
+                import json as _json
+
+                lj = _json.loads(
+                    (seed_dir / "latency.json").read_text(encoding="utf-8")
+                )
+            except Exception:
+                lj = {}
+            if lj:
+                failures = lj.get("failures", {}) or {}
+                v = failures.get("p99")
+                if isinstance(v, (int, float)):
+                    rec["lat_fail_p99"] = float(v)
+            # Cost/Power
+            try:
+                import json as _json
+
+                cpj = _json.loads(
+                    (seed_dir / "costpower.json").read_text(encoding="utf-8")
+                )
+            except Exception:
+                cpj = {}
+            if cpj:
+                for k in (
+                    "USD_per_Gbit_offered",
+                    "Watt_per_Gbit_offered",
+                    "USD_per_Gbit_p999",
+                    "Watt_per_Gbit_p999",
+                    "capex_total",
+                ):
+                    v = cpj.get(k)
+                    if isinstance(v, (int, float)):
+                        rec[k] = float(v)
+            rows.append(rec)
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    out_path = analysis_root / "project_per_seed_abs.csv"
+    write_csv_atomic(out_path, df)
+    return out_path
+
+
+def write_normalized_per_seed_csv(analysis_root: Path) -> Optional[Path]:
+    """Write per-seed baseline-normalized metrics across all scenarios (excluding baseline).
+
+    Uses the same per-seed normalization as insights: ratios vs 1.0 and deltas vs 0.0.
+    Columns: scenario, seed, then *_r and *_d metrics.
+    """
+    data = _collect_normalized_per_seed(analysis_root)
+    if not data:
+        return None
+    rows: List[Dict[str, Any]] = []
+    for scen, seed_map in data.items():
+        for seed, metrics in seed_map.items():
+            rec = {"scenario": scen, "seed": int(seed)}
+            for k, v in metrics.items():
+                rec[str(k)] = float(v)
+            rows.append(rec)
+    if not rows:
+        return None
+    df = pd.DataFrame(rows)
+    out_path = analysis_root / "project_baseline_normalized_per_seed.csv"
+    write_csv_atomic(out_path, df)
+    return out_path
 
 
 def _read_json_safely(path: Path) -> Dict[str, Any]:
@@ -906,8 +1088,8 @@ def _build_insights(analysis_root: Path) -> List[Dict[str, Any]]:
         "alpha_star": "alpha_star",
         "bac_p999": "BAC p99.9 (delivered/offered)",
         "latency_p99": "Latency p99 (stretch)",
-        "USD_per_Gbit_p999": "Cost per Gbit (USD) at p99.9",
-        "Watt_per_Gbit_p999": "Power per Gbit (W) at p99.9",
+        "USD_per_Gbit_p999": "Cost per Gbps (USD) at p99.9",
+        "Watt_per_Gbit_p999": "Power per Gbps (W) at p99.9",
         "capex_total": "Total CapEx (USD)",
     }
 
@@ -1105,7 +1287,24 @@ def _print_normalized_insights(analysis_root: Path, alpha: float = 0.05) -> None
         print("\n(no baseline-normalized insights available)")
         return
     df = pd.DataFrame(res).set_index("scenario")
-    # Reformat into a compact 2-column per-metric display (mean ± p, n)
+
+    # Compute Holm-adjusted p-values per metric base across scenarios
+    def _holm_adjust_1d(p_series: pd.Series) -> pd.Series:
+        pairs = sorted(
+            [(idx, float(p)) for idx, p in p_series.items() if np.isfinite(float(p))],
+            key=lambda x: x[1],
+        )
+        m = len(pairs)
+        out: Dict[str, float] = {}
+        prev = 0.0
+        for i, (sc, p) in enumerate(pairs, start=1):
+            adj = min(1.0, (m - i + 1) * p)
+            adj = max(prev, adj)
+            out[str(sc)] = float(adj)
+            prev = 0.0 if math.isnan(adj) else adj
+        return pd.Series({k: out.get(str(k), float("nan")) for k in p_series.index})
+
+    # Reformat into a compact 2-column per-metric display (mean, n, adj_p)
     display_cols: List[str] = []
     header_map: Dict[str, str] = {}
     for c in sorted(df.columns):
@@ -1116,10 +1315,16 @@ def _print_normalized_insights(analysis_root: Path, alpha: float = 0.05) -> None
             header_map[base] = header
             display_cols.append(base)
     out_df = pd.DataFrame(index=df.index)
+    # Precompute adjusted p per base
+    p_adj_map: Dict[str, pd.Series] = {}
+    for base in display_cols:
+        p_col = f"{base}__p"
+        if p_col in df.columns:
+            p_adj_map[base] = _holm_adjust_1d(pd.to_numeric(df[p_col], errors="coerce"))
     for base in display_cols:
         mean = df.get(f"{base}__mean")
         n = df.get(f"{base}__n")
-        p = df.get(f"{base}__p")
+        p = p_adj_map.get(base, df.get(f"{base}__p"))
         vals: List[str] = []
         for i in range(df.shape[0]):
             m = mean.iat[i] if mean is not None else float("nan")
@@ -1128,11 +1333,11 @@ def _print_normalized_insights(analysis_root: Path, alpha: float = 0.05) -> None
             if not math.isfinite(float(m)):
                 vals.append("–")
             else:
-                vals.append(f"{m:.3f} (n={nval}, p={pval:.3f})")
+                vals.append(f"{m:.3f} (n={nval}, adj_p={pval:.3f})")
         out_df[base] = vals
     print_pretty_table(
         out_df,
-        title="All baseline-normalized comparisons vs target (mean, n, p)",
+        title="All baseline-normalized comparisons vs target (mean, n, adj_p)",
     )
 
 
@@ -1192,8 +1397,8 @@ def _print_project_insights(analysis_root: Path, alpha: float = 0.05) -> None:
                 "alpha_star": "alpha*",
                 "bac_p999": "BAC p99.9",
                 "latency_p99": "Latency p99",
-                "USD_per_Gbit_p999": "USD/Gb p99.9",
-                "Watt_per_Gbit_p999": "Watt/Gb p99.9",
+                "USD_per_Gbit_p999": "USD/Gbps p99.9",
+                "Watt_per_Gbit_p999": "Watt/Gbps p99.9",
                 "capex_total": "CapEx (USD)",
             }.get(m, m)
 
@@ -1227,8 +1432,8 @@ def _print_project_insights(analysis_root: Path, alpha: float = 0.05) -> None:
                 "alpha_star": "alpha*",
                 "bac_p999": "BAC p99.9",
                 "latency_p99": "Latency p99",
-                "USD_per_Gbit_p999": "USD/Gb p99.9",
-                "Watt_per_Gbit_p999": "Watt/Gb p99.9",
+                "USD_per_Gbit_p999": "USD/Gbps p99.9",
+                "Watt_per_Gbit_p999": "Watt/Gbps p99.9",
                 "capex_total": "CapEx (USD)",
             }.get(m, m)
 

@@ -53,6 +53,9 @@ class IterOpsResult:
     per_iteration: Dict[str, List[float]]
     failures_count: int
     total_iterations_count: int
+    # Total wall-clock duration of tm_placement step (seconds), and per-iteration average
+    total_duration_sec: float = float("nan")
+    per_iter_duration_sec: float = float("nan")
 
     def flat_series(self) -> pd.Series:
         """Return a flat series with totals and per-iteration averages.
@@ -79,6 +82,9 @@ class IterOpsResult:
                 data[f"{k}_per_iter"] = float(fail / self.failures_count)
             else:
                 data[f"{k}_per_iter"] = float("nan")
+        # Timing metrics for the entire tm_placement step
+        data["tm_duration_total_sec"] = float(self.total_duration_sec)
+        data["tm_duration_per_iter_sec"] = float(self.per_iter_duration_sec)
         return pd.Series(data)
 
     def to_jsonable(self) -> dict:
@@ -91,6 +97,8 @@ class IterOpsResult:
             },
             "iters_fail": int(self.failures_count),
             "iters_total": int(self.total_iterations_count),
+            "tm_duration_total_sec": float(self.total_duration_sec),
+            "tm_duration_per_iter_sec": float(self.per_iter_duration_sec),
         }
 
 
@@ -153,6 +161,23 @@ def compute_iter_ops(results: dict) -> IterOpsResult:
     }
     fail_count = max(0, len(fr) - 1)
     total_count = len(fr)
+    # Timing: prefer tm_placement.metadata.duration_sec; fallback to execution_time
+    total_duration = float("nan")
+    try:
+        dur = meta.get("duration_sec")
+        if dur is None:
+            dur = meta.get("execution_time")
+        if dur is not None:
+            total_duration = float(dur)
+    except Exception:
+        total_duration = float("nan")
+
+    per_iter_duration = (
+        float(total_duration / total_count)
+        if total_count > 0 and pd.notna(total_duration)
+        else float("nan")
+    )
+
     return IterOpsResult(
         baseline=base,
         failures=fail_totals,
@@ -160,4 +185,6 @@ def compute_iter_ops(results: dict) -> IterOpsResult:
         per_iteration=per_iter,
         failures_count=int(fail_count),
         total_iterations_count=int(total_count),
+        total_duration_sec=float(total_duration),
+        per_iter_duration_sec=float(per_iter_duration),
     )

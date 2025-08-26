@@ -39,9 +39,10 @@ def _assert_project_csv_equal(a_path: Path, b_path: Path) -> None:
     a = pd.read_csv(a_path).set_index("scenario").sort_index()
     b = pd.read_csv(b_path).set_index("scenario").sort_index()
     assert list(a.index) == list(b.index)
-    assert set(a.columns) == set(b.columns)
-    # Reindex columns to common ordering
-    cols = sorted(a.columns)
+    # Allow extra columns in 'a' (current outputs) as long as all reference columns are present
+    assert set(b.columns).issubset(set(a.columns))
+    # Compare only shared columns, in a stable order
+    cols = sorted(b.columns)
     a = a[cols]
     b = b[cols]
     for col in cols:
@@ -160,8 +161,9 @@ def _compare_json_numeric_close(
 ) -> None:
     fa = _flatten_json_numeric(a)
     fb = _flatten_json_numeric(b)
-    assert set(fa.keys()) == set(fb.keys())
-    for k in fa:
+    # Allow extra keys in the current output ('fa'); require all reference keys present
+    assert set(fb.keys()).issubset(set(fa.keys()))
+    for k in fb:
         av = float(fa[k])
         bv = float(fb[k])
         assert np.isclose(av, bv, rtol=rtol, atol=atol)
@@ -170,9 +172,12 @@ def _compare_json_numeric_close(
 def _assert_csv_equal(a: Path, b: Path) -> None:
     da = pd.read_csv(a)
     db = pd.read_csv(b)
-    assert list(da.columns) == list(db.columns)
-    assert da.shape == db.shape
-    for col in da.columns:
+    # Allow extra columns in current outputs; require that all reference columns exist
+    assert set(db.columns).issubset(set(da.columns))
+    # Compare only shared columns, and ensure row counts match
+    common_cols = list(db.columns)
+    assert da.shape[0] == db.shape[0]
+    for col in common_cols:
         if pd.api.types.is_numeric_dtype(da[col]) and pd.api.types.is_numeric_dtype(
             db[col]
         ):

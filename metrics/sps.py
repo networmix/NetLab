@@ -60,7 +60,7 @@ def _extract_baseline_demands_tm(results: dict) -> Dict[str, float]:
 def _per_iteration_pair_caps(results: dict) -> pd.DataFrame:
     """
     Build a DataFrame of per-pair maxflow capacities for each iteration.
-    Rows indexed by iteration (failure_id order), columns by 's→d', values are capacities (Gb/s).
+    Rows indexed by iteration (failure_id order), columns by 's→d', values are capacities (Gbps).
     Missing entries filled with 0.
     """
     mf_step = results.get("steps", {}).get("node_to_node_capacity_matrix", {}) or {}

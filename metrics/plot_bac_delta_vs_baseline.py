@@ -6,7 +6,7 @@ baseline over a configurable delivered-bandwidth range (default: 80–100%).
 
 Inputs:
   analysis_root/
-    <scenario>/seed<SEED>/bac.json  (as written by analysis.py)
+    <scenario>/seed<SEED>/bac.json  (as written by `netlab metrics`)
 
 Outputs:
   PNG figure saved to the requested path (or analysis_root by default).

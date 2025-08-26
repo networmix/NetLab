@@ -106,7 +106,7 @@ traffic:
     beta: 1.0
     min_distance_km: 200.0
     exclude_same_metro: false
-    carve_top_k: 3
+    carve_top_k: 5
   gravity:
     rounding_gbps: 100.0
 

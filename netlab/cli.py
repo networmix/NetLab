@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import logging
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +25,10 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, NoReturn, Optional, Tuple
+
+import yaml
+
+from .log_config import configure_from_env, set_global_log_level
 
 
 def die(msg: str, code: int = 1) -> NoReturn:
@@ -76,60 +80,122 @@ def find_master_yaml_files(masters_path: Path) -> List[Path]:
     die(f"Path not found: {masters_path}")
 
 
-_SCENARIO_FILE_CANDIDATES = ("{stem}_scenario.yml", "{stem}_scenario.yaml")
-_SCENARIO_SEED_LINE = re.compile(r"^(\s*seed\s*:\s*)\d+\s*$")
+# New approach: generate integrated graph once per master, then for each seed,
+# override TopoGen config output.scenario_seed and build a per-seed scenario.
 
 
-def _load_base_scenario(master_stem: str, master_scenarios_root: Path) -> Path:
-    base_dir = master_scenarios_root / master_stem
-    if not base_dir.exists():
-        die(f"Base scenario directory not found: {base_dir}")
-    for pat in _SCENARIO_FILE_CANDIDATES:
-        p = base_dir / pat.format(stem=master_stem)
-        if p.exists():
-            return p
-    die(f"No base scenario YAML found under: {base_dir}")
+def _topogen_generate_only(
+    topogen_invoke: List[str], cfg_abs: Path, workdir: Path, force: bool
+) -> int:
+    graph_work = workdir / f"{cfg_abs.stem}_integrated_graph.json"
+    log_gen = workdir / "generate.log"
+
+    run_generate = force or not graph_work.exists()
+    if run_generate:
+        logging.info(
+            "Topogen generate: config=%s -> graph=%s (log=%s)",
+            str(cfg_abs),
+            str(graph_work),
+            str(log_gen),
+        )
+        return _run_to_log(
+            topogen_invoke + ["generate", str(cfg_abs), "-o", str(workdir)],
+            Path.cwd(),
+            log_gen,
+        )
+    else:
+        log_gen.write_text(
+            f"⏭️  Skipping generate: found existing {graph_work.name}\n",
+            encoding="utf-8",
+        )
+        logging.info(
+            "Topogen generate: skip (exists) config=%s graph=%s",
+            str(cfg_abs),
+            str(graph_work),
+        )
+        return 0
 
 
-def _rewrite_all_seed_lines(yaml_text: str, new_seed: int) -> str:
-    lines = yaml_text.splitlines()
-    for i, line in enumerate(lines):
-        m = _SCENARIO_SEED_LINE.match(line)
-        if m:
-            prefix = m.group(1)
-            lines[i] = f"{prefix}{new_seed}"
-    return "\n".join(lines) + ("\n" if yaml_text.endswith("\n") else "")
+def _write_seed_overridden_config(master_cfg: Path, seed_cfg: Path, seed: int) -> None:
+    raw = master_cfg.read_text(encoding="utf-8")
+    data = yaml.safe_load(raw)
+    if not isinstance(data, dict):
+        die(f"Invalid TopoGen config (expected mapping): {master_cfg}")
+    output = data.get("output")
+    if not isinstance(output, dict):
+        output = {}
+    output["scenario_seed"] = int(seed)
+    data["output"] = output
+    # Preserve other content; dump without flow style
+    seed_cfg.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
-def create_seeded_scenarios(
-    master_stem: str, master_scenarios_root: Path, seeds: List[int]
-) -> List[Path]:
-    base_yaml = _load_base_scenario(master_stem, master_scenarios_root)
-    base_text = base_yaml.read_text(encoding="utf-8")
-    created: List[Path] = []
-    for s in seeds:
-        dest_dir = master_scenarios_root / f"{master_stem}__seed{s}"
-        ensure_dir(dest_dir)
-        dest_yaml = dest_dir / f"{master_stem}__seed{s}_scenario.yml"
-        mutated = _rewrite_all_seed_lines(base_text, s)
-        dest_yaml.write_text(mutated, encoding="utf-8")
-        created.append(dest_yaml)
-    return created
+def _build_seed_scenario(
+    topogen_invoke: List[str],
+    master_cfg: Path,
+    workdir: Path,
+    seed_dir: Path,
+    seed: int,
+) -> Tuple[Path, int]:
+    stem = master_cfg.stem
+    ensure_dir(seed_dir)
+
+    # Ensure integrated graph is available under seed_dir with expected name
+    graph_src = workdir / f"{stem}_integrated_graph.json"
+    graph_dst = seed_dir / f"{stem}_integrated_graph.json"
+    if not graph_src.exists():
+        return seed_dir, 1
+    try:
+        shutil.copy2(graph_src, graph_dst)
+    except Exception:
+        # Surface the error by returning non-zero; do not skip silently
+        return seed_dir, 1
+
+    # Write a per-seed config that keeps the original stem (prefix) for artefacts
+    seed_cfg = seed_dir / f"{stem}.yml"
+    _write_seed_overridden_config(master_cfg, seed_cfg, seed)
+
+    # Build per-seed scenario YAML into seed_dir, capturing logs
+    seed_yaml = seed_dir / f"{stem}__seed{seed}_scenario.yml"
+    log_build = seed_dir / "build.log"
+    logging.info(
+        "Topogen build: stem=%s seed=%s cfg=%s -> out=%s (log=%s)",
+        stem,
+        seed,
+        str(seed_cfg),
+        str(seed_yaml),
+        str(log_build),
+    )
+    ec = _run_to_log(
+        topogen_invoke + ["build", str(seed_cfg), "-o", str(seed_yaml)],
+        Path.cwd(),
+        log_build,
+    )
+    return seed_yaml, ec
 
 
 def _run_to_log(cmd: List[str], cwd: Path, log_path: Path) -> int:
     ensure_dir(log_path.parent)
     with log_path.open("w", encoding="utf-8") as fh:
         try:
+            logging.debug(
+                "exec: %s | cwd=%s | log=%s", " ".join(cmd), str(cwd), str(log_path)
+            )
             proc = subprocess.Popen(
                 cmd, cwd=str(cwd), stdout=fh, stderr=subprocess.STDOUT
             )
-            return proc.wait()
+            rc = proc.wait()
+            logging.debug("exit: rc=%s cmd=%s", rc, " ".join(cmd))
+            return rc
         except Exception as e:
             try:
                 fh.write(f"\n❌ netlab: failed to invoke: {' '.join(cmd)}\n{e}\n")
-            except Exception:
-                pass
+            except Exception as write_err:
+                # Fall back to stderr if log write fails
+                print(
+                    f"❌ netlab: failed to invoke and log: {' '.join(cmd)}\n{e}\nlog error: {write_err}",
+                    file=sys.stderr,
+                )
             return 1
 
 
@@ -157,6 +223,11 @@ def _inspect_run_one(
     if not force and _has_cached(results_json):
         return scn_yaml, "⏭️ cached", "⏭️ cached"
 
+    logging.info(
+        "ngraph inspect: %s (log=%s)",
+        str(scn_yaml_abs),
+        str(log_ins),
+    )
     ec_ins = _run_to_log(
         ngraph_invoke + ["inspect", "-o", str(scn_dir), str(scn_yaml_abs)],
         scn_dir,
@@ -165,6 +236,12 @@ def _inspect_run_one(
     if ec_ins != 0:
         return scn_yaml, "❌", "⏭️ skipped"
 
+    logging.info(
+        "ngraph run: %s -> results=%s (log=%s)",
+        str(scn_yaml_abs),
+        str(results_json),
+        str(log_run),
+    )
     ec_run = _run_to_log(
         ngraph_invoke
         + ["run", "-o", str(scn_dir), "-r", str(results_json), str(scn_yaml_abs)],
@@ -176,85 +253,52 @@ def _inspect_run_one(
     return scn_yaml, "✅", "✅"
 
 
-def _topogen_generate_build(
-    topogen_invoke: List[str],
-    cfg_abs: Path,
-    workdir: Path,
-    force: bool,
-) -> Tuple[int, int]:
-    graph_work = workdir / f"{cfg_abs.stem}_integrated_graph.json"
-    log_gen = workdir / "generate.log"
-    log_build = workdir / "build.log"
-
-    # Generate stage
-    gen_ec = 100
-    run_generate = force or not graph_work.exists()
-    if run_generate:
-        gen_ec = _run_to_log(
-            topogen_invoke + ["generate", str(cfg_abs), "-o", str(workdir)],
-            Path.cwd(),
-            log_gen,
-        )
-    else:
-        gen_ec = 100
-        log_gen.write_text(
-            f"⏭️  Skipping generate: found existing {graph_work.name}\n",
-            encoding="utf-8",
-        )
-
-    # Build stage
-    scenario_out = workdir / f"{cfg_abs.stem}_scenario.yml"
-    build_ec = _run_to_log(
-        topogen_invoke + ["build", str(cfg_abs), "-o", str(scenario_out)],
-        Path.cwd(),
-        log_build,
-    )
-    return gen_ec, build_ec
-
-
-def _build_masters(
+def _generate_masters(
     masters: List[Path],
     scenarios_dir: Path,
     build_jobs: int,
     build_timeout: int,
     force: bool,
-    force_build: bool,
     topogen_invoke: Optional[List[str]] = None,
 ) -> List[str]:
     topogen_cmd = topogen_invoke or _detect_topogen_invoke()
-    futures: List[Tuple[str, Path, concurrent.futures.Future[Tuple[int, int]]]] = []
+    futures: List[Tuple[str, Path, concurrent.futures.Future[int]]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, build_jobs)) as ex:
         for master_yaml in masters:
             master_stem = master_yaml.stem
             workdir = scenarios_dir / master_stem / master_stem
             ensure_dir(workdir)
             cfg_abs = master_yaml.resolve()
-            run_force_build = bool(force or force_build)
             fut = ex.submit(
-                _topogen_generate_build,
+                _topogen_generate_only,
                 topogen_cmd,
                 cfg_abs,
                 workdir,
-                run_force_build,
+                bool(force),
             )
             futures.append((master_stem, workdir, fut))
 
         build_errors: List[str] = []
         for master_stem, workdir, fut in futures:
             try:
-                _gen_ec, build_ec = fut.result(
+                gen_ec = fut.result(
                     timeout=build_timeout
                     if build_timeout and build_timeout > 0
                     else None
                 )  # type: ignore[arg-type]
             except concurrent.futures.TimeoutError:
-                build_errors.append(f"{master_stem} (timeout)")
+                build_errors.append(f"{master_stem} (timeout during generate)")
                 continue
-            if build_ec != 0:
-                build_errors.append(f"{master_stem} (see logs in {workdir})")
+            if gen_ec != 0:
+                build_errors.append(
+                    f"{master_stem} (generate failed, see logs in {workdir})"
+                )
             else:
-                print(f"✅ Build completed: {master_stem}")
+                print(f"✅ Integrated graph ready: {master_stem}")
     return build_errors
+
+    # NOTE: old _build_masters removed; generation is handled by _generate_masters,
+    # and per-seed builds are executed later per seed.
 
 
 def _cmd_build(args: argparse.Namespace) -> None:
@@ -268,7 +312,7 @@ def _cmd_build(args: argparse.Namespace) -> None:
     ensure_dir(scenarios_dir)
     topogen_invoke = _detect_topogen_invoke()
 
-    print("\n===== Build Plan =====")
+    print("\n===== Generate Plan =====")
     print(f"Masters dir:    {masters_dir}")
     print(f"Masters found:   {len(masters)}")
     print(f"Scenarios dir:   {scenarios_dir}")
@@ -278,16 +322,15 @@ def _cmd_build(args: argparse.Namespace) -> None:
     else:
         print("Build timeout:   disabled")
     print("Behavior:")
-    print(" - Build once per master (parallel across masters)")
+    print(" - Generate integrated graph once per master (parallel across masters)")
     print("======================\n")
 
-    build_errors = _build_masters(
+    build_errors = _generate_masters(
         masters=masters,
         scenarios_dir=scenarios_dir,
         build_jobs=args.build_jobs,
         build_timeout=args.build_timeout,
         force=args.force,
-        force_build=args.force_build,
         topogen_invoke=topogen_invoke,
     )
 
@@ -323,33 +366,60 @@ def _cmd_run(args: argparse.Namespace) -> None:
     else:
         print("Build timeout:   disabled")
     print("Behavior:")
-    print(" - Build once per master (parallel across masters)")
-    print(" - Create per-seed scenario copies by replacing 'seed: <n>' lines")
+    print(" - Generate integrated graph once per master")
+    print(
+        " - For each seed: override TopoGen output.scenario_seed and build per-seed scenario"
+    )
     print(" - Run per-seed scenarios in parallel per master")
     print("==========================\n")
 
-    # Build once per master
-    build_errors = _build_masters(
+    # Generate integrated graph once per master
+    build_errors = _generate_masters(
         masters=masters,
         scenarios_dir=scenarios_dir,
         build_jobs=args.build_jobs,
         build_timeout=args.build_timeout,
         force=args.force,
-        force_build=args.force_build,
         topogen_invoke=topogen_invoke,
     )
 
     if build_errors:
         die("One or more builds failed: " + "; ".join(build_errors))
 
-    # Seed scenarios
+    # Build per-seed scenarios via TopoGen (config-level seed override)
     master_contexts: List[Dict[str, object]] = []
     for master_yaml in masters:
         master_stem = master_yaml.stem
         master_root = scenarios_dir / master_stem
-        created = create_seeded_scenarios(master_stem, master_root, seeds)
+        workdir = master_root / master_stem
+        ensure_dir(workdir)
+
+        created: List[Path] = []
+        # Optional parallelization across seeds per master
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, args.run_jobs)
+        ) as ex:
+            futs: List[concurrent.futures.Future[Tuple[Path, int]]] = []
+            for s in seeds:
+                seed_dir = master_root / f"{master_stem}__seed{s}"
+                futs.append(
+                    ex.submit(
+                        _build_seed_scenario,
+                        topogen_invoke,
+                        master_yaml.resolve(),
+                        workdir,
+                        seed_dir,
+                        int(s),
+                    )
+                )
+            for fut in futs:
+                seed_yaml, ec = fut.result()
+                if ec != 0:
+                    die(f"TopoGen build failed for scenario: {seed_yaml}")
+                created.append(seed_yaml)
+
         master_contexts.append({"stem": master_stem, "scenarios": created})
-        print(f"📝 Seeded scenarios created for {master_stem}: {len(created)}")
+        print(f"📝 Per-seed scenarios built for {master_stem}: {len(created)}")
 
     # Run inspect+run per master
     run_summaries_dir = scenarios_dir / "_run_summaries"
@@ -403,7 +473,15 @@ def _cmd_run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    # Initialize logging for NetLab; level can be overridden via NETLAB_LOG_LEVEL
+    configure_from_env()
     ap = argparse.ArgumentParser(prog="netlab", description="NetLab CLI")
+    ap.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable debug logging (overrides NETLAB_LOG_LEVEL)",
+    )
     sub = ap.add_subparsers(dest="command", required=True)
 
     # build subcommand
@@ -424,9 +502,6 @@ def main() -> None:
     )
     ap_build.add_argument(
         "--force", action="store_true", help="Force both generate and build"
-    )
-    ap_build.add_argument(
-        "--force-build", action="store_true", help="Force TopoGen build stage"
     )
     ap_build.add_argument(
         "--build-jobs", type=int, default=max(1, (os.cpu_count() or 4) // 2)
@@ -459,9 +534,6 @@ def main() -> None:
     )
     ap_run.add_argument(
         "--force", action="store_true", help="Force both build and ngraph run"
-    )
-    ap_run.add_argument(
-        "--force-build", action="store_true", help="Force TopoGen build only"
     )
     ap_run.add_argument("--force-run", action="store_true", help="Force ngraph run")
     ap_run.add_argument(
@@ -504,26 +576,26 @@ def main() -> None:
     ap_metrics.add_argument(
         "--summary",
         action="store_true",
-        help="Print summary tables from CSVs (project.csv and project_baseline_normalized.csv)",
-    )
-    ap_metrics.add_argument(
-        "--summary-plots",
-        action="store_true",
-        help="When used with --summary, also render cross-seed figures from CSVs",
+        help="Print summary tables from CSVs and render cross-seed figures",
     )
 
     def _cmd_metrics(args: argparse.Namespace) -> None:
         from .metrics_cmd import print_summary_from_csv, run_metrics
 
         if bool(args.summary):
-            print_summary_from_csv(args.scenarios_root, plots=bool(args.summary_plots))
+            # Summary mode: always render cross-seed figures
+            print_summary_from_csv(args.scenarios_root, plots=True, quiet=False)
             return
+        # Full analysis mode: compute everything and, unless disabled, also render cross-seed figures
         run_metrics(
             root=args.scenarios_root,
             only=args.only,
             no_plots=bool(args.no_plots),
             enable_maxflow=bool(args.enable_maxflow),
         )
+        if not bool(args.no_plots):
+            # Generate cross-seed figures from the freshly written CSVs
+            print_summary_from_csv(args.scenarios_root, plots=True, quiet=True)
 
     ap_metrics.set_defaults(func=_cmd_metrics)
 
@@ -590,6 +662,9 @@ def main() -> None:
     ap_test.set_defaults(func=_cmd_test)
 
     args = ap.parse_args()
+    # Override log level if -v provided
+    if bool(getattr(args, "verbose", False)):
+        set_global_log_level(logging.DEBUG)
     args.func(args)
 
 

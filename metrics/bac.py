@@ -22,7 +22,7 @@ class BacResult:
     availability_at_pct_of_offer: Dict[float, float]  # {90: 0.97, 99.9: 0.88, ...}
     auc_normalized: float  # mean(min(delivered/offered,1.0))
     # Bandwidth threshold at probability p: smallest t s.t. P(delivered >= t) >= p
-    # Absolute units (Gb/s) and normalized by offered (0..1)
+    # Absolute units (Gbps) and normalized by offered (0..1)
     bw_at_probability_abs: Dict[float, float]
     bw_at_probability_pct: Dict[float, float]
 
@@ -180,7 +180,7 @@ def plot_bac(
         x_label = "Delivered bandwidth (% of offered)"
     else:
         x_plot = x
-        x_label = "Delivered bandwidth (Gb/s)"
+        x_label = "Delivered bandwidth (Gbps)"
 
     plt.figure()
     sns.lineplot(

@@ -112,6 +112,9 @@ def plot_cross_seed_latency(
             q25 = np.nanpercentile(mat, 25, axis=0)
             q75 = np.nanpercentile(mat, 75, axis=0)
             ax.fill_between(grid, q25, q75, color=color, alpha=0.12, linewidth=0)
+        # Overlay per-seed curves lightly to show distribution
+        for sc in seed_curves:
+            ax.step(grid, sc, where="post", color=color, alpha=0.12, linewidth=0.6)
 
     ax.set_xlabel("Latency stretch (× baseline)")
     ax.set_ylabel("Availability  (stretch ≤ x)")

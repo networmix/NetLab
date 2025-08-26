@@ -75,8 +75,9 @@ def compute_cost_power(
             den = float(den)
             if den > 0:
                 return float(num) / den
-        except Exception:
-            pass
+        except Exception as e:
+            # Explicitly return None on error; caller maps None to NaN in flat_series
+            _ = e  # avoid unused variable in minimal context
         return None
 
     usd_per_offered = safe_div(capex_total, offered_at_alpha1)
