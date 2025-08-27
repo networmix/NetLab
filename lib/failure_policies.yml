@@ -1,4 +1,4 @@
-mc_baseline:
+mc_hard:
   attrs:
     description: "Balanced MC: SRLG + DC->PoP + node(maint) + intra-site fabric"
   modes:
