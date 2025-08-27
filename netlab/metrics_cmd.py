@@ -1177,6 +1177,18 @@ def print_summary_from_csv(
             fname="abs_AUC.png",
         )
         _plot_dist_abs(
+            "bw_p90",
+            title="Bandwidth at 90% (ratio to offered)",
+            ylabel="ratio",
+            fname="abs_BW_p90.png",
+        )
+        _plot_dist_abs(
+            "bw_p95",
+            title="Bandwidth at 95% (ratio to offered)",
+            ylabel="ratio",
+            fname="abs_BW_p95.png",
+        )
+        _plot_dist_abs(
             "bw_p99",
             title="Bandwidth at 99% (ratio to offered)",
             ylabel="ratio",
@@ -1233,6 +1245,8 @@ def print_summary_from_csv(
             "norm_links.png",
         )
         _plot_dist_norm("auc_norm_r", "BAC AUC (relative)", "ratio", "norm_AUC.png")
+        _plot_dist_norm("bw_p90_pct_r", "BW@90% (relative)", "ratio", "norm_BW_p90.png")
+        _plot_dist_norm("bw_p95_pct_r", "BW@95% (relative)", "ratio", "norm_BW_p95.png")
         _plot_dist_norm("bw_p99_pct_r", "BW@99% (relative)", "ratio", "norm_BW_p99.png")
         _plot_dist_norm(
             "USD_per_Gbit_offered_r",

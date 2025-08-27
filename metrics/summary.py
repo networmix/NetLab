@@ -75,9 +75,11 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
     """
     Build a consolidated summary across all scenarios under analysis_root.
 
-    Expected per-scenario files produced by `netlab metrics` (metrics_cmd.run_metrics):
+    Each scenario directory should contain:
       - alpha_summary.json
-      - bac_summary.json ({"per_seed": ..., "tail": {p50,p90,p99,p999,p9999,auc_norm}})
+      - bac_summary.json with keys:
+          {"per_seed": ..., "tail": {p50,p90,p99,p999,p9999,auc_norm,
+                                       bw_p90_pct,bw_p95_pct,bw_p99_pct,bw_p999_pct,bw_p9999_pct}}
       - latency_summary.csv (per-seed rows with columns p50..p9999)
       - costpower_summary.csv (per-seed rows with capex/power and normalizations)
     """
@@ -91,6 +93,8 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             continue
 
         alpha_med = float("nan")
+        bw_p90 = float("nan")
+        bw_p95 = float("nan")
         bw_p99 = float("nan")
         bw_p999 = float("nan")
         auc_norm = float("nan")
@@ -100,7 +104,6 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         lat_SLO_1_2_drop = float("nan")
         lat_best_path_drop = float("nan")
         lat_WES_delta = float("nan")
-        # paircap removed from project table (kept per-seed only)
         usd_per_gbit_p999 = float("nan")
         watt_per_gbit_p999 = float("nan")
         usd_per_gbit_offered = float("nan")
@@ -133,7 +136,17 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             b = json.loads(bp.read_text(encoding="utf-8"))
             tail = b.get("tail", {}) or {}
             auc_norm = _safe_float(tail.get("auc_norm"))
-            # New: bandwidth at probability (ratio to baseline/offered)
+            # bandwidth at probability (ratio to baseline/offered)
+            bw_p90 = (
+                _safe_float(tail.get("bw_p90_pct"))
+                if "bw_p90_pct" in tail
+                else float("nan")
+            )
+            bw_p95 = (
+                _safe_float(tail.get("bw_p95_pct"))
+                if "bw_p95_pct" in tail
+                else float("nan")
+            )
             bw_p99 = (
                 _safe_float(tail.get("bw_p99_pct"))
                 if "bw_p99_pct" in tail
@@ -145,7 +158,7 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
                 else float("nan")
             )
 
-        # Latency cross-seed medians (new format)
+        # Latency cross-seed medians
         lp = scen_dir / "latency_summary.csv"
         if lp.exists():
             df_lat = pd.read_csv(lp)
@@ -178,8 +191,6 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
                 )
             # seeds counted as number of rows if not set by costpower
             seeds_count = max(seeds_count, int(df_ns.shape[0]))
-
-        # PairCap: omitted from project table (expensive, weak signal)
 
         # Cost/Power medians across seeds
         cpp = scen_dir / "costpower_summary.csv"
@@ -240,6 +251,8 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             "node_count": node_count,
             "link_count": link_count,
             "alpha_star": alpha_med,
+            "bw_p90": bw_p90,
+            "bw_p95": bw_p95,
             "bw_p99": bw_p99,
             "bw_p999": bw_p999,
             "bac_auc": auc_norm,
@@ -256,7 +269,6 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             # tm_placement timing (seconds)
             "tm_duration_total_sec": tm_duration_total_sec,
             "tm_duration_per_iter_sec": tm_duration_per_iter_sec,
-            # paircap: intentionally omitted from project table
             "USD_per_Gbit_offered": usd_per_gbit_offered,
             "Watt_per_Gbit_offered": watt_per_gbit_offered,
             "USD_per_Gbit_p999": usd_per_gbit_p999,
@@ -276,6 +288,8 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         "link_count",
         "alpha_star",
         # Bandwidth-at-probability ratios (primary availability figures)
+        "bw_p90",
+        "bw_p95",
         "bw_p99",
         "bw_p999",
         "bac_auc",
@@ -293,7 +307,6 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         # tm_placement timing
         "tm_duration_total_sec",
         "tm_duration_per_iter_sec",
-        # paircap removed
         # Cost/Power at offered and reliable
         "USD_per_Gbit_offered",
         "Watt_per_Gbit_offered",
@@ -324,6 +337,8 @@ def print_pretty_table(
             "node_count_r": "nodes r",
             "link_count_r": "links r",
             "alpha_star": "alpha*",
+            "bw_p90": "BW@90%",
+            "bw_p95": "BW@95%",
             "bw_p99": "BW@99%",
             "bw_p999": "BW@99.9%",
             "bac_auc": "BAC AUC",
@@ -336,7 +351,6 @@ def print_pretty_table(
             "spf_calls_per_iter": "SPF/iter",
             "flows_created_per_iter": "flows created/iter",
             "reopt_calls_per_iter": "reopt/iter",
-            # paircap removed
             "USD_per_Gbit_offered": "USD/Gbps offered",
             "Watt_per_Gbit_offered": "W/Gbps offered",
             "USD_per_Gbit_p999": "USD/Gbps p99.9",
@@ -365,6 +379,8 @@ def print_pretty_table(
             "node_count_r": "nodes r",
             "link_count_r": "links r",
             "alpha_star": "alpha*",
+            "bw_p90": "BW@90%",
+            "bw_p95": "BW@95%",
             "bw_p99": "BW@99%",
             "bw_p999": "BW@99.9%",
             "bac_auc": "BAC AUC",
@@ -377,7 +393,6 @@ def print_pretty_table(
             "spf_calls_per_iter": "SPF/iter",
             "flows_created_per_iter": "flows created/iter",
             "reopt_calls_per_iter": "reopt/iter",
-            # paircap removed
             "USD_per_Gbit_offered": "USD/Gbps offered",
             "Watt_per_Gbit_offered": "W/Gbps offered",
             "USD_per_Gbit_p999": "USD/Gbps p99.9",
@@ -725,6 +740,12 @@ def _collect_per_seed_full_metrics(scen_dir: Path) -> Dict[int, Dict[str, float]
                     v = cast(Dict[Any, Any], bwp).get(p)
                 return float(v) if isinstance(v, (int, float)) else None
 
+            v90 = _g(90.0)
+            if v90 is not None:
+                m["bw_p90_pct"] = v90
+            v95 = _g(95.0)
+            if v95 is not None:
+                m["bw_p95_pct"] = v95
             v99 = _g(99.0)
             if v99 is not None:
                 m["bw_p99_pct"] = v99
@@ -807,6 +828,8 @@ def build_baseline_normalized_table(
     rows: List[Dict[str, Any]] = []
 
     ratio_keys = [
+        "bw_p90_pct",
+        "bw_p95_pct",
         "bw_p99_pct",
         "bw_p999_pct",
         "auc_norm",
@@ -941,6 +964,8 @@ def build_baseline_normalized_table(
         "node_count_r",
         "link_count_r",
         # Ratios (≥1 better for bw/auc; ≤1 better for cost/power/lat_fail_p99)
+        "bw_p90_pct_r",
+        "bw_p95_pct_r",
         "bw_p99_pct_r",
         "bw_p999_pct_r",
         "auc_norm_r",
@@ -1166,6 +1191,8 @@ def _collect_normalized_per_seed(
         return {}
     base = full[base_name]
     ratio_keys = [
+        "bw_p90_pct",
+        "bw_p95_pct",
         "bw_p99_pct",
         "bw_p999_pct",
         "auc_norm",
@@ -1237,6 +1264,8 @@ def _build_normalized_insights(analysis_root: Path) -> List[Dict[str, Any]]:
     ratio_metrics = [
         "node_count_r",
         "link_count_r",
+        "bw_p90_pct_r",
+        "bw_p95_pct_r",
         "bw_p99_pct_r",
         "bw_p999_pct_r",
         "auc_norm_r",
