@@ -105,7 +105,7 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
         if fid == "baseline":
             baseline_delivered = float(total_deliv)
 
-    s = pd.Series(delivered, index=pd.Index(fids, name="failure_id"), dtype=float)
+    s = pd.Series(delivered, index=pd.Index(fids, name="failure_id"), dtype=float)  # pyright: ignore[reportAssignmentType]
     # Normalize strictly by baseline delivered (no-failure). Require presence.
     if baseline_delivered is not None and np.isfinite(baseline_delivered):
         offered = float(baseline_delivered)
@@ -130,7 +130,7 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
         total = float(len(s))
         for pct in (90.0, 95.0, 99.0, 99.9, 99.99):
             thr = (pct / 100.0) * offered
-            avail[pct] = float((s >= thr).sum()) / total
+            avail[pct] = float((s >= thr).sum()) / total  # pyright: ignore[reportOperatorIssue]
 
     # Bandwidth-at-probability (inverse availability)
     bw_abs: Dict[float, float] = {}

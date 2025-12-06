@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -26,8 +27,9 @@ def summarize_across_seeds(series_by_seed: Dict[int, Any], label: str) -> dict:
         for seed, series in series_by_seed.items():
             vals = pd.Series(series).astype(float).values
             if len(vals) < max_len:
+                float_vals = cast(npt.NDArray[np.float64], vals.astype(float))
                 vals = np.pad(
-                    vals.astype(float), (0, max_len - len(vals)), constant_values=np.nan
+                    float_vals, (0, max_len - len(vals)), constant_values=np.nan
                 )
             data[seed] = vals
         df = pd.DataFrame(data)  # index: 0..max_len-1, columns: seeds

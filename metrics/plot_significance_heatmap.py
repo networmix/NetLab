@@ -92,7 +92,9 @@ def plot_significance_heatmap(
                 if (m in pvals_t.index and scen in pvals_t.columns)
                 else np.nan
             )
-            if np.isfinite(p) and p < 0.05:
+            # Ensure p is numeric before comparison
+            p_val = float(p) if isinstance(p, (int, float, np.number)) else np.nan
+            if np.isfinite(p_val) and p_val < 0.05:
                 ax.plot(j + 0.5, i + 0.5, marker="o", markersize=4, color="black")
 
     out = save_to if save_to is not None else (analysis_root / "effects_heatmap.png")

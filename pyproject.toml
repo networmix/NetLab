@@ -4,12 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Metrics and analysis tools for NetGraph scenarios."
 readme = "README.md"
 authors = [{ name = "Andrey Golovanov" }]
-license = "MIT"
-license-files = ["LICENSE"]
+license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.11"
 
 classifiers = [
@@ -18,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Operating System :: OS Independent",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
 ]
 
 # Runtime deps inferred from imports
@@ -28,7 +28,7 @@ dependencies = [
     "seaborn>=0.13",
     "scipy>=1.11",
     "rich>=13.0",
-    "ngraph>=0.9.1",
+    "ngraph>=0.12.0",
     "topogen @ git+https://github.com/networmix/TopoGen@main",
 ]
 
@@ -97,7 +97,7 @@ skip-magic-trailing-comma = false
 typeCheckingMode = "standard"
 pythonVersion = "3.11"
 venvPath = "."
-venv = "netlab-venv"
+venv = "venv"
 exclude = [
     "tests/**",
     "**/venv/**",
