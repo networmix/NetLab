@@ -1356,13 +1356,14 @@ def _print_normalized_insights(analysis_root: Path, alpha: float = 0.05) -> None
         p = p_adj_map.get(base, df.get(f"{base}__p"))
         vals: List[str] = []
         for i in range(df.shape[0]):
-            m = mean.iat[i] if mean is not None else float("nan")
-            nval = int(n.iat[i]) if n is not None and pd.notna(n.iat[i]) else 0
-            pval = p.iat[i] if p is not None else float("nan")
-            if not math.isfinite(float(m)):
+            m_val = float(mean.iloc[i]) if mean is not None else float("nan")
+            n_raw = n.iloc[i] if n is not None else None
+            nval = int(n_raw) if n_raw is not None and pd.notna(n_raw) else 0
+            pval = float(p.iloc[i]) if p is not None else float("nan")
+            if not math.isfinite(m_val):
                 vals.append("–")
             else:
-                vals.append(f"{m:.3f} (n={nval}, adj_p={pval:.3f})")
+                vals.append(f"{m_val:.3f} (n={nval}, adj_p={pval:.3f})")
         out_df[base] = vals
     print_pretty_table(
         out_df,

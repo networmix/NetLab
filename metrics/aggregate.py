@@ -36,11 +36,13 @@ def summarize_across_seeds(series_by_seed: Dict[int, Any], label: str) -> dict:
         med = df.median(axis=1, numeric_only=True)
         q25 = df.quantile(0.25, axis=1, numeric_only=True)
         q75 = df.quantile(0.75, axis=1, numeric_only=True)
+        # Convert Series to dict[int, float] using explicit index iteration
+        # (avoids type issues with to_dict() returning dict[Hashable, Any])
         return {
             "type": "series",
-            "median": {int(k): float(v) for k, v in med.to_dict().items()},
-            "q25": {int(k): float(v) for k, v in q25.to_dict().items()},
-            "q75": {int(k): float(v) for k, v in q75.to_dict().items()},
+            "median": {i: float(med.iloc[i]) for i in range(len(med))},
+            "q25": {i: float(q25.iloc[i]) for i in range(len(q25))},
+            "q75": {i: float(q75.iloc[i]) for i in range(len(q75))},
         }
     else:
         arr = np.array(
