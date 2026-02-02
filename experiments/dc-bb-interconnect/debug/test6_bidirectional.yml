@@ -1,0 +1,83 @@
+# Test 6: Bidirectional demand (like the actual experiment)
+#
+# Same topology as test5, but with demand in BOTH directions
+#
+# BB-BB capacity: 4 × 100 = 400 per direction = 800 bidirectional
+# Demand: 1000 per direction = 2000 total
+#
+# Expected Alpha*: 800/2000 = 0.4 (if full-duplex)
+
+blueprints:
+  DC:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+  BB:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC
+      attrs: { role: dc, site: A }
+    SiteA/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: A }
+    SiteB/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: B }
+    SiteB/DC-[1-4]:
+      blueprint: DC
+      attrs: { role: dc, site: B }
+
+  links:
+    - source: "SiteA/DC-${i}/"
+      target: "SiteA/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 1000
+      cost: 1
+
+    - source: "SiteA/BB-${i}/"
+      target: "SiteB/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 100
+      cost: 10
+
+    - source: "SiteB/BB-${i}/"
+      target: "SiteB/DC-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 1000
+      cost: 1
+
+demands:
+  test:
+    # A to B
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 1000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+    # B to A
+    - source: "^SiteB/DC"
+      target: "^SiteA/DC"
+      volume: 1000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

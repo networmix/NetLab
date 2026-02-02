@@ -1,0 +1,89 @@
+# Test 8: One DC row (9 nodes) per site
+#
+# 9 DC nodes per site
+# 4 BB nodes per site
+# Full mesh DC-BB
+#
+# DC-BB: 9 × 4 = 36 links × 400 = 14,400 per site
+# BB-BB: 4 links × 800 = 3,200 per direction = 6,400 bidi
+# Demand: 10,000 per direction = 20,000 total
+#
+# Expected Alpha* ≈ 6,400 / 20,000 = 0.32
+
+blueprints:
+  DC_Row:
+    nodes:
+      node:
+        count: 9
+        template: "{n}"
+  BB:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-1:
+      blueprint: DC_Row
+      attrs: { role: dc, site: A }
+    SiteA/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: A }
+    SiteB/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: B }
+    SiteB/DC-1:
+      blueprint: DC_Row
+      attrs: { role: dc, site: B }
+
+  links:
+    # DC to all BB at Site A
+    - source: "SiteA/DC-1/"
+      target: "SiteA/BB-${bb}/"
+      expand:
+        vars:
+          bb: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+
+    # BB-A to BB-B (1:1)
+    - source: "SiteA/BB-${i}/"
+      target: "SiteB/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 800
+      cost: 10
+
+    # BB to DC at Site B
+    - source: "SiteB/BB-${bb}/"
+      target: "SiteB/DC-1/"
+      expand:
+        vars:
+          bb: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+
+demands:
+  test:
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 10000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+    - source: "^SiteB/DC"
+      target: "^SiteA/DC"
+      volume: 10000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

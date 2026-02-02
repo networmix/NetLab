@@ -1,0 +1,90 @@
+# Test 9: Full scale - 4 DC rows × 9 nodes = 36 DC per site
+#
+# Matches actual full_mesh topology
+#
+# DC-BB: 36 × 16 = 576 links × 400 = 230,400 per site
+# BB-BB: 4 planes × 4×4 mesh = 64 links × 800 = 51,200 per direction
+# Demand: 500,000 per direction = 1,000,000 total
+#
+# Expected Alpha*: 102,400 / 1,000,000 = 0.1024 (if BB is bottleneck)
+
+blueprints:
+  DC_Row:
+    nodes:
+      node:
+        count: 9
+        template: "{n}"
+  BB_Plane:
+    nodes:
+      node:
+        count: 4
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC_Row
+      attrs: { role: dc, site: A }
+    SiteA/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs: { role: bb, site: A }
+    SiteB/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs: { role: bb, site: B }
+    SiteB/DC-[1-4]:
+      blueprint: DC_Row
+      attrs: { role: dc, site: B }
+
+  links:
+    # Full mesh DC to all BB at Site A
+    - source: "SiteA/DC-${dc}/"
+      target: "SiteA/BB-${bb}/"
+      expand:
+        vars:
+          dc: [1, 2, 3, 4]
+          bb: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+
+    # BB-A to BB-B (plane to plane mesh)
+    - source: "SiteA/BB-${p}/"
+      target: "SiteB/BB-${p}/"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 800
+      cost: 10
+
+    # Full mesh BB to DC at Site B
+    - source: "SiteB/BB-${bb}/"
+      target: "SiteB/DC-${dc}/"
+      expand:
+        vars:
+          bb: [1, 2, 3, 4]
+          dc: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+
+demands:
+  test:
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 500000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+    - source: "^SiteB/DC"
+      target: "^SiteA/DC"
+      volume: 500000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

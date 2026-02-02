@@ -1,0 +1,26 @@
+# Shared hardware components for experiments
+
+components:
+  # 51.2T switch (Broadcom Tomahawk5 / Cisco G200 class)
+  Switch_51T:
+    component_type: chassis
+    description: "51.2T switch (TH5/G200 class)"
+    capex: 45000.0
+    power_watts: 2500.0
+    power_watts_max: 3500.0
+    capacity: 51200.0
+    ports: 64
+
+  # 800G 2FR4 optic (2km reach)
+  Optic_800G_2FR4:
+    component_type: optic
+    description: "800G 2FR4"
+    capex: 500.0
+    power_watts: 16.0
+
+  # 800G ZR+ optic (long-haul)
+  Optic_800G_ZR_Plus:
+    component_type: optic
+    description: "800G ZR+"
+    capex: 5000.0
+    power_watts: 30.0

@@ -1,0 +1,91 @@
+# Test 7: Realistic scale - match actual topology structure
+#
+# 4 DC nodes per site (simplified from 36)
+# 4 BB nodes per site
+# Each DC connects to ALL BB (full mesh, like full_mesh topology)
+# Each BB connects to corresponding BB (1:1)
+#
+# DC-BB: 4 × 4 = 16 links × 400 = 6,400 per site
+# BB-BB: 4 links × 800 = 3,200 per direction
+# Demand: 10,000 per direction (like the experiment after we changed it)
+#
+# Expected Alpha*: 6,400 / 20,000 = 0.32 (if BB-BB is bottleneck)
+# Or maybe different if routing inefficiency
+
+blueprints:
+  DC:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+  BB:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC
+      attrs: { role: dc, site: A }
+    SiteA/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: A }
+    SiteB/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: B }
+    SiteB/DC-[1-4]:
+      blueprint: DC
+      attrs: { role: dc, site: B }
+
+  links:
+    # Full mesh DC to BB at Site A
+    - source: "SiteA/DC-${dc}/"
+      target: "SiteA/BB-${bb}/"
+      expand:
+        vars:
+          dc: [1, 2, 3, 4]
+          bb: [1, 2, 3, 4]
+      capacity: 400
+      cost: 1
+
+    # BB-A to BB-B (1:1)
+    - source: "SiteA/BB-${i}/"
+      target: "SiteB/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 800
+      cost: 10
+
+    # Full mesh BB to DC at Site B
+    - source: "SiteB/BB-${bb}/"
+      target: "SiteB/DC-${dc}/"
+      expand:
+        vars:
+          bb: [1, 2, 3, 4]
+          dc: [1, 2, 3, 4]
+      capacity: 400
+      cost: 1
+
+demands:
+  test:
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 10000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+    - source: "^SiteB/DC"
+      target: "^SiteA/DC"
+      volume: 10000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

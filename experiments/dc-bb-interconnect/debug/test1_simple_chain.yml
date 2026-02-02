@@ -1,0 +1,63 @@
+# Test 1: Simple chain - should achieve 100% of bottleneck
+#
+# Topology: DC-A -> BB-A -> BB-B -> DC-B
+#
+# Capacities:
+#   DC-BB: 1000 (not bottleneck)
+#   BB-BB: 100 (BOTTLENECK)
+#   BB-DC: 1000 (not bottleneck)
+#
+# Expected: With demand=1000, Alpha* should be 0.1 (100/1000)
+#           Placed flow should be 100
+
+network:
+  nodes:
+    SiteA/DC/node/1:
+      attrs:
+        role: dc
+        site: A
+    SiteA/BB/node/1:
+      attrs:
+        role: bb
+        site: A
+    SiteB/BB/node/1:
+      attrs:
+        role: bb
+        site: B
+    SiteB/DC/node/1:
+      attrs:
+        role: dc
+        site: B
+
+  links:
+    # DC-A to BB-A: high capacity
+    - source: "SiteA/DC/node/1"
+      target: "SiteA/BB/node/1"
+      capacity: 1000
+      cost: 1
+
+    # BB-A to BB-B: LOW capacity (bottleneck)
+    - source: "SiteA/BB/node/1"
+      target: "SiteB/BB/node/1"
+      capacity: 100
+      cost: 10
+
+    # BB-B to DC-B: high capacity
+    - source: "SiteB/BB/node/1"
+      target: "SiteB/DC/node/1"
+      capacity: 1000
+      cost: 1
+
+demands:
+  test:
+    - source: "SiteA/DC/node/1"
+      target: "SiteB/DC/node/1"
+      volume: 1000
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test

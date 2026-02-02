@@ -1,0 +1,305 @@
+# One-to-One: Each DC row connects to exactly one BB plane
+#
+# Configuration:
+#   DC: 16 rows x 36 nodes/row = 576 nodes per site
+#   BB: 16 planes x 4 nodes/plane = 64 nodes per site
+#   Total: 640 nodes per site, 1280 nodes total
+#
+# Pattern: DC row i connects to BB plane i (perfect 1:1 mapping)
+#   - Each DC row has path through exactly 1 plane
+#   - Simple and deterministic routing
+#
+# Trade-offs:
+#   - Simple topology
+#   - Each DC row isolated to single plane (no cross-plane paths)
+#   - Plane failure = complete loss of that DC row's inter-site connectivity
+
+blueprints:
+  DC_Row:
+    nodes:
+      node:
+        count: 36
+        template: "{n}"
+
+  BB_Plane:
+    nodes:
+      node:
+        count: 4
+        template: "{n}"
+
+network:
+  nodes:
+    # Site A - DC (16 rows, each with 36 nodes)
+    SiteA/DC-[1-16]:
+      blueprint: DC_Row
+      attrs:
+        role: dc
+        site: A
+        dc_row_id: ${n}
+
+    # Site A - BB (16 planes, each with 4 nodes)
+    SiteA/BB-[1-16]:
+      blueprint: BB_Plane
+      attrs:
+        role: bb
+        site: A
+        bb_plane_id: ${n}
+
+    # Site B - DC (16 rows, each with 36 nodes)
+    SiteB/DC-[1-16]:
+      blueprint: DC_Row
+      attrs:
+        role: dc
+        site: B
+        dc_row_id: ${n}
+
+    # Site B - BB (16 planes, each with 4 nodes)
+    SiteB/BB-[1-16]:
+      blueprint: BB_Plane
+      attrs:
+        role: bb
+        site: B
+        bb_plane_id: ${n}
+
+  links:
+    # Site A: DC row i -> BB plane i (one-to-one mapping)
+    # Use trailing slash to avoid prefix matching (DC-1 matching DC-10, etc.)
+    - source: "SiteA/DC-${i}/"
+      target: "SiteA/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: A
+
+    # Site B: DC row i -> BB plane i (one-to-one mapping)
+    - source: "SiteB/DC-${i}/"
+      target: "SiteB/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: B
+
+    # Inter-site BB links (plane-to-plane mesh)
+    # Use explicit path to avoid prefix matching (BB-1 matching BB-10, etc.)
+    - source: "SiteA/BB-${p}/"
+      target: "SiteB/BB-${p}/"
+      expand:
+        vars:
+          p: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+      pattern: mesh
+      capacity: 800
+      cost: 10
+      attrs:
+        link_type: bb_intersite
+        bb_plane_id: ${p}
+
+risk_groups:
+  # BB plane link groups (for plane failure simulation)
+  # Use /node/ delimiter to ensure exact plane matching (avoid BB-1 matching BB-10)
+  - name: BB-Plane-1-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-1/node/.*SiteB/BB-1/node/"
+  - name: BB-Plane-2-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-2/node/.*SiteB/BB-2/node/"
+  - name: BB-Plane-3-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-3/node/.*SiteB/BB-3/node/"
+  - name: BB-Plane-4-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-4/node/.*SiteB/BB-4/node/"
+  - name: BB-Plane-5-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-5/node/.*SiteB/BB-5/node/"
+  - name: BB-Plane-6-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-6/node/.*SiteB/BB-6/node/"
+  - name: BB-Plane-7-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-7/node/.*SiteB/BB-7/node/"
+  - name: BB-Plane-8-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-8/node/.*SiteB/BB-8/node/"
+  - name: BB-Plane-9-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-9/node/.*SiteB/BB-9/node/"
+  - name: BB-Plane-10-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-10/node/.*SiteB/BB-10/node/"
+  - name: BB-Plane-11-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-11/node/.*SiteB/BB-11/node/"
+  - name: BB-Plane-12-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-12/node/.*SiteB/BB-12/node/"
+  - name: BB-Plane-13-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-13/node/.*SiteB/BB-13/node/"
+  - name: BB-Plane-14-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-14/node/.*SiteB/BB-14/node/"
+  - name: BB-Plane-15-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-15/node/.*SiteB/BB-15/node/"
+  - name: BB-Plane-16-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-16/node/.*SiteB/BB-16/node/"
+
+  # DC row groups (for row failure simulation)
+  # Use /node/ delimiter to ensure exact row matching
+  - name: DC-Row-1-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-1/"
+  - name: DC-Row-2-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-2/"
+  - name: DC-Row-3-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-3/"
+  - name: DC-Row-4-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-4/"
+  - name: DC-Row-5-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-5/"
+  - name: DC-Row-6-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-6/"
+  - name: DC-Row-7-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-7/"
+  - name: DC-Row-8-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-8/"
+  - name: DC-Row-9-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-9/"
+  - name: DC-Row-10-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-10/"
+  - name: DC-Row-11-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-11/"
+  - name: DC-Row-12-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-12/"
+  - name: DC-Row-13-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-13/"
+  - name: DC-Row-14-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-14/"
+  - name: DC-Row-15-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-15/"
+  - name: DC-Row-16-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-16/"
+  - name: DC-Row-1-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-1/"
+  - name: DC-Row-2-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-2/"
+  - name: DC-Row-3-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-3/"
+  - name: DC-Row-4-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-4/"
+  - name: DC-Row-5-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-5/"
+  - name: DC-Row-6-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-6/"
+  - name: DC-Row-7-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-7/"
+  - name: DC-Row-8-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-8/"
+  - name: DC-Row-9-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-9/"
+  - name: DC-Row-10-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-10/"
+  - name: DC-Row-11-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-11/"
+  - name: DC-Row-12-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-12/"
+  - name: DC-Row-13-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-13/"
+  - name: DC-Row-14-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-14/"
+  - name: DC-Row-15-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-15/"
+  - name: DC-Row-16-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-16/"
+
+workflow: failure_analysis

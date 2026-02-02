@@ -1,0 +1,51 @@
+# Test 2: Same chain with finer MSD resolution
+#
+# Expected: Alpha* = 0.1 exactly
+
+network:
+  nodes:
+    SiteA/DC/node/1:
+      attrs:
+        role: dc
+        site: A
+    SiteA/BB/node/1:
+      attrs:
+        role: bb
+        site: A
+    SiteB/BB/node/1:
+      attrs:
+        role: bb
+        site: B
+    SiteB/DC/node/1:
+      attrs:
+        role: dc
+        site: B
+
+  links:
+    - source: "SiteA/DC/node/1"
+      target: "SiteA/BB/node/1"
+      capacity: 1000
+      cost: 1
+    - source: "SiteA/BB/node/1"
+      target: "SiteB/BB/node/1"
+      capacity: 100
+      cost: 10
+    - source: "SiteB/BB/node/1"
+      target: "SiteB/DC/node/1"
+      capacity: 1000
+      cost: 1
+
+demands:
+  test:
+    - source: "SiteA/DC/node/1"
+      target: "SiteB/DC/node/1"
+      volume: 1000
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

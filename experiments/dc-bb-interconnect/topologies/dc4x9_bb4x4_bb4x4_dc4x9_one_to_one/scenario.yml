@@ -1,0 +1,150 @@
+# One-to-One: Each DC row connects to exactly one BB plane
+#
+# Configuration:
+#   DC: 4 rows x 9 nodes = 36 nodes per site
+#   BB: 4 planes x 4 nodes = 16 nodes per site
+#   Total: 52 nodes per site, 104 nodes total
+#
+# Pattern: DC row i meshes to all 4 BB nodes in plane i
+#   DC-1 → BB-1 (full mesh)
+#   DC-2 → BB-2 (full mesh)
+#   DC-3 → BB-3 (full mesh)
+#   DC-4 → BB-4 (full mesh)
+#
+# Trade-offs:
+#   - Simple and efficient
+#   - Each DC row isolated to single plane (no cross-plane paths)
+#   - DC row failure = 75% (loses 1 of 4 planes worth of DC capacity)
+
+blueprints:
+  DC_Row:
+    nodes:
+      node:
+        count: 9
+        template: "{n}"
+
+  BB_Plane:
+    nodes:
+      node:
+        count: 4
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC_Row
+      attrs:
+        role: dc
+        site: A
+        dc_row_id: ${n}
+
+    SiteA/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs:
+        role: bb
+        site: A
+        bb_plane_id: ${n}
+
+    SiteB/DC-[1-4]:
+      blueprint: DC_Row
+      attrs:
+        role: dc
+        site: B
+        dc_row_id: ${n}
+
+    SiteB/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs:
+        role: bb
+        site: B
+        bb_plane_id: ${n}
+
+  links:
+    - source: "SiteA/DC-${i}/"
+      target: "SiteA/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: A
+
+    - source: "SiteB/DC-${i}/"
+      target: "SiteB/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: B
+
+    - source: "SiteA/BB-${p}/"
+      target: "SiteB/BB-${p}/"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 800
+      cost: 10
+      attrs:
+        link_type: bb_intersite
+        bb_plane_id: ${p}
+
+risk_groups:
+  - name: BB-Plane-1-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-1/node/.*SiteB/BB-1/node/"
+  - name: BB-Plane-2-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-2/node/.*SiteB/BB-2/node/"
+  - name: BB-Plane-3-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-3/node/.*SiteB/BB-3/node/"
+  - name: BB-Plane-4-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-4/node/.*SiteB/BB-4/node/"
+
+  - name: DC-Row-1-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-1/"
+  - name: DC-Row-2-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-2/"
+  - name: DC-Row-3-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-3/"
+  - name: DC-Row-4-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-4/"
+  - name: DC-Row-1-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-1/"
+  - name: DC-Row-2-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-2/"
+  - name: DC-Row-3-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-3/"
+  - name: DC-Row-4-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-4/"
+
+workflow: failure_analysis

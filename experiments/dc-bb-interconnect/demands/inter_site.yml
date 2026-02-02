@@ -1,0 +1,16 @@
+# Inter-site demand definitions for DC-BB experiments
+
+demands:
+  inter_site:
+    # Site A DC to Site B DC (bidirectional)
+    # 10Tbps total inter-site demand
+    - source: "^SiteA/DC-.*"
+      target: "^SiteB/DC-.*"
+      volume: 10000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+    - source: "^SiteB/DC-.*"
+      target: "^SiteA/DC-.*"
+      volume: 10000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP

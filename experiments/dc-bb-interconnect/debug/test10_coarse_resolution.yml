@@ -1,0 +1,81 @@
+# Test 10: Same as test9 but with COARSE resolution (0.05)
+#
+# This should reproduce the 0.09375 issue
+
+blueprints:
+  DC_Row:
+    nodes:
+      node:
+        count: 9
+        template: "{n}"
+  BB_Plane:
+    nodes:
+      node:
+        count: 4
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC_Row
+      attrs: { role: dc, site: A }
+    SiteA/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs: { role: bb, site: A }
+    SiteB/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs: { role: bb, site: B }
+    SiteB/DC-[1-4]:
+      blueprint: DC_Row
+      attrs: { role: dc, site: B }
+
+  links:
+    - source: "SiteA/DC-${dc}/"
+      target: "SiteA/BB-${bb}/"
+      expand:
+        vars:
+          dc: [1, 2, 3, 4]
+          bb: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+
+    - source: "SiteA/BB-${p}/"
+      target: "SiteB/BB-${p}/"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 800
+      cost: 10
+
+    - source: "SiteB/BB-${bb}/"
+      target: "SiteB/DC-${dc}/"
+      expand:
+        vars:
+          bb: [1, 2, 3, 4]
+          dc: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 400
+      cost: 1
+
+demands:
+  test:
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 500000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+    - source: "^SiteB/DC"
+      target: "^SiteA/DC"
+      volume: 500000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.05

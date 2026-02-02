@@ -1,0 +1,18 @@
+# Shared blueprints for DC-BB interconnect experiments
+
+blueprints:
+  # DC row blueprint - instantiated multiple times per site
+  # Override node count via params when instantiating
+  DC_Row:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+
+  # BB plane blueprint - instantiated multiple times per site
+  # Override node count via params when instantiating
+  BB_Plane:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"

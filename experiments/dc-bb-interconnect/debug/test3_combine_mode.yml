@@ -1,0 +1,60 @@
+# Test 3: Test "combine" mode with multiple source/target nodes
+#
+# 2 DC nodes at each site, 1 BB node at each site
+# BB-BB link is the bottleneck (100)
+#
+# Demand: all DC-A to all DC-B using "combine" mode
+#
+# Expected:
+#   4 DC pairs (2×2), each gets 250 demand (1000/4)
+#   Bottleneck is 100, so Alpha* should be 100/1000 = 0.1
+
+network:
+  nodes:
+    SiteA/DC/node/1:
+      attrs: { role: dc, site: A }
+    SiteA/DC/node/2:
+      attrs: { role: dc, site: A }
+    SiteA/BB/node/1:
+      attrs: { role: bb, site: A }
+    SiteB/BB/node/1:
+      attrs: { role: bb, site: B }
+    SiteB/DC/node/1:
+      attrs: { role: dc, site: B }
+    SiteB/DC/node/2:
+      attrs: { role: dc, site: B }
+
+  links:
+    # All DC-A to BB-A (high capacity)
+    - source: "SiteA/DC/"
+      target: "SiteA/BB/"
+      pattern: mesh
+      capacity: 1000
+      cost: 1
+    # BB-A to BB-B (BOTTLENECK)
+    - source: "SiteA/BB/node/1"
+      target: "SiteB/BB/node/1"
+      capacity: 100
+      cost: 10
+    # BB-B to all DC-B (high capacity)
+    - source: "SiteB/BB/"
+      target: "SiteB/DC/"
+      pattern: mesh
+      capacity: 1000
+      cost: 1
+
+demands:
+  test:
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 1000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

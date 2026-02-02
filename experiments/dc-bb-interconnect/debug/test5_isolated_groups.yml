@@ -1,0 +1,85 @@
+# Test 5: Isolated groups like one_to_one topology
+#
+# DC-1 connects only to BB-1
+# DC-2 connects only to BB-2
+# DC-3 connects only to BB-3
+# DC-4 connects only to BB-4
+#
+# BB-BB bottleneck: 4 links × 100 = 400 total
+# But groups are isolated!
+#
+# Demand: 1000 from all DC-A to all DC-B
+# Only 1/4 pairs are reachable (same group)
+#
+# Expected Alpha*: ?
+
+blueprints:
+  DC:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+  BB:
+    nodes:
+      node:
+        count: 1
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC
+      attrs: { role: dc, site: A }
+    SiteA/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: A }
+    SiteB/BB-[1-4]:
+      blueprint: BB
+      attrs: { role: bb, site: B }
+    SiteB/DC-[1-4]:
+      blueprint: DC
+      attrs: { role: dc, site: B }
+
+  links:
+    # DC-1 to BB-1 only (isolated)
+    - source: "SiteA/DC-${i}/"
+      target: "SiteA/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 1000
+      cost: 1
+
+    # BB-A to BB-B (1:1)
+    - source: "SiteA/BB-${i}/"
+      target: "SiteB/BB-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 100
+      cost: 10
+
+    # BB to DC at Site B (1:1)
+    - source: "SiteB/BB-${i}/"
+      target: "SiteB/DC-${i}/"
+      expand:
+        vars:
+          i: [1, 2, 3, 4]
+      capacity: 1000
+      cost: 1
+
+demands:
+  test:
+    - source: "^SiteA/DC"
+      target: "^SiteB/DC"
+      volume: 1000
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+
+workflow:
+  - type: BuildGraph
+    name: build_graph
+  - type: MaximumSupportedDemand
+    name: msd
+    demand_set: test
+    resolution: 0.001

@@ -1,0 +1,63 @@
+# Workflow definitions for DC-BB interconnect experiments
+
+workflows:
+  # Analysis under different failure modes
+  failure_analysis:
+    - type: BuildGraph
+      name: build_graph
+      add_reverse: false
+    - type: NetworkStats
+      name: network_statistics
+    - type: MaximumSupportedDemand
+      name: msd
+      demand_set: inter_site
+      alpha_start: 1.0
+      resolution: 0.01 # Fine resolution for accurate Alpha*
+    # DC-BB link failure (intra-site)
+    - type: TrafficMatrixPlacement
+      name: tm_dc_bb_link
+      demand_set: inter_site
+      failure_policy: single_dc_bb_link
+      iterations: 1000
+      alpha_from_step: msd
+      alpha_from_field: data.alpha_star
+    # BB-BB link failure (inter-site)
+    - type: TrafficMatrixPlacement
+      name: tm_bb_bb_link
+      demand_set: inter_site
+      failure_policy: single_bb_bb_link
+      iterations: 1000
+      alpha_from_step: msd
+      alpha_from_field: data.alpha_star
+    # DC node failure
+    - type: TrafficMatrixPlacement
+      name: tm_dc_node
+      demand_set: inter_site
+      failure_policy: single_dc_node
+      iterations: 1000
+      alpha_from_step: msd
+      alpha_from_field: data.alpha_star
+    # BB node failure
+    - type: TrafficMatrixPlacement
+      name: tm_bb_node
+      demand_set: inter_site
+      failure_policy: single_bb_node
+      iterations: 1000
+      alpha_from_step: msd
+      alpha_from_field: data.alpha_star
+    # Plane failure (all inter-site links of one plane)
+    - type: TrafficMatrixPlacement
+      name: tm_plane
+      demand_set: inter_site
+      failure_policy: single_plane
+      iterations: 1000
+      alpha_from_step: msd
+      alpha_from_field: data.alpha_star
+    # DC row failure (all nodes in one DC row at one site)
+    - type: TrafficMatrixPlacement
+      name: tm_dc_row
+      demand_set: inter_site
+      failure_policy: single_dc_row
+      iterations: 1000
+      alpha_from_step: msd
+      alpha_from_field: data.alpha_star

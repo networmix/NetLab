@@ -1,0 +1,249 @@
+# Balanced Sparse: Latin square assignment for minimum links with even distribution
+#
+# Configuration:
+#   DC: 4 rows x 9 nodes = 36 nodes per site
+#   BB: 4 planes x 4 nodes = 16 nodes per site
+#   Total: 52 nodes per site, 104 nodes total
+#
+# Pattern: Each DC connects to 1 BB per plane with Latin square rotation
+#   DC-1,5 → R1@P1, R2@P2, R3@P3, R4@P4
+#   DC-2,6 → R2@P1, R3@P2, R4@P3, R1@P4
+#   DC-3,7 → R3@P1, R4@P2, R1@P3, R2@P4
+#   DC-4,8 → R4@P1, R1@P2, R2@P3, R3@P4
+#   DC-9 → unconnected (enables perfect even distribution)
+#
+# Trade-offs:
+#   + Minimum links while achieving 100% Alpha* and 75% plane resilience
+#   + Perfectly even BB distribution (8 links each)
+#   - DC node 9 unconnected (8/9 DC nodes used)
+#   - Lower DC-BB link resilience (81%) due to sparse connectivity
+
+blueprints:
+  DC_Row:
+    nodes:
+      node:
+        count: 9
+        template: "{n}"
+
+  BB_Plane:
+    nodes:
+      node:
+        count: 4
+        template: "{n}"
+
+network:
+  nodes:
+    SiteA/DC-[1-4]:
+      blueprint: DC_Row
+      attrs:
+        role: dc
+        site: A
+        dc_row_id: ${n}
+
+    SiteA/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs:
+        role: bb
+        site: A
+        bb_plane_id: ${n}
+
+    SiteB/DC-[1-4]:
+      blueprint: DC_Row
+      attrs:
+        role: dc
+        site: B
+        dc_row_id: ${n}
+
+    SiteB/BB-[1-4]:
+      blueprint: BB_Plane
+      attrs:
+        role: bb
+        site: B
+        bb_plane_id: ${n}
+
+  links:
+    # Site A: DC nodes 1,5 → R1@P1, R2@P2, R3@P3, R4@P4
+    - source:
+        path: "SiteA/DC-.*/[15]$"
+      target: "SiteA/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [1, 2, 3, 4]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: A
+
+    # Site A: DC nodes 2,6 → R2@P1, R3@P2, R4@P3, R1@P4
+    - source:
+        path: "SiteA/DC-.*/[26]$"
+      target: "SiteA/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [2, 3, 4, 1]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: A
+
+    # Site A: DC nodes 3,7 → R3@P1, R4@P2, R1@P3, R2@P4
+    - source:
+        path: "SiteA/DC-.*/[37]$"
+      target: "SiteA/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [3, 4, 1, 2]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: A
+
+    # Site A: DC nodes 4,8 → R4@P1, R1@P2, R2@P3, R3@P4
+    - source:
+        path: "SiteA/DC-.*/[48]$"
+      target: "SiteA/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [4, 1, 2, 3]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: A
+
+    # Site B: DC nodes 1,5 → R1@P1, R2@P2, R3@P3, R4@P4
+    - source:
+        path: "SiteB/DC-.*/[15]$"
+      target: "SiteB/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [1, 2, 3, 4]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: B
+
+    # Site B: DC nodes 2,6 → R2@P1, R3@P2, R4@P3, R1@P4
+    - source:
+        path: "SiteB/DC-.*/[26]$"
+      target: "SiteB/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [2, 3, 4, 1]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: B
+
+    # Site B: DC nodes 3,7 → R3@P1, R4@P2, R1@P3, R2@P4
+    - source:
+        path: "SiteB/DC-.*/[37]$"
+      target: "SiteB/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [3, 4, 1, 2]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: B
+
+    # Site B: DC nodes 4,8 → R4@P1, R1@P2, R2@P3, R3@P4
+    - source:
+        path: "SiteB/DC-.*/[48]$"
+      target: "SiteB/BB-${p}/node/${r}"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+          r: [4, 1, 2, 3]
+        mode: zip
+      capacity: 400
+      cost: 1
+      attrs:
+        link_type: dc_bb
+        site: B
+
+    # Inter-site BB links (full mesh per plane)
+    - source: "SiteA/BB-${p}/"
+      target: "SiteB/BB-${p}/"
+      expand:
+        vars:
+          p: [1, 2, 3, 4]
+      pattern: mesh
+      capacity: 800
+      cost: 10
+      attrs:
+        link_type: bb_intersite
+        bb_plane_id: ${p}
+
+risk_groups:
+  - name: BB-Plane-1-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-1/node/.*SiteB/BB-1/node/"
+  - name: BB-Plane-2-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-2/node/.*SiteB/BB-2/node/"
+  - name: BB-Plane-3-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-3/node/.*SiteB/BB-3/node/"
+  - name: BB-Plane-4-Links
+    membership:
+      scope: link
+      path: "SiteA/BB-4/node/.*SiteB/BB-4/node/"
+
+  - name: DC-Row-1-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-1/"
+  - name: DC-Row-2-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-2/"
+  - name: DC-Row-3-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-3/"
+  - name: DC-Row-4-SiteA
+    membership:
+      scope: node
+      path: "SiteA/DC-4/"
+  - name: DC-Row-1-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-1/"
+  - name: DC-Row-2-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-2/"
+  - name: DC-Row-3-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-3/"
+  - name: DC-Row-4-SiteB
+    membership:
+      scope: node
+      path: "SiteB/DC-4/"
+
+workflow: failure_analysis

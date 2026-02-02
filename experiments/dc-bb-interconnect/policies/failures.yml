@@ -1,0 +1,79 @@
+# Failure policies for DC-BB interconnect experiments
+
+# Single random DC-BB link failure (intra-site)
+single_dc_bb_link:
+  modes:
+    - weight: 1.0
+      rules:
+        - scope: link
+          mode: choice
+          count: 1
+          match:
+            conditions:
+              - attr: link_type
+                op: "=="
+                value: dc_bb
+
+# Single random BB-BB link failure (inter-site)
+single_bb_bb_link:
+  modes:
+    - weight: 1.0
+      rules:
+        - scope: link
+          mode: choice
+          count: 1
+          match:
+            conditions:
+              - attr: link_type
+                op: "=="
+                value: bb_intersite
+
+# Single random DC node failure
+single_dc_node:
+  modes:
+    - weight: 1.0
+      rules:
+        - scope: node
+          mode: choice
+          count: 1
+          match:
+            conditions:
+              - attr: role
+                op: "=="
+                value: dc
+
+# Single random BB node failure
+single_bb_node:
+  modes:
+    - weight: 1.0
+      rules:
+        - scope: node
+          mode: choice
+          count: 1
+          match:
+            conditions:
+              - attr: role
+                op: "=="
+                value: bb
+
+# Single random BB plane failure (all inter-site links of one plane)
+single_plane:
+  expand_groups: true
+  modes:
+    - weight: 1.0
+      rules:
+        - scope: risk_group
+          path: "^BB-Plane-\\d+-Links$"
+          mode: choice
+          count: 1
+
+# Single random DC row failure (all nodes in one DC row at one site)
+single_dc_row:
+  expand_groups: true
+  modes:
+    - weight: 1.0
+      rules:
+        - scope: risk_group
+          path: "^DC-Row-\\d+-Site[AB]$"
+          mode: choice
+          count: 1

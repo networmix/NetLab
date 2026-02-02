@@ -152,3 +152,7 @@ papers/
 # Performance analysis results
 dev/perf_results/
 dev/perf_plots/
+
+# Experiment results (generated outputs, not source configs)
+experiments/*/results/
+experiments/**/results/
