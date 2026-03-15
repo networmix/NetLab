@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
-import cairosvg
 import networkx as nx
 
 
@@ -464,6 +463,14 @@ class GraphVisualizer(ABC):
 
     def _write_png(self, svg_path: Path, scale: int = 2) -> None:
         """Generate PNG from SVG."""
+        try:
+            import cairosvg
+        except ImportError as e:
+            raise ImportError(
+                "cairosvg is required for PNG generation. "
+                "Install with: pip install cairosvg\n"
+                "On macOS, you may also need: brew install cairo"
+            ) from e
         png_path = svg_path.with_suffix(".png")
         cairosvg.svg2png(url=str(svg_path), write_to=str(png_path), scale=scale)
         print(f"Generated: {png_path}")
