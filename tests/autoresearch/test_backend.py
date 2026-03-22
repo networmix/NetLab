@@ -12,6 +12,7 @@ import pytest
 
 from netlab.autoresearch.backend import (
     ClaudeCLIBackend,
+    CodexCLIBackend,
     LLMBackend,
     MockBackend,
     OpenAICompatibleBackend,
@@ -184,6 +185,90 @@ class TestClaudeCLIBackend:
 
     def test_is_llm_backend_subclass(self):
         assert issubclass(ClaudeCLIBackend, LLMBackend)
+
+
+# ---------------------------------------------------------------------------
+# CodexCLIBackend tests
+# ---------------------------------------------------------------------------
+
+
+class TestCodexCLIBackend:
+    def test_subprocess_args_format(self, tmp_path):
+        """Codex CLI format: subprocess args contain expected flags and values."""
+        backend = CodexCLIBackend(model="o4-mini")
+
+        with (
+            patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
+            patch(
+                "netlab.autoresearch.backend.Path.read_text",
+                return_value="response text",
+            ),
+            patch("netlab.autoresearch.backend.Path.unlink"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = ""
+
+            result = backend.generate("my prompt", system="my system instructions")
+
+        assert result == "response text"
+        args = mock_run.call_args[0][0]
+        assert "codex" in args
+        assert "exec" in args
+        assert "--ephemeral" in args
+        assert "--sandbox" in args
+        assert "read-only" in args
+        assert "--skip-git-repo-check" in args
+        assert "-m" in args
+        m_idx = args.index("-m")
+        assert args[m_idx + 1] == "o4-mini"
+        assert "-o" in args
+        # Prompt should include system + prompt
+        prompt_arg = args[-1]
+        assert "my system instructions" in prompt_arg
+        assert "my prompt" in prompt_arg
+
+    def test_subprocess_no_system(self):
+        """Codex CLI: prompt without system instructions does not prepend system text."""
+        backend = CodexCLIBackend()
+
+        with (
+            patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
+            patch("netlab.autoresearch.backend.Path.read_text", return_value="ok"),
+            patch("netlab.autoresearch.backend.Path.unlink"),
+        ):
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = ""
+
+            backend.generate("prompt only")
+
+        args = mock_run.call_args[0][0]
+        prompt_arg = args[-1]
+        assert prompt_arg == "prompt only"
+
+    def test_subprocess_failure_raises(self):
+        """Codex CLI raises RuntimeError on non-zero exit code."""
+        backend = CodexCLIBackend()
+
+        with (
+            patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
+            patch("netlab.autoresearch.backend.Path.unlink"),
+        ):
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = "some error"
+
+            with pytest.raises(RuntimeError, match="codex CLI failed"):
+                backend.generate("bad prompt")
+
+    def test_is_llm_backend_subclass(self):
+        assert issubclass(CodexCLIBackend, LLMBackend)
+
+    def test_default_model(self):
+        """Default model is o4-mini."""
+        backend = CodexCLIBackend()
+        assert backend.model == "o4-mini"
 
 
 # ---------------------------------------------------------------------------

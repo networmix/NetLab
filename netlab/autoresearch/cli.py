@@ -19,6 +19,7 @@ import yaml
 
 from netlab.autoresearch.backend import (
     ClaudeCLIBackend,
+    CodexCLIBackend,
     LLMBackend,
     MockBackend,
     OpenAICompatibleBackend,
@@ -100,6 +101,8 @@ def _build_backend(args: argparse.Namespace) -> LLMBackend:
         return _build_mock_backend(args)
     elif backend_name == "claude-cli":
         return ClaudeCLIBackend()
+    elif backend_name == "codex-cli":
+        return CodexCLIBackend()
     elif backend_name == "openai":
         import os
 
@@ -113,7 +116,8 @@ def _build_backend(args: argparse.Namespace) -> LLMBackend:
         return OpenAICompatibleBackend(base_url=base_url, model=model, api_key=api_key)
     else:
         print(
-            f"Unknown backend: {backend_name!r}. Use 'mock', 'claude-cli', or 'openai'.",
+            f"Unknown backend: {backend_name!r}. "
+            "Use 'mock', 'claude-cli', 'codex-cli', or 'openai'.",
             file=sys.stderr,
         )
         sys.exit(1)

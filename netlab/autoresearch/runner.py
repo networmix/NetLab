@@ -28,11 +28,14 @@ from netlab.autoresearch.hypothesis import (
     HypothesisMerger,
     HypothesisTemplate,
 )
+from netlab.autoresearch.memory import ResearchMemory
 from netlab.autoresearch.objective import ObjectiveFunction
 from netlab.autoresearch.prompt import (
     ParseError,
     build_hypothesis_prompt,
+    build_reflection_prompt,
     parse_hypothesis_response,
+    render_memory_section,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,9 +100,16 @@ class AutoResearchRunner:
         self._results_dir = self._project_dir / "results"
         self._results_dir.mkdir(parents=True, exist_ok=True)
 
+        # Research memory
+        memory_dir = self._project_dir / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+        self._memory = ResearchMemory(memory_dir)
+        self._memory.load()
+
         # State for tracking best
         self._best_entry: Optional[LogEntry] = None
         self._experiments_run = 0
+        self._successful_since_reflection = 0
 
     def _validate_workflow(self) -> None:
         """Validate that the base scenario has a MaximumSupportedDemand workflow step."""
@@ -149,6 +159,13 @@ class AutoResearchRunner:
 
         if entries:
             logger.info("Resuming from experiment %d", len(entries))
+            # Mandatory reflection on resume if memory has existing content
+            if (
+                self._memory.active_insights
+                or self._memory.dead_ends
+                or self._memory.strategy
+            ):
+                self._run_reflection(entries)
 
         # Build set of known param hashes for deduplication
         seen_hashes: dict[str, LogEntry] = {}
@@ -178,7 +195,7 @@ class AutoResearchRunner:
                 program_md=self._program_md,
                 template=self._template,
                 history=history_text,
-                memory_section="",  # Memory not yet integrated (F-8)
+                memory_section=render_memory_section(self._memory),
                 best=self._best_entry,
             )
 
@@ -335,6 +352,7 @@ class AutoResearchRunner:
             seen_hashes[hypothesis.params_hash] = entry
 
             # Update best
+            prev_best = self._best_entry
             if (
                 self._best_entry is None
                 or (
@@ -352,8 +370,38 @@ class AutoResearchRunner:
                 self._write_best_hypothesis(entry)
 
             self._experiments_run += 1
+            self._successful_since_reflection += 1
+
+            # Trigger reflection on interval or when a previous best is superseded
+            new_best_superseded = prev_best is not None and self._best_entry is entry
+            if (
+                new_best_superseded
+                or self._successful_since_reflection >= self._config.reflection_interval
+            ):
+                all_entries = self._log.load()
+                self._run_reflection(all_entries)
+                self._successful_since_reflection = 0
 
         self._status = "completed"
+
+    def _run_reflection(self, all_entries: list[LogEntry]) -> None:
+        """Run a reflection cycle. Non-fatal: logs warnings on any failure."""
+        try:
+            # Use last reflection_interval entries as recent context
+            recent = all_entries[-self._config.reflection_interval :]
+            system_prompt, user_prompt = build_reflection_prompt(
+                recent_entries=recent,
+                memory=self._memory,
+                best=self._best_entry,
+            )
+            response = self._config.backend.generate(user_prompt, system_prompt)
+            err = self._memory.parse_reflection_output(response, self._log)
+            if err:
+                logger.warning("Reflection parse issues: %s", err)
+            self._memory.save()
+            logger.info("Reflection completed successfully")
+        except Exception as exc:
+            logger.warning("Reflection failed (non-fatal): %s", exc)
 
     def _execute_ngraph(self, scenario_path: Path, exp_dir: Path) -> dict:
         """Run ngraph inspect + run as subprocess. Returns status dict."""

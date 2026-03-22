@@ -4,6 +4,7 @@ Provides:
 - LLMBackend: ABC for single-shot text generation
 - MockBackend: scripted responses for testing
 - ClaudeCLIBackend: subprocess wrapper around `claude --print`
+- CodexCLIBackend: subprocess wrapper around `codex exec`
 - OpenAICompatibleBackend: HTTP client for OpenAI-compatible APIs
 """
 
@@ -11,11 +12,13 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
 from abc import ABC, abstractmethod
 from http.client import HTTPException
+from pathlib import Path
 
 
 class LLMBackend(ABC):
@@ -64,6 +67,53 @@ class ClaudeCLIBackend(LLMBackend):
                 f"claude CLI failed (exit {result.returncode}): {result.stderr}"
             )
         return result.stdout
+
+
+class CodexCLIBackend(LLMBackend):
+    """Backend that calls the ``codex`` CLI tool via subprocess.
+
+    Uses ``codex exec`` in ephemeral, read-only sandbox mode to perform
+    single-shot text generation. The last agent message is captured via
+    the ``-o`` (output-last-message) flag.
+    """
+
+    def __init__(self, model: str = "o4-mini") -> None:
+        self.model = model
+
+    def generate(self, prompt: str, system: str = "") -> str:
+        full_prompt = f"{system}\n\n{prompt}" if system else prompt
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
+            output_path = tmp.name
+
+        try:
+            cmd = [
+                "codex",
+                "exec",
+                "--ephemeral",
+                "--sandbox",
+                "read-only",
+                "--skip-git-repo-check",
+                "-m",
+                self.model,
+                "-o",
+                output_path,
+                full_prompt,
+            ]
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"codex CLI failed (exit {result.returncode}): {result.stderr}"
+                )
+            output = Path(output_path).read_text(encoding="utf-8")
+            return output
+        finally:
+            Path(output_path).unlink(missing_ok=True)
 
 
 class OpenAICompatibleBackend(LLMBackend):
