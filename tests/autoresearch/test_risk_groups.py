@@ -7,6 +7,7 @@ import pytest
 from netlab.autoresearch.scenario_generator import (
     DcBbScenarioConfig,
     _build_bb_cross_site_links,
+    _build_dc_bb_links,
     _build_risk_groups,
 )
 
@@ -226,6 +227,49 @@ class TestConsistencyWithLinks:
         groups = _build_risk_groups(default_config)
         defined_ps = {g["name"] for g in groups if g["attrs"]["type"] == "plane_site"}
         assert ps_names.issubset(defined_ps)
+
+    def test_device_index_groups_referenced_by_bb_links(self, default_config):
+        """All 128 device_index_across_planes groups are referenced by BB cross-site links."""
+        groups = _build_risk_groups(default_config)
+        defined_di = {
+            g["name"]
+            for g in groups
+            if g["attrs"]["type"] == "device_index_across_planes"
+        }
+        links = _build_bb_cross_site_links(default_config)
+        referenced_di = {
+            rg for link in links for rg in link["risk_groups"] if rg.startswith("pg_")
+        }
+        assert defined_di == referenced_di
+
+    def test_device_index_groups_referenced_by_dc_bb_links(self, default_config):
+        """DC-BB links reference device_index_across_planes groups."""
+        groups = _build_risk_groups(default_config)
+        defined_di = {
+            g["name"]
+            for g in groups
+            if g["attrs"]["type"] == "device_index_across_planes"
+        }
+        links = _build_dc_bb_links(default_config)
+        referenced_di = {
+            rg for link in links for rg in link["risk_groups"] if rg.startswith("pg_")
+        }
+        # DC-BB links reference a subset (only one site per link)
+        assert referenced_di.issubset(defined_di)
+        assert len(referenced_di) > 0
+
+    def test_all_dc_bb_link_risk_groups_defined(self, default_config):
+        """Every risk group referenced by DC-BB links exists in the risk group list."""
+        groups = _build_risk_groups(default_config)
+        group_names = {g["name"] for g in groups}
+        links = _build_dc_bb_links(default_config)
+        referenced = set()
+        for link in links:
+            referenced.update(link.get("risk_groups", []))
+        missing = referenced - group_names
+        assert not missing, (
+            f"Risk groups referenced by DC-BB links but not defined: {missing}"
+        )
 
 
 # ---------------------------------------------------------------------------

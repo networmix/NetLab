@@ -95,6 +95,101 @@ class TestLinkAttributes:
         sides = {lk["attrs"]["side"] for lk in default_links}
         assert sides == {"abc1", "xyz1"}
 
+    def test_all_links_have_risk_groups(self, default_links):
+        for lk in default_links:
+            assert "risk_groups" in lk, (
+                f"Link {lk['source']}->{lk['target']} missing risk_groups"
+            )
+            assert len(lk["risk_groups"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# Risk group assignments on DC-BB links
+# ---------------------------------------------------------------------------
+
+
+class TestDcBbRiskGroups:
+    """Verify risk group assignments derived from BB endpoint."""
+
+    def test_abc1_link_has_plane_site_group(self, default_links):
+        """ABC1 DC-BB links include plane_P_site_abc1 from BB endpoint."""
+        abc1 = [lk for lk in default_links if lk["attrs"]["side"] == "abc1"]
+        for lk in abc1:
+            # Extract plane from target name bb/abc1/plane{P}/dev{D}
+            parts = lk["target"].split("/")
+            plane = int(parts[2].replace("plane", ""))
+            expected_rg = f"plane_{plane}_site_abc1"
+            assert expected_rg in lk["risk_groups"], (
+                f"{lk['target']}: expected {expected_rg} in {lk['risk_groups']}"
+            )
+
+    def test_xyz1_link_has_plane_site_group(self, default_links):
+        """XYZ1 DC-BB links include plane_P_site_xyz1 from BB endpoint."""
+        xyz1 = [lk for lk in default_links if lk["attrs"]["side"] == "xyz1"]
+        for lk in xyz1:
+            parts = lk["target"].split("/")
+            plane = int(parts[2].replace("plane", ""))
+            expected_rg = f"plane_{plane}_site_xyz1"
+            assert expected_rg in lk["risk_groups"], (
+                f"{lk['target']}: expected {expected_rg} in {lk['risk_groups']}"
+            )
+
+    def test_abc1_link_has_plane_group(self, default_links):
+        """ABC1 DC-BB links include plane_group_G from BB endpoint's plane."""
+        abc1 = [lk for lk in default_links if lk["attrs"]["side"] == "abc1"]
+        for lk in abc1:
+            parts = lk["target"].split("/")
+            plane = int(parts[2].replace("plane", ""))
+            pg = (plane - 1) // 4 + 1
+            expected_rg = f"plane_group_{pg}"
+            assert expected_rg in lk["risk_groups"]
+
+    def test_abc1_link_has_device_index_group(self, default_links):
+        """ABC1 DC-BB links include pg_G_idx_D_abc1 from BB endpoint."""
+        abc1 = [lk for lk in default_links if lk["attrs"]["side"] == "abc1"]
+        for lk in abc1:
+            parts = lk["target"].split("/")
+            plane = int(parts[2].replace("plane", ""))
+            dev = int(parts[3].replace("dev", ""))
+            pg = (plane - 1) // 4 + 1
+            expected_rg = f"pg_{pg}_idx_{dev}_abc1"
+            assert expected_rg in lk["risk_groups"]
+
+    def test_xyz1_link_has_device_index_group(self, default_links):
+        """XYZ1 DC-BB links include pg_G_idx_D_xyz1 from BB endpoint."""
+        xyz1 = [lk for lk in default_links if lk["attrs"]["side"] == "xyz1"]
+        for lk in xyz1:
+            parts = lk["target"].split("/")
+            plane = int(parts[2].replace("plane", ""))
+            dev = int(parts[3].replace("dev", ""))
+            pg = (plane - 1) // 4 + 1
+            expected_rg = f"pg_{pg}_idx_{dev}_xyz1"
+            assert expected_rg in lk["risk_groups"]
+
+    def test_spot_check_specific_abc1_link(self, default_links):
+        """Spot-check: FADU->bb/abc1/plane7/dev2 should have specific risk groups."""
+        abc1 = [lk for lk in default_links if lk["attrs"]["side"] == "abc1"]
+        target_links = [lk for lk in abc1 if lk["target"] == "bb/abc1/plane7/dev2"]
+        assert len(target_links) > 0, "No links to bb/abc1/plane7/dev2"
+        for lk in target_links:
+            assert lk["risk_groups"] == [
+                "plane_7_site_abc1",
+                "plane_group_2",
+                "pg_2_idx_2_abc1",
+            ]
+
+    def test_spot_check_specific_xyz1_link(self, default_links):
+        """Spot-check: XSW->bb/xyz1/plane7/dev3 should have specific risk groups."""
+        xyz1 = [lk for lk in default_links if lk["attrs"]["side"] == "xyz1"]
+        target_links = [lk for lk in xyz1 if lk["target"] == "bb/xyz1/plane7/dev3"]
+        assert len(target_links) > 0, "No links to bb/xyz1/plane7/dev3"
+        for lk in target_links:
+            assert lk["risk_groups"] == [
+                "plane_7_site_xyz1",
+                "plane_group_2",
+                "pg_2_idx_3_xyz1",
+            ]
+
 
 # ---------------------------------------------------------------------------
 # Node name validity

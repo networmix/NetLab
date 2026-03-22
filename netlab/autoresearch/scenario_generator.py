@@ -516,6 +516,7 @@ def _build_bb_cross_site_links(config: DcBbScenarioConfig) -> list[dict]:
     """
     links: list[dict] = []
     for pl in range(1, config.bb_planes + 1):
+        pg = (pl - 1) // 4 + 1
         for a in range(1, config.bb_devices_per_plane + 1):
             for x in range(1, config.bb_devices_per_plane + 1):
                 for path in ["path_a", "path_b"]:
@@ -527,9 +528,11 @@ def _build_bb_cross_site_links(config: DcBbScenarioConfig) -> list[dict]:
                             "cost": 10,
                             "risk_groups": [
                                 path,
-                                f"plane_group_{(pl - 1) // 4 + 1}",
+                                f"plane_group_{pg}",
                                 f"plane_{pl}_site_abc1",
                                 f"plane_{pl}_site_xyz1",
+                                f"pg_{pg}_idx_{a}_abc1",
+                                f"pg_{pg}_idx_{x}_xyz1",
                             ],
                             "attrs": {
                                 "link_type": "bb_cross_site",
@@ -582,13 +585,21 @@ def _build_dc_bb_links(config: DcBbScenarioConfig) -> list[dict]:
         for dr, dc in dc_devs:
             fadu_name = f"abc1/fadu/hgrid{dr + 1}/idx{dc + 1}"
             for br, bc in bb_devs:
-                bb_name = f"bb/abc1/plane{br + 1}/dev{bc + 1}"
+                bb_plane = br + 1
+                bb_dev = bc + 1
+                bb_name = f"bb/abc1/plane{bb_plane}/dev{bb_dev}"
+                pg = (bb_plane - 1) // 4 + 1
                 links.append(
                     {
                         "source": fadu_name,
                         "target": bb_name,
                         "capacity": config.dc_bb_link_capacity,
                         "cost": 5,
+                        "risk_groups": [
+                            f"plane_{bb_plane}_site_abc1",
+                            f"plane_group_{pg}",
+                            f"pg_{pg}_idx_{bb_dev}_abc1",
+                        ],
                         "attrs": {"link_type": "dc_bb", "side": "abc1"},
                     }
                 )
@@ -609,13 +620,21 @@ def _build_dc_bb_links(config: DcBbScenarioConfig) -> list[dict]:
             # dr = device index within plane, dc = plane index
             xsw_name = f"xyz1/xsw/plane{dc + 1}/dev{dr + 1}"
             for br, bc in bb_devs:
-                bb_name = f"bb/xyz1/plane{br + 1}/dev{bc + 1}"
+                bb_plane = br + 1
+                bb_dev = bc + 1
+                bb_name = f"bb/xyz1/plane{bb_plane}/dev{bb_dev}"
+                pg = (bb_plane - 1) // 4 + 1
                 links.append(
                     {
                         "source": xsw_name,
                         "target": bb_name,
                         "capacity": config.dc_bb_link_capacity,
                         "cost": 5,
+                        "risk_groups": [
+                            f"plane_{bb_plane}_site_xyz1",
+                            f"plane_group_{pg}",
+                            f"pg_{pg}_idx_{bb_dev}_xyz1",
+                        ],
                         "attrs": {"link_type": "dc_bb", "side": "xyz1"},
                     }
                 )

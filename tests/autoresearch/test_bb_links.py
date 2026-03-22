@@ -84,9 +84,9 @@ class TestRiskGroups:
     """Verify risk group assignments."""
 
     def test_risk_group_structure(self, default_links):
-        """Every link has exactly 4 risk groups."""
+        """Every link has exactly 6 risk groups."""
         for link in default_links:
-            assert len(link["risk_groups"]) == 4
+            assert len(link["risk_groups"]) == 6
 
     def test_risk_group_contents(self, default_links):
         """Spot-check a specific link's risk groups."""
@@ -106,6 +106,8 @@ class TestRiskGroups:
             "plane_group_1",
             "plane_1_site_abc1",
             "plane_1_site_xyz1",
+            "pg_1_idx_1_abc1",
+            "pg_1_idx_1_xyz1",
         ]
 
     def test_plane_group_mapping(self, default_links):
@@ -144,6 +146,31 @@ class TestRiskGroups:
                     groups.add(rg)
         assert len(groups) == 16
         assert groups == {f"plane_group_{g}" for g in range(1, 17)}
+
+    def test_device_index_risk_groups_present(self, default_links):
+        """Each link includes pg_G_idx_D_abc1 and pg_G_idx_D_xyz1."""
+        for link in default_links:
+            src_dev = int(link["source"].split("/")[-1].replace("dev", ""))
+            tgt_dev = int(link["target"].split("/")[-1].replace("dev", ""))
+            pl = link["attrs"]["plane"]
+            pg = (pl - 1) // 4 + 1
+            assert f"pg_{pg}_idx_{src_dev}_abc1" in link["risk_groups"]
+            assert f"pg_{pg}_idx_{tgt_dev}_xyz1" in link["risk_groups"]
+
+    def test_device_index_spot_check(self, default_links):
+        """Spot-check: plane7 dev2->dev3 link should have pg_2_idx_2_abc1, pg_2_idx_3_xyz1."""
+        target = None
+        for link in default_links:
+            if (
+                link["source"] == "bb/abc1/plane7/dev2"
+                and link["target"] == "bb/xyz1/plane7/dev3"
+                and link["attrs"]["path"] == "path_a"
+            ):
+                target = link
+                break
+        assert target is not None
+        assert "pg_2_idx_2_abc1" in target["risk_groups"]
+        assert "pg_2_idx_3_xyz1" in target["risk_groups"]
 
 
 # ---------------------------------------------------------------------------
