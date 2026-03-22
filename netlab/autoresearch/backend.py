@@ -77,7 +77,7 @@ class CodexCLIBackend(LLMBackend):
     the ``-o`` (output-last-message) flag.
     """
 
-    def __init__(self, model: str = "o4-mini") -> None:
+    def __init__(self, model: str = "") -> None:
         self.model = model
 
     def generate(self, prompt: str, system: str = "") -> str:
@@ -94,12 +94,12 @@ class CodexCLIBackend(LLMBackend):
                 "--sandbox",
                 "read-only",
                 "--skip-git-repo-check",
-                "-m",
-                self.model,
                 "-o",
                 output_path,
-                full_prompt,
             ]
+            if self.model:
+                cmd.extend(["-m", self.model])
+            cmd.append(full_prompt)
             result = subprocess.run(
                 cmd,
                 capture_output=True,
