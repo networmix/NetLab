@@ -938,3 +938,214 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
             "metadata": {"baseline": True},
         },
     ]
+
+
+# ---------------------------------------------------------------------------
+# Config validation
+# ---------------------------------------------------------------------------
+
+
+def validate_config(config: DcBbScenarioConfig) -> list[str]:
+    """Validate a DcBbScenarioConfig for consistency and feasibility.
+
+    Checks:
+    - g_abc1 is a viable G value for the ABC1 DC-BB interconnect.
+    - g_xyz1 is a viable G value for the XYZ1 DC-BB interconnect.
+    - layout_abc1 is valid for the ABC1 grid dimensions.
+    - layout_xyz1 is valid for the XYZ1 grid dimensions.
+    - Port constraints are satisfied (k_fadu <= 16, k_xsw <= 4).
+
+    Args:
+        config: Scenario configuration to validate.
+
+    Returns:
+        List of error strings. Empty list means the config is valid.
+    """
+    errors: list[str] = []
+
+    bb_total = config.bb_planes * config.bb_devices_per_plane
+
+    # ABC1 side: FADU grid is hgrids x fadu_per_hgrid
+    abc1_dc_total = config.abc1_hgrids * config.abc1_fadu_per_hgrid
+    abc1_dc_ports = 16  # FADU has 16 BB-facing ports
+    abc1_bb_ports = config.abc1_fadu_per_hgrid  # BB(abc1) connects to FADUs
+
+    viable_g_abc1 = get_viable_g_values(
+        dc_total=abc1_dc_total,
+        bb_total=bb_total,
+        dc_ports=abc1_dc_ports,
+        bb_ports=abc1_bb_ports,
+    )
+    if config.g_abc1 not in viable_g_abc1:
+        errors.append(
+            f"g_abc1={config.g_abc1} is not viable; viable values: {viable_g_abc1}"
+        )
+
+    # XYZ1 side: XSW grid is xsw_per_plane x xsw_planes
+    xyz1_dc_total = config.xyz1_xsw_per_plane * config.xyz1_xsw_planes
+    xyz1_dc_ports = 4  # XSW has 4 BB-facing ports
+    xyz1_bb_ports = config.xyz1_xsw_planes  # BB(xyz1) connects to XSWs
+
+    viable_g_xyz1 = get_viable_g_values(
+        dc_total=xyz1_dc_total,
+        bb_total=bb_total,
+        dc_ports=xyz1_dc_ports,
+        bb_ports=xyz1_bb_ports,
+    )
+    if config.g_xyz1 not in viable_g_xyz1:
+        errors.append(
+            f"g_xyz1={config.g_xyz1} is not viable; viable values: {viable_g_xyz1}"
+        )
+
+    # Layout validation for ABC1
+    if not validate_layout(
+        g=config.g_abc1,
+        layout=config.layout_abc1,
+        dc_rows=config.abc1_hgrids,
+        dc_cols=config.abc1_fadu_per_hgrid,
+        bb_rows=config.bb_planes,
+        bb_cols=config.bb_devices_per_plane,
+    ):
+        errors.append(
+            f"layout_abc1={config.layout_abc1} is not valid for "
+            f"g_abc1={config.g_abc1}, "
+            f"dc={config.abc1_hgrids}x{config.abc1_fadu_per_hgrid}, "
+            f"bb={config.bb_planes}x{config.bb_devices_per_plane}"
+        )
+
+    # Layout validation for XYZ1
+    if not validate_layout(
+        g=config.g_xyz1,
+        layout=config.layout_xyz1,
+        dc_rows=config.xyz1_xsw_per_plane,
+        dc_cols=config.xyz1_xsw_planes,
+        bb_rows=config.bb_planes,
+        bb_cols=config.bb_devices_per_plane,
+    ):
+        errors.append(
+            f"layout_xyz1={config.layout_xyz1} is not valid for "
+            f"g_xyz1={config.g_xyz1}, "
+            f"dc={config.xyz1_xsw_per_plane}x{config.xyz1_xsw_planes}, "
+            f"bb={config.bb_planes}x{config.bb_devices_per_plane}"
+        )
+
+    # Port constraint checks
+    k_fadu = bb_total // config.g_abc1 if config.g_abc1 > 0 else bb_total
+    if k_fadu > 16:
+        errors.append(
+            f"Port constraint violated: k_fadu={k_fadu} > 16 (G_abc1={config.g_abc1})"
+        )
+
+    k_xsw = bb_total // config.g_xyz1 if config.g_xyz1 > 0 else bb_total
+    if k_xsw > 4:
+        errors.append(
+            f"Port constraint violated: k_xsw={k_xsw} > 4 (G_xyz1={config.g_xyz1})"
+        )
+
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# End-to-end scenario generation
+# ---------------------------------------------------------------------------
+
+
+def _fix_failure_rules(failure_policy: dict) -> dict:
+    """Post-process failure policy to nest conditions inside match blocks.
+
+    The _build_failure_policy builder puts ``conditions`` directly on the
+    rule dict. The ngraph parser expects them inside a ``match`` wrapper.
+    This function moves ``conditions`` into ``match.conditions`` for every
+    rule in every mode.
+
+    Args:
+        failure_policy: Dict from _build_failure_policy (policy_name -> def).
+
+    Returns:
+        Fixed failure policy dict (modified in place and returned).
+    """
+    for _policy_name, policy_def in failure_policy.items():
+        for mode in policy_def.get("modes", []):
+            for rule in mode.get("rules", []):
+                if "conditions" in rule and "match" not in rule:
+                    rule["match"] = {"conditions": rule.pop("conditions")}
+    return failure_policy
+
+
+def _fix_workflow_steps(workflow: list[dict]) -> list[dict]:
+    """Post-process workflow steps for compatibility with ngraph step constructors.
+
+    Fixes applied:
+    - Renames ``demands`` to ``demand_set`` (builder uses wrong key name).
+    - Removes ``flow_policy`` from MaximumSupportedDemand steps (not a valid
+      parameter for the MSD step constructor).
+    - Removes ``metadata`` from TrafficMatrixPlacement steps (not a valid
+      parameter for the TMP step constructor).
+
+    Args:
+        workflow: List of step dicts from _build_workflow.
+
+    Returns:
+        Fixed workflow list (modified in place and returned).
+    """
+    # Keys that are not accepted by the respective step constructors
+    _MSD_INVALID_KEYS = {"flow_policy", "metadata"}
+    _TMP_INVALID_KEYS = {"metadata", "flow_policy"}
+
+    for step in workflow:
+        if "demands" in step and "demand_set" not in step:
+            step["demand_set"] = step.pop("demands")
+
+        step_type = step.get("type", "")
+        if step_type == "MaximumSupportedDemand":
+            for key in _MSD_INVALID_KEYS:
+                step.pop(key, None)
+        elif step_type == "TrafficMatrixPlacement":
+            for key in _TMP_INVALID_KEYS:
+                step.pop(key, None)
+
+    return workflow
+
+
+def generate_scenario(config: DcBbScenarioConfig) -> dict:
+    """Generate a complete NetGraph scenario dict from a DcBbScenarioConfig.
+
+    Assembles all builder outputs into a single dict that can be serialized
+    to YAML and consumed by ``ngraph inspect`` or ``ngraph run``.
+
+    Args:
+        config: Validated scenario configuration.
+
+    Returns:
+        Complete scenario dict with keys: seed, network, risk_groups,
+        demands, failures, workflow.
+
+    Raises:
+        ValueError: If the config fails validation.
+    """
+    errors = validate_config(config)
+    if errors:
+        raise ValueError("Invalid config: " + "; ".join(errors))
+
+    nodes = _build_nodes(config)
+    links = (
+        _build_internal_dc_links(config)
+        + _build_bb_cross_site_links(config)
+        + _build_dc_bb_links(config)
+    )
+    risk_groups = _build_risk_groups(config)
+    demands = _build_demands(config)
+    failure_policy = _fix_failure_rules(_build_failure_policy(config))
+    workflow = _fix_workflow_steps(_build_workflow(config))
+
+    return {
+        "seed": config.seed,
+        "network": {
+            "nodes": nodes,
+            "links": links,
+        },
+        "risk_groups": risk_groups,
+        "demands": demands,
+        "failures": failure_policy,
+        "workflow": workflow,
+    }
