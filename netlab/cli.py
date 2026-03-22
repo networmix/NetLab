@@ -821,6 +821,84 @@ def main() -> None:
 
     ap_test.set_defaults(func=_cmd_test)
 
+    # autoresearch subcommand group
+    ap_auto = sub.add_parser(
+        "autoresearch",
+        help="Autonomous research loop (init, run)",
+        description="Autonomous research: scaffold projects and run experiment loops",
+    )
+    auto_sub = ap_auto.add_subparsers(dest="auto_command", required=True)
+
+    # autoresearch init
+    ap_auto_init = auto_sub.add_parser(
+        "init",
+        help="Scaffold a new autoresearch project directory",
+        description="Create project dir with default templates, copy base scenario",
+    )
+    ap_auto_init.add_argument(
+        "--base-scenario",
+        type=Path,
+        required=True,
+        help="Path to the base scenario YAML (will be copied into the project)",
+    )
+    ap_auto_init.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Output directory for the new autoresearch project",
+    )
+
+    def _cmd_autoresearch_init(args: argparse.Namespace) -> None:
+        from netlab.autoresearch.cli import autoresearch_init
+
+        autoresearch_init(args)
+
+    ap_auto_init.set_defaults(func=_cmd_autoresearch_init)
+
+    # autoresearch run
+    ap_auto_run = auto_sub.add_parser(
+        "run",
+        help="Run the autoresearch experiment loop",
+        description="Load project, construct runner, execute experiment loop",
+    )
+    ap_auto_run.add_argument(
+        "project_dir",
+        type=Path,
+        help="Path to the autoresearch project directory",
+    )
+    ap_auto_run.add_argument(
+        "--backend",
+        type=str,
+        default="mock",
+        choices=["mock", "claude-cli", "openai"],
+        help="LLM backend to use (default: mock)",
+    )
+    ap_auto_run.add_argument(
+        "--max-experiments",
+        type=int,
+        default=50,
+        help="Maximum number of experiments to run (default: 50)",
+    )
+    ap_auto_run.add_argument(
+        "--timeout",
+        type=int,
+        default=600,
+        help="Timeout in seconds for each ngraph run (default: 600)",
+    )
+    ap_auto_run.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility (default: 42)",
+    )
+
+    def _cmd_autoresearch_run(args: argparse.Namespace) -> None:
+        from netlab.autoresearch.cli import autoresearch_run
+
+        autoresearch_run(args)
+
+    ap_auto_run.set_defaults(func=_cmd_autoresearch_run)
+
     args = ap.parse_args()
     # Override log level if -v provided
     if bool(getattr(args, "verbose", False)):
