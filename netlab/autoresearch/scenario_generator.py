@@ -621,3 +621,320 @@ def _build_dc_bb_links(config: DcBbScenarioConfig) -> list[dict]:
                 )
 
     return links
+
+
+# ---------------------------------------------------------------------------
+# Risk group builder
+# ---------------------------------------------------------------------------
+
+
+def _build_risk_groups(config: DcBbScenarioConfig) -> list[dict]:
+    """Build all risk group definitions for the DC-BB topology.
+
+    Creates four categories of risk groups:
+    - 2 path groups (path_a, path_b) for long-haul path failures
+    - bb_planes//4 plane groups (groups of 4 consecutive planes)
+    - bb_planes * 2 plane-site groups (per plane, per site)
+    - (bb_planes//4) * bb_devices_per_plane * 2 device-index-across-plane-group groups
+
+    Default config: 2 + 16 + 128 + 128 = 274 groups.
+
+    Args:
+        config: Scenario configuration with BB plane/device counts.
+
+    Returns:
+        List of risk group dicts, each with "name" and "attrs" keys.
+    """
+    groups: list[dict] = []
+
+    # Path risk groups
+    groups.append({"name": "path_a", "attrs": {"type": "long_haul_path"}})
+    groups.append({"name": "path_b", "attrs": {"type": "long_haul_path"}})
+
+    # Plane groups (4 consecutive planes per group)
+    for g in range(1, config.bb_planes // 4 + 1):
+        groups.append(
+            {
+                "name": f"plane_group_{g}",
+                "attrs": {
+                    "type": "plane_group",
+                    "planes": list(range((g - 1) * 4 + 1, g * 4 + 1)),
+                },
+            }
+        )
+
+    # Per-plane-site groups
+    for pl in range(1, config.bb_planes + 1):
+        for site in ["abc1", "xyz1"]:
+            groups.append(
+                {
+                    "name": f"plane_{pl}_site_{site}",
+                    "attrs": {"type": "plane_site", "plane": pl, "site": site},
+                }
+            )
+
+    # Device-index-across-plane-group
+    for g in range(1, config.bb_planes // 4 + 1):
+        for d in range(1, config.bb_devices_per_plane + 1):
+            for site in ["abc1", "xyz1"]:
+                groups.append(
+                    {
+                        "name": f"pg_{g}_idx_{d}_{site}",
+                        "attrs": {"type": "device_index_across_planes"},
+                    }
+                )
+
+    return groups
+
+
+# ---------------------------------------------------------------------------
+# Demand builder
+# ---------------------------------------------------------------------------
+
+
+def _build_demands(config: DcBbScenarioConfig) -> dict:
+    """Build demand definitions for the DC-BB topology.
+
+    Creates a bidirectional aggregate demand between ABC1 and XYZ1 using
+    ``combine`` mode. Each direction carries 100 Tbps (100,000 Gbps) as a
+    reference volume; MSD scales this by alpha to find the maximum
+    supportable demand.
+
+    Args:
+        config: Scenario configuration (currently unused but accepted
+            for interface consistency with other builders).
+
+    Returns:
+        Dict with a single key ``baseline_traffic_matrix`` mapping to a
+        list of two demand entries (one per direction).
+    """
+    return {
+        "baseline_traffic_matrix": [
+            {
+                "source": "^abc1/pod.*/rsw$",
+                "target": "^xyz1/mp1/rsw$",
+                "volume": 100000.0,
+                "mode": "combine",
+                "flow_policy": "SHORTEST_PATHS_ECMP",
+            },
+            {
+                "source": "^xyz1/mp1/rsw$",
+                "target": "^abc1/pod.*/rsw$",
+                "volume": 100000.0,
+                "mode": "combine",
+                "flow_policy": "SHORTEST_PATHS_ECMP",
+            },
+        ]
+    }
+
+
+# ---------------------------------------------------------------------------
+# Failure policy builder
+# ---------------------------------------------------------------------------
+
+
+def _build_failure_policy(config: DcBbScenarioConfig) -> dict:
+    """Build the weighted Monte Carlo failure policy for the DC-BB topology.
+
+    Combines seven failure modes into a single policy named
+    ``dc_bb_failures``:
+
+    1. Long-haul path failure (path_a or path_b) -- weight 0.10
+    2. Plane group failure (4 consecutive planes) -- weight 0.15
+    3. Per-plane-site failure (all devices in one plane at one site) -- 0.15
+    4. Device-index-across-plane-group failure -- weight 0.10
+    5. Single random BB device failure -- weight 0.15
+    6. Two random BB device failures -- weight 0.10
+    7. Random BB-BB link failures (availability 0.99) -- weight 0.25
+
+    Args:
+        config: Scenario configuration (currently unused but accepted
+            for interface consistency with other builders).
+
+    Returns:
+        Dict with key ``dc_bb_failures`` mapping to the policy definition.
+    """
+    return {
+        "dc_bb_failures": {
+            "attrs": {
+                "description": (
+                    "Monte Carlo: BB path, plane group, device, and link failures"
+                ),
+            },
+            "modes": [
+                # Mode 1: Long-haul path failure (correlated across all 64 planes)
+                {
+                    "weight": 0.10,
+                    "rules": [
+                        {
+                            "scope": "risk_group",
+                            "mode": "choice",
+                            "count": 1,
+                            "conditions": [
+                                {
+                                    "attr": "type",
+                                    "op": "==",
+                                    "value": "long_haul_path",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                # Mode 2: Plane group failure (4 consecutive planes)
+                {
+                    "weight": 0.15,
+                    "rules": [
+                        {
+                            "scope": "risk_group",
+                            "mode": "choice",
+                            "count": 1,
+                            "conditions": [
+                                {
+                                    "attr": "type",
+                                    "op": "==",
+                                    "value": "plane_group",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                # Mode 3: All devices of one plane at one site (4 devices)
+                {
+                    "weight": 0.15,
+                    "rules": [
+                        {
+                            "scope": "risk_group",
+                            "mode": "choice",
+                            "count": 1,
+                            "conditions": [
+                                {
+                                    "attr": "type",
+                                    "op": "==",
+                                    "value": "plane_site",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                # Mode 4: Device index across plane group at one site
+                {
+                    "weight": 0.10,
+                    "rules": [
+                        {
+                            "scope": "risk_group",
+                            "mode": "choice",
+                            "count": 1,
+                            "conditions": [
+                                {
+                                    "attr": "type",
+                                    "op": "==",
+                                    "value": "device_index_across_planes",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                # Mode 5: Single random BB device failure
+                {
+                    "weight": 0.15,
+                    "rules": [
+                        {
+                            "scope": "node",
+                            "mode": "choice",
+                            "count": 1,
+                            "conditions": [
+                                {
+                                    "attr": "role",
+                                    "op": "==",
+                                    "value": "bb",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                # Mode 6: Two random BB device failures
+                {
+                    "weight": 0.10,
+                    "rules": [
+                        {
+                            "scope": "node",
+                            "mode": "choice",
+                            "count": 2,
+                            "conditions": [
+                                {
+                                    "attr": "role",
+                                    "op": "==",
+                                    "value": "bb",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                # Mode 7: Random BB-BB link failures (availability 0.99)
+                {
+                    "weight": 0.25,
+                    "rules": [
+                        {
+                            "scope": "link",
+                            "mode": "random",
+                            "probability": 0.01,
+                            "conditions": [
+                                {
+                                    "attr": "link_type",
+                                    "op": "==",
+                                    "value": "bb_cross_site",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# Workflow builder
+# ---------------------------------------------------------------------------
+
+
+def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
+    """Build the workflow steps for the DC-BB scenario.
+
+    Creates two steps:
+
+    1. **MaximumSupportedDemand** (``msd_baseline``): finds the maximum
+       alpha multiplier the topology supports for the baseline traffic
+       matrix under no-failure conditions.
+    2. **TrafficMatrixPlacement** (``tm_placement``): places the baseline
+       traffic matrix under the ``dc_bb_failures`` failure policy to
+       compute the Bandwidth Availability Curve (BAC).
+
+    Args:
+        config: Scenario configuration with seed, resolution, and
+            iteration count.
+
+    Returns:
+        List of two workflow step dicts.
+    """
+    return [
+        {
+            "type": "MaximumSupportedDemand",
+            "name": "msd_baseline",
+            "demands": "baseline_traffic_matrix",
+            "flow_policy": "SHORTEST_PATHS_ECMP",
+            "seed": config.seed,
+            "resolution": config.msd_resolution,
+        },
+        {
+            "type": "TrafficMatrixPlacement",
+            "name": "tm_placement",
+            "demands": "baseline_traffic_matrix",
+            "flow_policy": "SHORTEST_PATHS_ECMP",
+            "failure_policy": "dc_bb_failures",
+            "iterations": config.failure_iterations,
+            "parallelism": 8,
+            "seed": config.seed,
+            "metadata": {"baseline": True},
+        },
+    ]
