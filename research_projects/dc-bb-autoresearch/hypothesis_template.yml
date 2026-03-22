@@ -2,34 +2,78 @@ params:
   g_abc1:
     type: enum
     values: ["16", "32", "64"]
-    default: "64"
+    default: "16"
     description: >
-      Mesh group count for ABC1 (FADU) <-> BB interconnect.
-      G=16: dense (16 BB ports/FADU, 9,216 links).
-      G=32: medium (8 BB ports/FADU, 4,608 links).
-      G=64: sparse (4 BB ports/FADU, 2,304 links).
+      Mesh group count for ABC1 (FADU) <-> BB.
+      G=16: 16 BB/FADU, 9,216 links (uses all 16 ports — satisfies 75% rule).
+      G=32: 8 BB/FADU, 4,608 links (fails 75% rule — DevIdx causes 50% loss).
+      G=64: 4 BB/FADU, 2,304 links (fails 75% rule — multiple failure types cause >=50% loss).
   g_xyz1:
     type: enum
     values: ["64", "128", "256"]
     default: "64"
     description: >
-      Mesh group count for XYZ1 (XSW) <-> BB interconnect.
-      G=64: dense (4 BB ports/XSW, 6,144 links).
-      G=128: medium (2 BB ports/XSW, 3,072 links).
-      G=256: sparse (1 BB port/XSW, 1,536 links).
+      Mesh group count for XYZ1 (XSW) <-> BB.
+      G=64: 4 BB/XSW, 6,144 links (best available — 4 ports is XSW max).
+      G=128: 2 BB/XSW, 3,072 links (single failure can remove 50%+).
+      G=256: 1 BB/XSW, 1,536 links (any BB failure disconnects XSW entirely).
   layout_abc1:
     type: enum
-    values: ["16x4_16x4", "16x4_32x2", "16x4_64x1"]
-    default: "16x4_16x4"
+    values:
+      # G=16 layouts (block = DC x BB)
+      - "4x4_4x4"    # 4r×9c <> 4r×4c
+      - "4x4_8x2"    # 4r×9c <> 8r×2c
+      - "4x4_16x1"   # 4r×9c <> 16r×1c  ✓ best for resilience
+      - "8x2_4x4"    # 2r×18c <> 4r×4c
+      - "8x2_8x2"    # 2r×18c <> 8r×2c
+      - "8x2_16x1"   # 2r×18c <> 16r×1c  ✓ best for resilience
+      - "16x1_4x4"   # 1r×36c <> 4r×4c
+      - "16x1_8x2"   # 1r×36c <> 8r×2c
+      - "16x1_16x1"  # 1r×36c <> 16r×1c  ✓ best for resilience
+      # G=32 layouts
+      - "8x4_8x4"    # 2r×9c <> 8r×1c
+      - "8x4_16x2"   # 2r×9c <> 4r×2c
+      - "8x4_32x1"   # 2r×9c <> 2r×4c
+      - "16x2_8x4"   # 1r×18c <> 8r×1c
+      - "16x2_16x2"  # 1r×18c <> 4r×2c
+      - "16x2_32x1"  # 1r×18c <> 2r×4c
+      # G=64 layouts
+      - "16x4_16x4"  # 1r×9c <> 4r×1c
+      - "16x4_32x2"  # 1r×9c <> 2r×2c
+      - "16x4_64x1"  # 1r×9c <> 1r×4c
+    default: "4x4_16x1"
     description: >
-      Grid factorization for ABC1 DC-BB groups (G=64 only).
-      Format: gr_dc x gc_dc _ gr_bb x gc_bb.
-      FADU grid is 16x36, BB grid is 64x4.
+      Grid factorization for ABC1 side: gr_dc x gc_dc _ gr_bb x gc_bb.
+      MUST match g_abc1. Comments show the mesh group block shape (ArxBc <> CrxDc).
+      Best resilience: BB block with most rows (spreads across planes).
   layout_xyz1:
     type: enum
-    values: ["16x4_16x4", "16x4_32x2", "16x4_64x1", "8x8_16x4", "32x2_16x4", "64x1_16x4"]
-    default: "16x4_16x4"
+    values:
+      # G=64 layouts
+      - "8x8_16x4"   # 8r×3c <> 4r×1c  ✓ best plane-site resilience
+      - "8x8_32x2"   # 8r×3c <> 2r×2c
+      - "8x8_64x1"   # 8r×3c <> 1r×4c
+      - "16x4_16x4"  # 4r×6c <> 4r×1c  ✓ best plane-site resilience
+      - "16x4_32x2"  # 4r×6c <> 2r×2c
+      - "16x4_64x1"  # 4r×6c <> 1r×4c
+      - "32x2_16x4"  # 2r×12c <> 4r×1c  ✓ best plane-site resilience
+      - "32x2_32x2"  # 2r×12c <> 2r×2c
+      - "32x2_64x1"  # 2r×12c <> 1r×4c
+      - "64x1_16x4"  # 1r×24c <> 4r×1c  ✓ best plane-site resilience
+      - "64x1_32x2"  # 1r×24c <> 2r×2c
+      - "64x1_64x1"  # 1r×24c <> 1r×4c
+      # G=128 layouts
+      - "16x8_32x4"  # 4r×3c <> 2r×1c
+      - "16x8_64x2"  # 4r×3c <> 1r×2c
+      - "32x4_32x4"  # 2r×6c <> 2r×1c
+      - "32x4_64x2"  # 2r×6c <> 1r×2c
+      - "64x2_32x4"  # 1r×12c <> 2r×1c
+      - "64x2_64x2"  # 1r×12c <> 1r×2c
+      # G=256 layouts
+      - "32x8_64x4"  # 2r×3c <> 1r×1c
+      - "64x4_64x4"  # 1r×6c <> 1r×1c
+    default: "8x8_16x4"
     description: >
-      Grid factorization for XYZ1 DC-BB groups (G=64 only).
-      Format: gr_dc x gc_dc _ gr_bb x gc_bb.
-      XSW grid is 64x24, BB grid is 64x4.
+      Grid factorization for XYZ1 side: gr_dc x gc_dc _ gr_bb x gc_bb.
+      MUST match g_xyz1. XSW grid is 64×24 (dev×plane).
+      Best plane-site resilience: BB block with 4 rows (4r×1c spreads across 4 planes).
