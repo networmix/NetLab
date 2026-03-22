@@ -366,3 +366,258 @@ def _build_nodes(config: DcBbScenarioConfig) -> dict:
             }
 
     return nodes
+
+
+# ---------------------------------------------------------------------------
+# Internal DC link builder
+# ---------------------------------------------------------------------------
+
+
+def _build_internal_dc_links(config: DcBbScenarioConfig) -> list[dict]:
+    """Build all internal DC links within ABC1 and XYZ1.
+
+    Creates intra-DC Clos links (RSW-FSW, FSW-SSW, SSW-FADU/XSW) for both
+    data centers. Does NOT create DC-BB or BB cross-site links.
+
+    Capacities are scaled by the building/megapod multiplier:
+    - ABC1: ×config.abc1_buildings (default 5)
+    - XYZ1: ×config.xyz1_megapods (default 72)
+
+    Args:
+        config: Scenario configuration with device counts and scaling factors.
+
+    Returns:
+        List of link dicts, each with source, target, capacity, cost, attrs.
+    """
+    links: list[dict] = []
+
+    # --- ABC1 internal links ---
+
+    abc1_scale = config.abc1_buildings
+
+    # RSW ↔ FSW: each RSW connects to all FSW in its pod (one per plane)
+    # Capacity = rsw_per_pod × 200G × buildings
+    rsw_fsw_cap = config.abc1_rsw_per_pod * 200.0 * abc1_scale
+    for p in range(1, config.abc1_pods_per_building + 1):
+        rsw = f"abc1/pod{p}/rsw"
+        for pl in range(1, config.abc1_planes + 1):
+            links.append(
+                {
+                    "source": rsw,
+                    "target": f"abc1/pod{p}/fsw/plane{pl}",
+                    "capacity": rsw_fsw_cap,
+                    "cost": 1.0,
+                    "attrs": {"link_type": "rsw_fsw", "site": "abc1"},
+                }
+            )
+
+    # FSW ↔ SSW: each FSW connects to all SSW in its plane
+    # Capacity = 200G × buildings
+    fsw_ssw_cap = 200.0 * abc1_scale
+    for p in range(1, config.abc1_pods_per_building + 1):
+        for pl in range(1, config.abc1_planes + 1):
+            fsw = f"abc1/pod{p}/fsw/plane{pl}"
+            for i in range(1, config.abc1_ssw_per_plane + 1):
+                links.append(
+                    {
+                        "source": fsw,
+                        "target": f"abc1/ssw/plane{pl}/idx{i}",
+                        "capacity": fsw_ssw_cap,
+                        "cost": 1.0,
+                        "attrs": {"link_type": "fsw_ssw", "site": "abc1"},
+                    }
+                )
+
+    # SSW ↔ FADU: SSW(plane_pl, idx_i) connects to FADU(hgrid_h, idx_i)
+    # for all h ∈ [1, hgrids]. Capacity = 2 × 200G × buildings.
+    ssw_fadu_cap = 2 * 200.0 * abc1_scale
+    for pl in range(1, config.abc1_planes + 1):
+        for i in range(1, config.abc1_ssw_per_plane + 1):
+            ssw = f"abc1/ssw/plane{pl}/idx{i}"
+            for h in range(1, config.abc1_hgrids + 1):
+                links.append(
+                    {
+                        "source": ssw,
+                        "target": f"abc1/fadu/hgrid{h}/idx{i}",
+                        "capacity": ssw_fadu_cap,
+                        "cost": 1.0,
+                        "attrs": {"link_type": "ssw_fadu", "site": "abc1"},
+                    }
+                )
+
+    # --- XYZ1 internal links ---
+
+    xyz1_scale = config.xyz1_megapods
+    xyz1_link_rate = 400.0  # base link rate for XYZ1 (DCTypeF uses 400G)
+
+    # RSW ↔ FSW: single RSW connects to all FSW
+    # Capacity = 400G × megapods
+    rsw_fsw_cap_xyz = xyz1_link_rate * xyz1_scale
+    rsw_xyz = "xyz1/mp1/rsw"
+    fsw_devs_per_row = config.xyz1_fsw_per_megapod // _XYZ1_FSW_ROWS
+    for r in range(1, _XYZ1_FSW_ROWS + 1):
+        for d in range(1, fsw_devs_per_row + 1):
+            links.append(
+                {
+                    "source": rsw_xyz,
+                    "target": f"xyz1/mp1/fsw/row{r}/dev{d}",
+                    "capacity": rsw_fsw_cap_xyz,
+                    "cost": 1.0,
+                    "attrs": {"link_type": "rsw_fsw", "site": "xyz1"},
+                }
+            )
+
+    # FSW ↔ SSW: each FSW connects to all SSW
+    # Capacity = 400G × megapods
+    fsw_ssw_cap_xyz = xyz1_link_rate * xyz1_scale
+    for r in range(1, _XYZ1_FSW_ROWS + 1):
+        for d in range(1, fsw_devs_per_row + 1):
+            fsw = f"xyz1/mp1/fsw/row{r}/dev{d}"
+            for pl in range(1, config.xyz1_ssw_per_megapod + 1):
+                links.append(
+                    {
+                        "source": fsw,
+                        "target": f"xyz1/mp1/ssw/plane{pl}",
+                        "capacity": fsw_ssw_cap_xyz,
+                        "cost": 1.0,
+                        "attrs": {"link_type": "fsw_ssw", "site": "xyz1"},
+                    }
+                )
+
+    # SSW ↔ XSW: SSW(plane_pl) connects to all XSW in plane_pl
+    # Capacity = 400G × megapods
+    ssw_xsw_cap = xyz1_link_rate * xyz1_scale
+    for pl in range(1, config.xyz1_ssw_per_megapod + 1):
+        ssw = f"xyz1/mp1/ssw/plane{pl}"
+        for d_x in range(1, config.xyz1_xsw_per_plane + 1):
+            links.append(
+                {
+                    "source": ssw,
+                    "target": f"xyz1/xsw/plane{pl}/dev{d_x}",
+                    "capacity": ssw_xsw_cap,
+                    "cost": 1.0,
+                    "attrs": {"link_type": "ssw_xsw", "site": "xyz1"},
+                }
+            )
+
+    return links
+
+
+# ---------------------------------------------------------------------------
+# BB cross-site link builder
+# ---------------------------------------------------------------------------
+
+
+def _build_bb_cross_site_links(config: DcBbScenarioConfig) -> list[dict]:
+    """Build cross-site links between ABC1-side and XYZ1-side BB devices.
+
+    Creates a 4x4 full mesh per plane, replicated on Path_A and Path_B.
+    Total: 64 planes × 16 pairs × 2 paths = 2,048 links.
+    """
+    links: list[dict] = []
+    for pl in range(1, config.bb_planes + 1):
+        for a in range(1, config.bb_devices_per_plane + 1):
+            for x in range(1, config.bb_devices_per_plane + 1):
+                for path in ["path_a", "path_b"]:
+                    links.append(
+                        {
+                            "source": f"bb/abc1/plane{pl}/dev{a}",
+                            "target": f"bb/xyz1/plane{pl}/dev{x}",
+                            "capacity": config.bb_bb_link_capacity,
+                            "cost": 10,
+                            "risk_groups": [
+                                path,
+                                f"plane_group_{(pl - 1) // 4 + 1}",
+                                f"plane_{pl}_site_abc1",
+                                f"plane_{pl}_site_xyz1",
+                            ],
+                            "attrs": {
+                                "link_type": "bb_cross_site",
+                                "plane": pl,
+                                "path": path,
+                            },
+                        }
+                    )
+    return links
+
+
+# ---------------------------------------------------------------------------
+# DC-BB interconnect link builder
+# ---------------------------------------------------------------------------
+
+
+def _build_dc_bb_links(config: DcBbScenarioConfig) -> list[dict]:
+    """Build mesh-group-based links between DC devices and BB devices.
+
+    Uses the mesh group algorithm to partition FADU<->BB(abc1-side) and
+    XSW<->BB(xyz1-side) into groups, then creates full-mesh links within
+    each group.
+
+    Raises:
+        AssertionError: If per-device degree exceeds port constraints
+            (k_fadu <= 16, k_xsw <= 4).
+    """
+    bb_total = config.bb_planes * config.bb_devices_per_plane
+
+    # --- Port constraint checks ---
+    k_fadu = bb_total // config.g_abc1
+    k_xsw = bb_total // config.g_xyz1
+    assert k_fadu <= 16, (
+        f"k_fadu={k_fadu} exceeds 16-port limit (G_abc1={config.g_abc1})"
+    )
+    assert k_xsw <= 4, f"k_xsw={k_xsw} exceeds 4-port limit (G_xyz1={config.g_xyz1})"
+
+    links: list[dict] = []
+
+    # --- ABC1: FADU <-> BB(abc1) ---
+    abc1_groups = _compute_mesh_groups(
+        dc_rows=config.abc1_hgrids,
+        dc_cols=config.abc1_fadu_per_hgrid,
+        bb_rows=config.bb_planes,
+        bb_cols=config.bb_devices_per_plane,
+        g=config.g_abc1,
+        layout=config.layout_abc1,
+    )
+    for dc_devs, bb_devs in abc1_groups:
+        for dr, dc in dc_devs:
+            fadu_name = f"abc1/fadu/hgrid{dr + 1}/idx{dc + 1}"
+            for br, bc in bb_devs:
+                bb_name = f"bb/abc1/plane{br + 1}/dev{bc + 1}"
+                links.append(
+                    {
+                        "source": fadu_name,
+                        "target": bb_name,
+                        "capacity": config.dc_bb_link_capacity,
+                        "cost": 5,
+                        "attrs": {"link_type": "dc_bb", "side": "abc1"},
+                    }
+                )
+
+    # --- XYZ1: XSW <-> BB(xyz1) ---
+    # The XSW grid uses 64x24 orientation (rows=device, cols=plane)
+    # to match GCD factorization requirements.
+    xyz1_groups = _compute_mesh_groups(
+        dc_rows=config.xyz1_xsw_per_plane,
+        dc_cols=config.xyz1_xsw_planes,
+        bb_rows=config.bb_planes,
+        bb_cols=config.bb_devices_per_plane,
+        g=config.g_xyz1,
+        layout=config.layout_xyz1,
+    )
+    for dc_devs, bb_devs in xyz1_groups:
+        for dr, dc in dc_devs:
+            # dr = device index within plane, dc = plane index
+            xsw_name = f"xyz1/xsw/plane{dc + 1}/dev{dr + 1}"
+            for br, bc in bb_devs:
+                bb_name = f"bb/xyz1/plane{br + 1}/dev{bc + 1}"
+                links.append(
+                    {
+                        "source": xsw_name,
+                        "target": bb_name,
+                        "capacity": config.dc_bb_link_capacity,
+                        "cost": 5,
+                        "attrs": {"link_type": "dc_bb", "side": "xyz1"},
+                    }
+                )
+
+    return links
