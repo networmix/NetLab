@@ -266,13 +266,22 @@ def autoresearch_run(args: argparse.Namespace) -> None:
         print(f"Not a directory: {project_dir}", file=sys.stderr)
         sys.exit(1)
 
+    # Determine generation mode from config.yml (if present)
+    config_yml_path = project_dir / "config.yml"
+    generation_mode = "template"
+    if config_yml_path.exists():
+        with open(config_yml_path) as f:
+            project_config = yaml.safe_load(f) or {}
+        generation_mode = project_config.get("generation_mode", "template")
+
     # Validate required files exist
     required = [
         "program.md",
         "objective.yml",
         "hypothesis_template.yml",
-        "base_scenario.yml",
     ]
+    if generation_mode == "template":
+        required.append("base_scenario.yml")
     for name in required:
         if not (project_dir / name).exists():
             print(f"Missing required file: {project_dir / name}", file=sys.stderr)

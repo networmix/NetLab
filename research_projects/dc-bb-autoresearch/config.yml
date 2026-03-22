@@ -1,0 +1,4 @@
+generation_mode: programmatic
+generator_module: netlab.autoresearch.scenario_generator
+generator_function: generate_scenario
+config_class: netlab.autoresearch.scenario_generator.DcBbScenarioConfig

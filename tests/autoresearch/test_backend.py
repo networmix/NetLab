@@ -266,9 +266,9 @@ class TestCodexCLIBackend:
         assert issubclass(CodexCLIBackend, LLMBackend)
 
     def test_default_model(self):
-        """Default model is o4-mini."""
+        """Default model is empty (uses codex default)."""
         backend = CodexCLIBackend()
-        assert backend.model == "o4-mini"
+        assert backend.model == ""
 
 
 # ---------------------------------------------------------------------------

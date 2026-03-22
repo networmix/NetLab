@@ -79,19 +79,47 @@ class AutoResearchRunner:
         )
         self._objective = ObjectiveFunction(self._project_dir / "objective.yml")
 
-        base_scenario_path = self._project_dir / "base_scenario.yml"
-        self._base_scenario_text = base_scenario_path.read_text(encoding="utf-8")
-
-        # Validate base scenario has MSD workflow step
-        self._validate_workflow()
-
-        # Create merger and validate placeholders
-        self._merger = HypothesisMerger(self._base_scenario_text, self._template)
-        placeholder_errors = self._merger.validate_placeholders()
-        if placeholder_errors:
-            raise ValueError(
-                f"Placeholder validation failed: {'; '.join(placeholder_errors)}"
+        # Detect generation mode from config.yml
+        config_path = self._project_dir / "config.yml"
+        if config_path.exists():
+            with open(config_path) as f:
+                project_config = yaml.safe_load(f) or {}
+            self._generation_mode = project_config.get("generation_mode", "template")
+            self._generator_module = project_config.get("generator_module", "")
+            self._generator_function = project_config.get(
+                "generator_function", "generate_scenario"
             )
+            self._config_class = project_config.get("config_class", "")
+        else:
+            self._generation_mode = "template"
+            self._generator_module = ""
+            self._generator_function = ""
+            self._config_class = ""
+
+        # Mode-specific initialization
+        if self._generation_mode == "template":
+            base_scenario_path = self._project_dir / "base_scenario.yml"
+            self._base_scenario_text = base_scenario_path.read_text(encoding="utf-8")
+
+            # Validate base scenario has MSD workflow step
+            self._validate_workflow()
+
+            # Create merger and validate placeholders
+            self._merger = HypothesisMerger(self._base_scenario_text, self._template)
+            placeholder_errors = self._merger.validate_placeholders()
+            if placeholder_errors:
+                raise ValueError(
+                    f"Placeholder validation failed: {'; '.join(placeholder_errors)}"
+                )
+            self._generator_fn = None
+            self._config_class_ref = None
+        elif self._generation_mode == "programmatic":
+            self._base_scenario_text = ""
+            self._merger = None
+            self._generator_fn = self._load_generator()
+            self._config_class_ref = self._load_config_class()
+        else:
+            raise ValueError(f"Unknown generation_mode: {self._generation_mode}")
 
         # Set up experiment log and results dir
         self._log = ExperimentLog(
@@ -139,6 +167,52 @@ class AutoResearchRunner:
                 "Base scenario must have a MaximumSupportedDemand workflow step. "
                 "No step with type 'MaximumSupportedDemand' found in workflow."
             )
+
+    def _load_generator(self):
+        """Dynamically load the generator function from the configured module."""
+        import importlib
+
+        module = importlib.import_module(self._generator_module)
+        return getattr(module, self._generator_function)
+
+    def _load_config_class(self):
+        """Dynamically load the config class for the generator."""
+        if not self._config_class:
+            return None
+        import importlib
+
+        parts = self._config_class.rsplit(".", 1)
+        module = importlib.import_module(parts[0])
+        return getattr(module, parts[1])
+
+    def _generate_programmatic(self, hypothesis: Hypothesis) -> dict:
+        """Generate scenario using the programmatic generator."""
+        assert self._generator_fn is not None, "generator_fn not loaded"
+        params = hypothesis.params
+        if self._config_class_ref is not None:
+            import dataclasses
+
+            field_types = {
+                f.name: f.type for f in dataclasses.fields(self._config_class_ref)
+            }
+            config_kwargs = {}
+            for key, value in params.items():
+                # Handle layout tuples encoded as strings (e.g. "16x4_16x4")
+                if key.startswith("layout_") and isinstance(value, str):
+                    parts = value.replace("x", ",").replace("_", ",").split(",")
+                    value = tuple(int(p) for p in parts)
+                # Coerce string enum values to the target field type
+                elif isinstance(value, str) and key in field_types:
+                    ft = field_types[key]
+                    if ft == "int" or ft is int:
+                        value = int(value)
+                    elif ft == "float" or ft is float:
+                        value = float(value)
+                config_kwargs[key] = value
+            config = self._config_class_ref(**config_kwargs)
+            return self._generator_fn(config)
+        else:
+            return self._generator_fn(**params)
 
     @property
     def status(self) -> str:
@@ -244,10 +318,14 @@ class AutoResearchRunner:
                 self._experiments_run += 1
                 continue
 
-            # Merge scenario
+            # Generate scenario
             try:
-                scenario_dict = self._merger.merge(hypothesis)
-            except ValueError as exc:
+                if self._generation_mode == "template":
+                    assert self._merger is not None
+                    scenario_dict = self._merger.merge(hypothesis)
+                else:  # programmatic
+                    scenario_dict = self._generate_programmatic(hypothesis)
+            except (ValueError, Exception) as exc:
                 self._log_error_entry(
                     exp_id=exp_id,
                     status="generation_error",

@@ -1,0 +1,35 @@
+params:
+  g_abc1:
+    type: enum
+    values: ["16", "32", "64"]
+    default: "64"
+    description: >
+      Mesh group count for ABC1 (FADU) <-> BB interconnect.
+      G=16: dense (16 BB ports/FADU, 9,216 links).
+      G=32: medium (8 BB ports/FADU, 4,608 links).
+      G=64: sparse (4 BB ports/FADU, 2,304 links).
+  g_xyz1:
+    type: enum
+    values: ["64", "128", "256"]
+    default: "64"
+    description: >
+      Mesh group count for XYZ1 (XSW) <-> BB interconnect.
+      G=64: dense (4 BB ports/XSW, 6,144 links).
+      G=128: medium (2 BB ports/XSW, 3,072 links).
+      G=256: sparse (1 BB port/XSW, 1,536 links).
+  layout_abc1:
+    type: enum
+    values: ["16x4_16x4", "16x4_32x2", "16x4_64x1"]
+    default: "16x4_16x4"
+    description: >
+      Grid factorization for ABC1 DC-BB groups (G=64 only).
+      Format: gr_dc x gc_dc _ gr_bb x gc_bb.
+      FADU grid is 16x36, BB grid is 64x4.
+  layout_xyz1:
+    type: enum
+    values: ["16x4_16x4", "16x4_32x2", "16x4_64x1", "8x8_16x4", "32x2_16x4", "64x1_16x4"]
+    default: "16x4_16x4"
+    description: >
+      Grid factorization for XYZ1 DC-BB groups (G=64 only).
+      Format: gr_dc x gc_dc _ gr_bb x gc_bb.
+      XSW grid is 64x24, BB grid is 64x4.

@@ -1,0 +1,6 @@
+direction: maximize
+primary_metric: alpha_star
+metrics:
+  alpha_star:
+    path: "steps.msd_baseline.data.alpha_star"
+constraints: []
