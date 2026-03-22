@@ -1,0 +1,3715 @@
+{
+  "workflow": {
+    "msd_baseline": {
+      "step_type": "MaximumSupportedDemand",
+      "step_name": "msd_baseline",
+      "execution_order": 0,
+      "scenario_seed": 42,
+      "step_seed": 2022406077,
+      "seed_source": "scenario-derived",
+      "active_seed": 2022406077
+    },
+    "tm_placement": {
+      "step_type": "TrafficMatrixPlacement",
+      "step_name": "tm_placement",
+      "execution_order": 1,
+      "scenario_seed": 42,
+      "step_seed": 42,
+      "seed_source": "explicit-step",
+      "active_seed": 42
+    },
+    "node_to_node_capacity_matrix": {
+      "step_type": "MaxFlow",
+      "step_name": "node_to_node_capacity_matrix",
+      "execution_order": 2,
+      "scenario_seed": 42,
+      "step_seed": 42,
+      "seed_source": "explicit-step",
+      "active_seed": 42
+    }
+  },
+  "steps": {
+    "msd_baseline": {
+      "metadata": {
+        "duration_sec": 0.0006399154663085938
+      },
+      "data": {
+        "alpha_star": 1.0,
+        "context": {
+          "acceptance_rule": "hard",
+          "alpha_start": 1.0,
+          "growth_factor": 2.0,
+          "alpha_min": 0.001,
+          "alpha_max": 1000000.0,
+          "resolution": 0.05,
+          "max_bracket_iters": 16,
+          "max_bisect_iters": 32,
+          "demand_set": "baseline_traffic_matrix",
+          "placement_rounds": 2
+        },
+        "base_demands": [
+          {
+            "id": "^N([1-4])$|^N([1-4])$|dkJXIxbTQz-6HthFEsIgqw",
+            "source": "^N([1-4])$",
+            "target": "^N([1-4])$",
+            "volume": 12.0,
+            "mode": "pairwise",
+            "priority": 0,
+            "flow_policy": null
+          }
+        ],
+        "probes": [
+          {
+            "alpha": 1.0,
+            "feasible": true,
+            "placement_ratio": 1.0
+          },
+          {
+            "alpha": 2.0,
+            "feasible": false,
+            "placement_ratio": 0.8333333333333334
+          },
+          {
+            "alpha": 1.5,
+            "feasible": false,
+            "placement_ratio": 0.8888888888888888
+          },
+          {
+            "alpha": 1.25,
+            "feasible": false,
+            "placement_ratio": 0.9333333333333333
+          },
+          {
+            "alpha": 1.125,
+            "feasible": false,
+            "placement_ratio": 0.9629629629629629
+          },
+          {
+            "alpha": 1.0625,
+            "feasible": false,
+            "placement_ratio": 0.9803921568627451
+          },
+          {
+            "alpha": 1.03125,
+            "feasible": false,
+            "placement_ratio": 0.98989898989899
+          }
+        ]
+      }
+    },
+    "tm_placement": {
+      "metadata": {
+        "iterations": 1000,
+        "parallelism": 8,
+        "analysis_function": "demand_placement_analysis",
+        "policy_name": "single_link_failure",
+        "execution_time": 0.0019550323486328125,
+        "unique_patterns": 6,
+        "duration_sec": 0.013847112655639648
+      },
+      "data": {
+        "baseline": {
+          "failure_id": "",
+          "failure_state": {
+            "excluded_nodes": [],
+            "excluded_links": []
+          },
+          "failure_trace": null,
+          "occurrence_count": 1,
+          "flows": [
+            {
+              "source": "N1",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N1",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N1",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N2",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N2",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N2",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N3",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N3",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N3",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N4",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N4",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            },
+            {
+              "source": "N4",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 1.0,
+              "placed": 1.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0
+              },
+              "data": {}
+            }
+          ],
+          "summary": {
+            "total_demand": 12.0,
+            "total_placed": 12.0,
+            "overall_ratio": 1.0,
+            "dropped_flows": 0,
+            "num_flows": 12
+          },
+          "data": {}
+        },
+        "flow_results": [
+          {
+            "failure_id": "6d9f3cfac8351fbe",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 164,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.5,
+                "dropped": 0.5,
+                "cost_distribution": {
+                  "1": 0.5
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.5,
+                "dropped": 0.5,
+                "cost_distribution": {
+                  "1": 0.5
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.5,
+                "dropped": 0.5,
+                "cost_distribution": {
+                  "1": 0.5
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.5,
+                "dropped": 0.5,
+                "cost_distribution": {
+                  "1": 0.5
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 12.0,
+              "total_placed": 10.0,
+              "overall_ratio": 0.8333333333333334,
+              "dropped_flows": 4,
+              "num_flows": 12
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "928d92ed50e90b11",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 180,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 12.0,
+              "total_placed": 10.0,
+              "overall_ratio": 0.8333333333333334,
+              "dropped_flows": 2,
+              "num_flows": 12
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "e3cd717666c3ac61",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 165,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 12.0,
+              "total_placed": 12.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 12
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "a1015d1037998a6f",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 183,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.5,
+                "dropped": 0.5,
+                "cost_distribution": {
+                  "1": 0.5
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 12.0,
+              "total_placed": 10.5,
+              "overall_ratio": 0.875,
+              "dropped_flows": 2,
+              "num_flows": 12
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "8dbcb9c1d2d51fb0",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 164,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 12.0,
+              "total_placed": 12.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 12
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "b5759f0408091fcf",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 144,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 1.0
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 0.5,
+                "dropped": 0.5,
+                "cost_distribution": {
+                  "1": 0.5
+                },
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 1.0,
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 12.0,
+              "total_placed": 10.5,
+              "overall_ratio": 0.875,
+              "dropped_flows": 2,
+              "num_flows": 12
+            },
+            "data": {}
+          }
+        ],
+        "context": {
+          "demand_set": "baseline_traffic_matrix",
+          "placement_rounds": "auto",
+          "include_flow_details": true,
+          "include_used_edges": false,
+          "base_demands": [
+            {
+              "id": "^N([1-4])$|^N([1-4])$|dkJXIxbTQz-6HthFEsIgqw",
+              "source": "^N([1-4])$",
+              "target": "^N([1-4])$",
+              "volume": 12.0,
+              "mode": "pairwise",
+              "priority": 0,
+              "flow_policy": null,
+              "group_mode": "flatten"
+            }
+          ],
+          "alpha": 1.0,
+          "alpha_source": "msd_baseline"
+        }
+      }
+    },
+    "node_to_node_capacity_matrix": {
+      "metadata": {
+        "iterations": 1000,
+        "parallelism": 8,
+        "analysis_function": "max_flow_analysis",
+        "policy_name": "single_link_failure",
+        "execution_time": 0.004663705825805664,
+        "unique_patterns": 6,
+        "duration_sec": 0.016952991485595703
+      },
+      "data": {
+        "baseline": {
+          "failure_id": "",
+          "failure_state": {
+            "excluded_nodes": [],
+            "excluded_links": []
+          },
+          "failure_trace": null,
+          "occurrence_count": 1,
+          "flows": [
+            {
+              "source": "N1",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N1",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0,
+                "2": 4.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N1",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N2",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N2",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N2",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0,
+                "2": 4.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N3",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0,
+                "2": 4.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N3",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N3",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N4",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N4",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 1.0,
+                "2": 4.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N4",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 5.0,
+              "placed": 5.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "1": 2.0,
+                "2": 2.0,
+                "3": 1.0
+              },
+              "data": {
+                "edges": [
+                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                ],
+                "edges_kind": "min_cut"
+              }
+            },
+            {
+              "source": "N1",
+              "destination": "N1",
+              "priority": 0,
+              "demand": 0.0,
+              "placed": 0.0,
+              "dropped": 0.0,
+              "cost_distribution": {},
+              "data": {}
+            },
+            {
+              "source": "N2",
+              "destination": "N2",
+              "priority": 0,
+              "demand": 0.0,
+              "placed": 0.0,
+              "dropped": 0.0,
+              "cost_distribution": {},
+              "data": {}
+            },
+            {
+              "source": "N3",
+              "destination": "N3",
+              "priority": 0,
+              "demand": 0.0,
+              "placed": 0.0,
+              "dropped": 0.0,
+              "cost_distribution": {},
+              "data": {}
+            },
+            {
+              "source": "N4",
+              "destination": "N4",
+              "priority": 0,
+              "demand": 0.0,
+              "placed": 0.0,
+              "dropped": 0.0,
+              "cost_distribution": {},
+              "data": {}
+            }
+          ],
+          "summary": {
+            "total_demand": 60.0,
+            "total_placed": 60.0,
+            "overall_ratio": 1.0,
+            "dropped_flows": 0,
+            "num_flows": 16
+          },
+          "data": {}
+        },
+        "flow_results": [
+          {
+            "failure_id": "6d9f3cfac8351fbe",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 164,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 38.0,
+              "total_placed": 38.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 16
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "928d92ed50e90b11",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 180,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 38.0,
+              "total_placed": 38.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 16
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "e3cd717666c3ac61",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 165,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 5.0,
+                "placed": 5.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 5.0,
+                "placed": 5.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 50.0,
+              "total_placed": 50.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 16
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "a1015d1037998a6f",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 183,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 38.0,
+              "total_placed": 38.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 16
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "8dbcb9c1d2d51fb0",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 164,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 5.0,
+                "placed": 5.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 5.0,
+                "placed": 5.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 4.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 50.0,
+              "total_placed": 50.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 16
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "b5759f0408091fcf",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+              ]
+            },
+            "failure_trace": {
+              "mode_index": 0,
+              "mode_attrs": {},
+              "selections": [
+                {
+                  "rule_index": 0,
+                  "scope": "link",
+                  "mode": "choice",
+                  "matched_count": 6,
+                  "selected_ids": [
+                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+                  ]
+                }
+              ],
+              "expansion": {
+                "nodes": [],
+                "links": [],
+                "risk_groups": []
+              }
+            },
+            "occurrence_count": 144,
+            "flows": [
+              {
+                "source": "N1",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N2",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 4.0,
+                "placed": 4.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N3",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "2": 2.0,
+                  "3": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
+                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0,
+                  "2": 2.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N4",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 3.0,
+                "placed": 3.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 2.0,
+                  "2": 1.0
+                },
+                "data": {
+                  "edges": [
+                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
+                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  ],
+                  "edges_kind": "min_cut"
+                }
+              },
+              {
+                "source": "N1",
+                "destination": "N1",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N2",
+                "destination": "N2",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N3",
+                "destination": "N3",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              },
+              {
+                "source": "N4",
+                "destination": "N4",
+                "priority": 0,
+                "demand": 0.0,
+                "placed": 0.0,
+                "dropped": 0.0,
+                "cost_distribution": {},
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 38.0,
+              "total_placed": 38.0,
+              "overall_ratio": 1.0,
+              "dropped_flows": 0,
+              "num_flows": 16
+            },
+            "data": {}
+          }
+        ],
+        "context": {
+          "source": "^(N[1-4])$",
+          "target": "^(N[1-4])$",
+          "mode": "pairwise",
+          "shortest_path": false,
+          "require_capacity": true,
+          "flow_placement": "PROPORTIONAL",
+          "include_flow_details": true,
+          "include_min_cut": true
+        }
+      }
+    }
+  },
+  "scenario": {
+    "seed": 42,
+    "failures": {
+      "single_link_failure": {
+        "attrs": {},
+        "expand_groups": false,
+        "expand_children": false,
+        "modes": [
+          {
+            "weight": 1.0,
+            "rules": [
+              {
+                "scope": "link",
+                "logic": "or",
+                "mode": "choice",
+                "probability": 1.0,
+                "count": 1,
+                "path": null,
+                "conditions": []
+              }
+            ],
+            "attrs": {}
+          }
+        ]
+      }
+    },
+    "demands": {
+      "baseline_traffic_matrix": [
+        {
+          "id": "^N([1-4])$|^N([1-4])$|dkJXIxbTQz-6HthFEsIgqw",
+          "source": "^N([1-4])$",
+          "target": "^N([1-4])$",
+          "volume": 12.0,
+          "priority": 0,
+          "mode": "pairwise",
+          "group_mode": "flatten",
+          "flow_policy": null,
+          "attrs": {
+            "euclidean_km": 10
+          }
+        }
+      ]
+    }
+  }
+}

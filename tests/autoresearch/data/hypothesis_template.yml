@@ -1,0 +1,24 @@
+params:
+  link_capacity:
+    type: int
+    range: [100, 1000]
+    step: 100
+    default: 400
+    description: "Link capacity in Gbps"
+  flow_policy:
+    type: enum
+    values: ["SHORTEST_PATHS_ECMP", "SHORTEST_PATHS_UCMP"]
+    default: "SHORTEST_PATHS_ECMP"
+    description: "Flow routing policy"
+  demand_volume:
+    type: float
+    range: [1000.0, 100000.0]
+    step: 1000.0
+    default: 10000.0
+    description: "Traffic demand volume"
+  seed:
+    type: int
+    range: [1, 1000]
+    step: 1
+    default: 42
+    description: "Random seed"

@@ -1,9 +1,10 @@
-"""DC-BB scenario generation: mesh group algorithm and configuration.
+"""DC-BB scenario generation: mesh group algorithm, node builder, and configuration.
 
 This module implements the GCD-based mesh group assignment algorithm
 for partitioning DC and BB devices into groups that form full-mesh
 interconnects. It also provides the DcBbScenarioConfig dataclass
-shared across all scenario generation steps.
+shared across all scenario generation steps, and the _build_nodes
+function that creates all topology nodes.
 """
 
 from __future__ import annotations
@@ -260,3 +261,108 @@ def validate_layout(
         and bb_rows % gr_bb == 0
         and bb_cols % gc_bb == 0
     )
+
+
+# ---------------------------------------------------------------------------
+# Node builder
+# ---------------------------------------------------------------------------
+
+# DCTypeF structural constant: FSW are arranged in 4 rows within each MegaPod.
+# This is fixed by the MegaPod architecture and not parameterized in the config.
+_XYZ1_FSW_ROWS = 4
+
+
+def _build_nodes(config: DcBbScenarioConfig) -> dict:
+    """Build all node definitions for the DC-BB topology.
+
+    Creates nodes for:
+    - ABC1 (DCType1): RSW, FSW, SSW, FADU
+    - Backbone: BB devices on both abc1 and xyz1 sides
+    - XYZ1 (DCTypeF): RSW, FSW, SSW, XSW
+
+    Args:
+        config: Scenario configuration with device counts per layer.
+
+    Returns:
+        Dict mapping node_name -> {"attrs": {"role": ..., "site": ..., ...}}.
+    """
+    nodes: dict[str, dict] = {}
+
+    # --- ABC1 (DCType1) ---
+
+    # Collapsed RSW: 1 per pod
+    for p in range(1, config.abc1_pods_per_building + 1):
+        nodes[f"abc1/pod{p}/rsw"] = {
+            "attrs": {"role": "rsw", "site": "abc1"},
+        }
+
+    # FSW: 1 per pod per plane
+    for p in range(1, config.abc1_pods_per_building + 1):
+        for pl in range(1, config.abc1_planes + 1):
+            nodes[f"abc1/pod{p}/fsw/plane{pl}"] = {
+                "attrs": {"role": "fsw", "site": "abc1", "plane": pl, "pod": p},
+            }
+
+    # SSW: per plane per index
+    for pl in range(1, config.abc1_planes + 1):
+        for i in range(1, config.abc1_ssw_per_plane + 1):
+            nodes[f"abc1/ssw/plane{pl}/idx{i}"] = {
+                "attrs": {"role": "ssw", "site": "abc1", "plane": pl, "index": i},
+            }
+
+    # FADU: per hgrid per index
+    for h in range(1, config.abc1_hgrids + 1):
+        for i in range(1, config.abc1_fadu_per_hgrid + 1):
+            nodes[f"abc1/fadu/hgrid{h}/idx{i}"] = {
+                "attrs": {"role": "fadu", "site": "abc1", "hgrid": h, "index": i},
+            }
+
+    # --- Backbone ---
+
+    # BB devices on both sites
+    for site in ["abc1", "xyz1"]:
+        for pl in range(1, config.bb_planes + 1):
+            for d in range(1, config.bb_devices_per_plane + 1):
+                nodes[f"bb/{site}/plane{pl}/dev{d}"] = {
+                    "attrs": {
+                        "role": "bb",
+                        "site": site,
+                        "plane": pl,
+                        "device": d,
+                    },
+                }
+
+    # --- XYZ1 (DCTypeF) ---
+
+    # Collapsed RSW: 1 per MegaPod (we model 1 MegaPod)
+    nodes["xyz1/mp1/rsw"] = {
+        "attrs": {"role": "rsw", "site": "xyz1"},
+    }
+
+    # FSW: arranged in rows × devices-per-row within the MegaPod
+    fsw_devs_per_row = config.xyz1_fsw_per_megapod // _XYZ1_FSW_ROWS
+    for r in range(1, _XYZ1_FSW_ROWS + 1):
+        for d in range(1, fsw_devs_per_row + 1):
+            nodes[f"xyz1/mp1/fsw/row{r}/dev{d}"] = {
+                "attrs": {"role": "fsw", "site": "xyz1", "row": r, "device": d},
+            }
+
+    # SSW: 1 per XSW plane within the MegaPod
+    for pl in range(1, config.xyz1_ssw_per_megapod + 1):
+        nodes[f"xyz1/mp1/ssw/plane{pl}"] = {
+            "attrs": {"role": "ssw", "site": "xyz1", "plane": pl},
+        }
+
+    # XSW: per plane per device (shared across all MegaPods)
+    for pl in range(1, config.xyz1_xsw_planes + 1):
+        for d in range(1, config.xyz1_xsw_per_plane + 1):
+            nodes[f"xyz1/xsw/plane{pl}/dev{d}"] = {
+                "attrs": {
+                    "role": "xsw",
+                    "site": "xyz1",
+                    "plane": pl,
+                    "device": d,
+                },
+            }
+
+    return nodes
