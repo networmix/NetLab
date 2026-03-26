@@ -339,7 +339,16 @@ def run_generation_loop(
                     validation_errors=validation_errors,
                 )
 
-            response = backend.generate(prompt, system=_get_generation_system_prompt())
+            try:
+                response = backend.generate(
+                    prompt, system=_get_generation_system_prompt()
+                )
+            except (RuntimeError, OSError) as exc:
+                last_inspect = InspectResult(
+                    success=False,
+                    errors=[f"LLM backend error: {exc}"],
+                )
+                continue
 
             # Extract YAML from response
             yaml_text = _extract_yaml(response)

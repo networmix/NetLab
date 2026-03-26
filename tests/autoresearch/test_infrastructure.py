@@ -105,14 +105,13 @@ class TestAnalyzeOneSeedCompatibility:
         assert "baseline" not in tm_meta or tm_meta.get("baseline") is not True
 
     def test_compute_alpha_star_works(self, square_mesh_results: dict) -> None:
-        """compute_alpha_star extracts alpha_star but gets base_total_demand=0 due to key mismatch."""
+        """compute_alpha_star extracts alpha_star and base_total_demand."""
         from metrics.msd import compute_alpha_star
 
         alpha = compute_alpha_star(square_mesh_results)
         assert alpha.alpha_star == 1.0
-        # base_total_demand is 0.0 because compute_alpha_star looks for 'demand' key
-        # but current ngraph uses 'volume'
-        assert alpha.base_total_demand == 0.0
+        # base_total_demand reads 'volume' field (ngraph's key) with 'demand' as fallback
+        assert alpha.base_total_demand == 12.0
 
 
 class TestSampleTemplate:

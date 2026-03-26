@@ -22,12 +22,17 @@ class AlphaResult:
 
 
 def compute_alpha_star(results: dict) -> AlphaResult:
-    msd = results.get("steps", {}).get("msd_baseline", {}).get("data", {}) or {}
+    steps = results.get("steps", {})
+    # Accept common MSD step names
+    msd_step = steps.get("msd_baseline") or steps.get("msd") or {}
+    msd = msd_step.get("data", {}) or {}
     alpha = msd.get("alpha_star", None)
     base_total = np.nan
     try:
         base_demands = msd.get("base_demands", [])
-        base_total = float(sum([float(x.get("demand", 0.0)) for x in base_demands]))
+        base_total = float(
+            sum(float(x.get("volume", x.get("demand", 0.0))) for x in base_demands)
+        )
     except Exception:
         base_total = np.nan
 
