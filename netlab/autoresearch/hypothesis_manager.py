@@ -342,17 +342,15 @@ class HypothesisManager:
             backend=self._backend,
         )
 
-        # Save findings
-        findings_lines = []
-        for finding in analysis.findings:
-            findings_lines.append(f"## {finding.claim}\n")
-            findings_lines.append(f"**Evidence:** {finding.evidence}\n")
-            findings_lines.append(
-                f"**Verification:** {finding.verification.summary()}\n"
-            )
-            findings_lines.append(f"**Disproof:** {finding.adversarial_check}\n")
-            findings_lines.append("")
-        (cycle_dir / "findings.md").write_text("\n".join(findings_lines))
+        # Save metrics report (machine-generated, verified)
+        (cycle_dir / "metrics_report.md").write_text(analysis.metrics_report)
+
+        # Save LLM interpretation
+        (cycle_dir / "interpretation.md").write_text(analysis.interpretation)
+
+        # Save next hypothesis suggestion
+        if analysis.next_hypothesis:
+            (cycle_dir / "next_hypothesis.md").write_text(analysis.next_hypothesis)
 
         # Save status
         status = "analyzed" if analysis.complete else "analysis_incomplete"
@@ -360,7 +358,6 @@ class HypothesisManager:
             yaml.dump(
                 {
                     "status": status,
-                    "findings_count": len(analysis.findings),
                     "analysis_iterations": analysis.iterations_used,
                     "hypothesis_hash": h_hash,
                 },
@@ -387,7 +384,7 @@ class HypothesisManager:
                 status=status,
                 generation_iterations=gen_result.iterations_used,
                 analysis_iterations=analysis.iterations_used,
-                findings_count=len(analysis.findings),
+                findings_count=0,
                 timestamp=_now_iso(),
                 duration_s=cycle.duration_s,
             )

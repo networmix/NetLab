@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -25,7 +24,7 @@ def _find_ngraph() -> str:
     return path
 
 
-# Valid scenario that the generation loop will accept
+# Valid scenario that passes generation loop
 VALID_SCENARIO = """\
 seed: 42
 network:
@@ -51,19 +50,20 @@ workflow:
     resolution: 0.1
 """
 
-# Analysis response with correct citation (cap=100, demand=10 → alpha=10)
-ANALYSIS_RESPONSE = """\
-CLAIM: Alpha star is 10.0 for this simple 2-node topology
-EVIDENCE: steps.msd_baseline.data.alpha_star = 10.0
-DISPROOF: Would differ if link capacity or demand volume changed
-"""
+# MockBackend needs 3 responses:
+# 1. Generation: scenario YAML
+# 2. Analysis: interpretation
+# 3. Analysis: next hypothesis
+INTERPRETATION = "Alpha is 10.0 because cap=100 and demand=10. The topology is simple and fully connected."
+NEXT_HYPOTHESIS = (
+    "Try adding a second parallel link with different cost to see latency effects."
+)
 
 
 class TestHypothesisManager:
     def test_full_cycle(self, tmp_path: Path) -> None:
         """Run a complete hypothesis cycle: generate → simulate → analyze."""
-        # MockBackend: first call = generation, second = analysis
-        backend = MockBackend([VALID_SCENARIO, ANALYSIS_RESPONSE])
+        backend = MockBackend([VALID_SCENARIO, INTERPRETATION, NEXT_HYPOTHESIS])
         manager = HypothesisManager(
             project_dir=tmp_path,
             backend=backend,
@@ -77,25 +77,27 @@ class TestHypothesisManager:
         assert cycle.generation is not None
         assert cycle.generation.success
         assert cycle.analysis is not None
-        assert len(cycle.analysis.findings) > 0
+        assert cycle.analysis.complete
 
         # Check persistence
         assert (tmp_path / "cycles" / "001" / "hypothesis.yml").exists()
         assert (tmp_path / "cycles" / "001" / "scenario.yml").exists()
-        assert (tmp_path / "cycles" / "001" / "findings.md").exists()
+        assert (tmp_path / "cycles" / "001" / "metrics_report.md").exists()
+        assert (tmp_path / "cycles" / "001" / "interpretation.md").exists()
+        assert (tmp_path / "cycles" / "001" / "next_hypothesis.md").exists()
         assert (tmp_path / "cycles" / "001" / "status.yml").exists()
         assert (tmp_path / "cycle_log.jsonl").exists()
 
-        # Cycle log has one entry
-        log_lines = (tmp_path / "cycle_log.jsonl").read_text().strip().splitlines()
-        assert len(log_lines) == 1
-        entry = json.loads(log_lines[0])
-        assert entry["cycle_id"] == 1
-        assert entry["status"] == "analyzed"
+        # Metrics report contains verified numbers
+        report = (tmp_path / "cycles" / "001" / "metrics_report.md").read_text()
+        assert "alpha_star" in report
+
+        # Next hypothesis is persisted
+        next_h = (tmp_path / "cycles" / "001" / "next_hypothesis.md").read_text()
+        assert "parallel link" in next_h
 
     def test_generation_failure_records_dead_end(self, tmp_path: Path) -> None:
         """Failed generation marks hypothesis as dead end."""
-        # Return garbage that won't pass inspect
         backend = MockBackend(["not valid yaml {{"] * 20)
         manager = HypothesisManager(
             project_dir=tmp_path,
@@ -104,12 +106,11 @@ class TestHypothesisManager:
         )
 
         cycle = manager.run_cycle("Impossible topology idea")
-
         assert cycle.status == "generation_failed"
         assert (tmp_path / "dead_ends.jsonl").exists()
 
-        # Second attempt with same hypothesis should be skipped
-        backend2 = MockBackend([VALID_SCENARIO, ANALYSIS_RESPONSE])
+        # Second attempt with same hypothesis is skipped
+        backend2 = MockBackend([VALID_SCENARIO, INTERPRETATION, NEXT_HYPOTHESIS])
         manager2 = HypothesisManager(
             project_dir=tmp_path,
             backend=backend2,
@@ -123,9 +124,11 @@ class TestHypothesisManager:
         backend = MockBackend(
             [
                 VALID_SCENARIO,
-                ANALYSIS_RESPONSE,
+                INTERPRETATION,
+                NEXT_HYPOTHESIS,
                 VALID_SCENARIO,
-                ANALYSIS_RESPONSE,
+                INTERPRETATION,
+                NEXT_HYPOTHESIS,
             ]
         )
         manager = HypothesisManager(

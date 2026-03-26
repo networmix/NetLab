@@ -1,16 +1,13 @@
-"""Tests for the analysis loop."""
+"""Tests for the metrics-first analysis loop."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from netlab.autoresearch.analysis_loop import (
-    _build_results_summary,
-    _parse_findings,
-    run_analysis_loop,
-)
+from netlab.autoresearch.analysis_loop import run_analysis_loop
 from netlab.autoresearch.backend import MockBackend
+from netlab.autoresearch.metrics_report import build_metrics_report
 
 MINI_DCBB_RESULTS = (
     Path(__file__).parent.parent
@@ -25,134 +22,81 @@ def _load_results() -> dict:
         return json.load(f)
 
 
-class TestParseFindings:
-    def test_single_finding(self) -> None:
-        response = (
-            "CLAIM: Alpha star is 3.0\n"
-            "EVIDENCE: steps.msd_baseline.data.alpha_star = 3.0\n"
-            "DISPROOF: Alpha would differ if cross-site capacity changed\n"
-        )
-        findings = _parse_findings(response)
-        assert len(findings) == 1
-        assert findings[0]["claim"] == "Alpha star is 3.0"
-        assert "alpha_star = 3.0" in findings[0]["evidence"]
-
-    def test_multiple_findings(self) -> None:
-        response = (
-            "CLAIM: First claim\n"
-            "EVIDENCE: steps.a.b = 1.0\n"
-            "DISPROOF: X\n"
-            "\n"
-            "CLAIM: Second claim\n"
-            "EVIDENCE: steps.c.d = 2.0\n"
-            "DISPROOF: Y\n"
-        )
-        findings = _parse_findings(response)
-        assert len(findings) == 2
-
-    def test_multi_line_evidence(self) -> None:
-        response = (
-            "CLAIM: Multi-evidence\n"
-            "EVIDENCE: steps.a.b = 1.0\n"
-            "steps.c.d = 2.0\n"
-            "DISPROOF: Z\n"
-        )
-        findings = _parse_findings(response)
-        assert len(findings) == 1
-        assert "steps.c.d = 2.0" in findings[0]["evidence"]
-
-    def test_no_findings(self) -> None:
-        response = "I think the results look interesting but I need more data."
-        findings = _parse_findings(response)
-        assert len(findings) == 0
-
-
-class TestBuildResultsSummary:
-    def test_includes_alpha(self) -> None:
+class TestMetricsReport:
+    def test_contains_alpha(self) -> None:
         results = _load_results()
-        summary = _build_results_summary(results)
-        assert "alpha_star=3.0" in summary
+        report = build_metrics_report(results)
+        assert "alpha_star: 3.0" in report
 
-    def test_includes_step_names(self) -> None:
+    def test_contains_bac_auc(self) -> None:
         results = _load_results()
-        summary = _build_results_summary(results)
-        assert "tm_lh_path" in summary
-        assert "tm_1x_bb" in summary
+        report = build_metrics_report(results)
+        assert "AUC: 0.5455" in report
+
+    def test_contains_per_direction(self) -> None:
+        results = _load_results()
+        report = build_metrics_report(results)
+        assert "abc1/rsw>xyz1/rsw" in report
+
+    def test_contains_latency(self) -> None:
+        results = _load_results()
+        report = build_metrics_report(results)
+        assert "baseline p50: 1.0" in report
+
+    def test_contains_failure_patterns(self) -> None:
+        results = _load_results()
+        report = build_metrics_report(results)
+        assert "unique patterns: 2" in report  # tm_lh_path
+        assert "unique patterns: 4" in report  # tm_1x_bb
 
 
 class TestAnalysisLoop:
-    def test_completes_with_verified_findings(self) -> None:
-        """LLM produces correctly cited findings on first try."""
+    def test_produces_interpretation_and_next_hypothesis(self) -> None:
+        """LLM receives verified metrics and produces interpretation + next hypothesis."""
         results = _load_results()
-        response = (
-            "CLAIM: Maximum demand multiplier is 3.0\n"
-            "EVIDENCE: steps.msd_baseline.data.alpha_star = 3.0\n"
-            "DISPROOF: Would differ if link capacities changed\n"
+        backend = MockBackend(
+            [
+                "The topology has 2 planes with asymmetric LH paths. BAC AUC of 0.55 for lh_path reflects the 50/50 chance of losing path_a (severe) vs path_b (mild).",
+                "Test a 3-plane topology with equal capacity paths to see if BAC improves.",
+            ]
         )
-        backend = MockBackend([response])
         result = run_analysis_loop(
             results=results,
-            hypothesis="The topology supports 3x demand scaling",
+            hypothesis="Test dual LH paths with 2:1 capacity ratio",
             backend=backend,
         )
         assert result.complete
-        assert len(result.findings) == 1
-        assert result.findings[0].verification.all_verified
+        assert "2 planes" in result.interpretation
+        assert result.next_hypothesis != ""
+        assert "alpha_star: 3.0" in result.metrics_report
 
-    def test_retries_on_mismatch(self) -> None:
-        """LLM cites wrong number first, then corrects."""
+    def test_retries_on_empty_response(self) -> None:
+        """Empty LLM response triggers retry."""
         results = _load_results()
-        bad_response = (
-            "CLAIM: Alpha is 5.0\n"
-            "EVIDENCE: steps.msd_baseline.data.alpha_star = 5.0\n"
-            "DISPROOF: X\n"
+        backend = MockBackend(
+            [
+                "",  # empty
+                "The topology shows uniform 50% degradation under BB node failure.",
+                "Try adding cross-plane redundancy.",
+            ]
         )
-        good_response = (
-            "CLAIM: Alpha is 3.0\n"
-            "EVIDENCE: steps.msd_baseline.data.alpha_star = 3.0\n"
-            "DISPROOF: X\n"
-        )
-        backend = MockBackend([bad_response, good_response])
         result = run_analysis_loop(
             results=results,
             hypothesis="Test",
             backend=backend,
         )
         assert result.complete
-        assert result.iterations_used == 2
+        assert "50%" in result.interpretation
 
-    def test_fails_on_budget_exhaustion(self) -> None:
-        """LLM never produces valid findings."""
+    def test_metrics_report_is_always_present(self) -> None:
+        """Even on LLM failure, the metrics report is generated."""
         results = _load_results()
-        bad_response = (
-            "CLAIM: Wrong\n"
-            "EVIDENCE: steps.msd_baseline.data.alpha_star = 999.0\n"
-            "DISPROOF: X\n"
-        )
-        backend = MockBackend([bad_response] * 5)
+        backend = MockBackend(["", "", ""])  # all empty
         result = run_analysis_loop(
             results=results,
             hypothesis="Test",
             backend=backend,
-            max_iterations=3,
+            max_iterations=2,
         )
         assert not result.complete
-        assert result.iterations_used == 3
-
-    def test_retries_on_bad_format(self) -> None:
-        """LLM returns unstructured text first, then proper format."""
-        results = _load_results()
-        unstructured = "The results show interesting patterns in the BAC values."
-        structured = (
-            "CLAIM: Alpha is 3.0\n"
-            "EVIDENCE: steps.msd_baseline.data.alpha_star = 3.0\n"
-            "DISPROOF: Different capacity would change it\n"
-        )
-        backend = MockBackend([unstructured, structured])
-        result = run_analysis_loop(
-            results=results,
-            hypothesis="Test",
-            backend=backend,
-        )
-        assert result.complete
-        assert result.iterations_used == 2
+        assert "alpha_star: 3.0" in result.metrics_report
