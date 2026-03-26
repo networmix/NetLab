@@ -20,6 +20,13 @@ from abc import ABC, abstractmethod
 from http.client import HTTPException
 from pathlib import Path
 
+from netlab.runtime import require_executable
+
+SUPPORTED_BACKENDS = ("mock", "claude-cli", "codex-cli", "openai")
+DEFAULT_CLAUDE_MODEL = "opus"
+DEFAULT_CODEX_MODEL = ""
+DEFAULT_OPENAI_MODEL = "gpt-4"
+
 
 class LLMBackend(ABC):
     """Abstract base class for LLM backends."""
@@ -49,22 +56,38 @@ class MockBackend(LLMBackend):
 class ClaudeCLIBackend(LLMBackend):
     """Backend that calls the `claude` CLI tool via subprocess."""
 
-    def __init__(self, model: str = "opus") -> None:
+    def __init__(
+        self,
+        model: str = DEFAULT_CLAUDE_MODEL,
+        command: str | None = None,
+    ) -> None:
         self.model = model
+        self.command = command
 
     def generate(self, prompt: str, system: str = "") -> str:
         # Claude Code headless mode uses -p/--print with the prompt as its value.
-        cmd = ["claude", "-p", prompt]
+        executable = require_executable(
+            "claude",
+            explicit=self.command,
+            env_var="CLAUDE_BIN",
+            display_name="Claude CLI",
+        )
+        cmd = [executable, "-p", prompt]
         if self.model:
             cmd.extend(["--model", self.model])
         if system:
             cmd.extend(["--system-prompt", system])
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Claude CLI executable not found: {executable}"
+            ) from exc
         if result.returncode != 0:
             raise RuntimeError(
                 f"claude CLI failed (exit {result.returncode}): {result.stderr}"
@@ -80,8 +103,13 @@ class CodexCLIBackend(LLMBackend):
     the ``-o`` (output-last-message) flag.
     """
 
-    def __init__(self, model: str = "") -> None:
+    def __init__(
+        self,
+        model: str = DEFAULT_CODEX_MODEL,
+        command: str | None = None,
+    ) -> None:
         self.model = model
+        self.command = command
 
     def generate(self, prompt: str, system: str = "") -> str:
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
@@ -90,8 +118,14 @@ class CodexCLIBackend(LLMBackend):
             output_path = tmp.name
 
         try:
-            cmd = [
+            executable = require_executable(
                 "codex",
+                explicit=self.command,
+                env_var="CODEX_BIN",
+                display_name="Codex CLI",
+            )
+            cmd = [
+                executable,
                 "exec",
                 "--ephemeral",
                 "--sandbox",
@@ -103,12 +137,17 @@ class CodexCLIBackend(LLMBackend):
             if self.model:
                 cmd.extend(["-m", self.model])
             cmd.append(full_prompt)
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            except FileNotFoundError as exc:
+                raise RuntimeError(
+                    f"Codex CLI executable not found: {executable}"
+                ) from exc
             if result.returncode != 0:
                 raise RuntimeError(
                     f"codex CLI failed (exit {result.returncode}): {result.stderr}"
@@ -144,7 +183,12 @@ class OpenAICompatibleBackend(LLMBackend):
         self.timeout = timeout
 
     def generate(self, prompt: str, system: str = "") -> str:
-        url = f"{self.base_url}/v1/chat/completions"
+        # base_url may or may not include /v1 — normalize
+        base = self.base_url.rstrip("/")
+        if base.endswith("/v1"):
+            url = f"{base}/chat/completions"
+        else:
+            url = f"{base}/v1/chat/completions"
         messages: list[dict[str, str]] = []
         if system:
             messages.append({"role": "system", "content": system})
