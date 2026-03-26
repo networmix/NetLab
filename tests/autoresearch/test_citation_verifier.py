@@ -133,6 +133,13 @@ class TestExtractClaims:
         claims = extract_claims_from_text(text)
         assert len(claims) == 1
 
+    def test_backtick_quoted_path(self) -> None:
+        text = "`steps.msd_baseline.data.alpha_star` = 3.0"
+        claims = extract_claims_from_text(text)
+        assert len(claims) == 1
+        assert claims[0].path == "steps.msd_baseline.data.alpha_star"
+        assert claims[0].claimed_value == 3.0
+
     def test_no_claims(self) -> None:
         text = "The results look good overall."
         claims = extract_claims_from_text(text)

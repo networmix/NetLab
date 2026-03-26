@@ -111,9 +111,10 @@ def verify_claims(claims: list[Claim], data: dict) -> VerificationResult:
 
 # --- Claim extraction from structured LLM output ---
 
-# Pattern: "path = value" or "path: value" in LLM-structured output
+# Pattern: "path = value" or "path: value" in LLM-structured output.
+# Handles optional backtick quoting (e.g., `steps.msd.data.alpha_star` = 3.0).
 _CLAIM_PATTERN = re.compile(
-    r"(?P<path>[\w.]+(?:\.[\w.]+)+)\s*[=:]\s*(?P<value>-?[\d.]+)"
+    r"`?(?P<path>[\w.]+(?:\.[\w.]+)+)`?\s*[=:]\s*(?P<value>-?[\d.]+)"
 )
 
 
