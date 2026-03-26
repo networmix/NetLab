@@ -413,13 +413,31 @@ class AutoResearchRunner:
                 self._experiments_run += 1
                 continue
 
+            # Compute BAC and merge into metrics (non-fatal on failure)
+            all_metrics = dict(obj_result.all_metrics)
+            try:
+                from metrics.bac import compute_bac
+
+                # Try tm_combined first (per-mode workflow), fall back to tm_placement
+                step = (
+                    "tm_combined"
+                    if "tm_combined" in results_data.get("steps", {})
+                    else "tm_placement"
+                )
+                bac = compute_bac(results_data, step_name=step)
+                all_metrics["bac_auc"] = round(bac.auc_normalized, 6)
+                if 0.99 in bac.quantiles_pct:
+                    all_metrics["bac_p99"] = round(bac.quantiles_pct[0.99], 6)
+            except Exception:
+                pass  # BAC extraction is best-effort
+
             # Log success
             entry = LogEntry(
                 exp_id=exp_id,
                 params=hypothesis.params,
                 params_hash=hypothesis.params_hash,
                 status="success",
-                metrics=obj_result.all_metrics,
+                metrics=all_metrics,
                 objective_score=obj_result.score,
                 error_detail=None,
                 execution_time_s=round(execution_time, 2),

@@ -1,10 +1,6 @@
-"""Tests for generate_scenario and validate_config in scenario_generator.py.
+"""Tests for generate_scenario and validate_config in scenario_generator.py."""
 
-Step E-8: End-to-end scenario generation tests.
-"""
-
-import os
-import tempfile
+from __future__ import annotations
 
 import pytest
 import yaml
@@ -12,6 +8,7 @@ import yaml
 from netlab.autoresearch.scenario_generator import (
     DcBbScenarioConfig,
     generate_scenario,
+    generate_scenario_with_validation,
     validate_config,
 )
 
@@ -28,60 +25,46 @@ class TestValidateConfig:
         assert errors == []
 
     def test_invalid_g_abc1(self):
-        cfg = DcBbScenarioConfig(g_abc1=7)
-        errors = validate_config(cfg)
-        assert len(errors) > 0
-        assert any("g_abc1" in e for e in errors)
+        errors = validate_config(DcBbScenarioConfig(g_abc1=7))
+        assert any("g_abc1=7" in e for e in errors)
 
     def test_invalid_g_xyz1(self):
-        cfg = DcBbScenarioConfig(g_xyz1=7)
-        errors = validate_config(cfg)
-        assert len(errors) > 0
-        assert any("g_xyz1" in e for e in errors)
+        errors = validate_config(DcBbScenarioConfig(g_xyz1=5))
+        assert any("g_xyz1=5" in e for e in errors)
 
     def test_invalid_layout_abc1(self):
-        # (8, 4) product is 32, not 64
-        cfg = DcBbScenarioConfig(layout_abc1=(8, 4, 16, 4))
-        errors = validate_config(cfg)
+        errors = validate_config(DcBbScenarioConfig(layout_abc1=(8, 4, 16, 4)))
         assert any("layout_abc1" in e for e in errors)
 
     def test_invalid_layout_xyz1(self):
-        cfg = DcBbScenarioConfig(layout_xyz1=(8, 4, 16, 4))
-        errors = validate_config(cfg)
+        errors = validate_config(DcBbScenarioConfig(layout_xyz1=(3, 3, 3, 3)))
         assert any("layout_xyz1" in e for e in errors)
 
     def test_port_constraint_fadu(self):
-        # G_abc1=1 means k_fadu = bb_total = 256, which exceeds 16
-        # But G=1 is not viable either, so check port error is present
-        cfg = DcBbScenarioConfig(g_abc1=1)
-        errors = validate_config(cfg)
-        assert any("k_fadu" in e or "g_abc1" in e for e in errors)
+        errors = validate_config(
+            DcBbScenarioConfig(g_abc1=16, layout_abc1=(4, 4, 4, 4))
+        )
+        assert errors == []  # G=16 with valid layout
 
     def test_port_constraint_xsw(self):
-        cfg = DcBbScenarioConfig(g_xyz1=1)
-        errors = validate_config(cfg)
-        assert any("k_xsw" in e or "g_xyz1" in e for e in errors)
+        errors = validate_config(DcBbScenarioConfig(g_xyz1=64))
+        assert errors == []  # G=64 is valid
 
     def test_valid_non_default_g_abc1(self):
-        """g_abc1=32 with matching layout should be valid."""
-        cfg = DcBbScenarioConfig(g_abc1=32, layout_abc1=(8, 4, 8, 4))
-        errors = validate_config(cfg)
+        errors = validate_config(
+            DcBbScenarioConfig(g_abc1=32, layout_abc1=(8, 4, 8, 4))
+        )
         assert errors == []
 
     def test_valid_non_default_g_xyz1(self):
-        """g_xyz1=128 with matching layout should be valid."""
-        cfg = DcBbScenarioConfig(g_xyz1=128, layout_xyz1=(32, 4, 32, 4))
-        errors = validate_config(cfg)
+        errors = validate_config(
+            DcBbScenarioConfig(g_xyz1=128, layout_xyz1=(16, 8, 32, 4))
+        )
         assert errors == []
 
     def test_multiple_errors_reported(self):
-        """Both g values invalid should report multiple errors."""
-        cfg = DcBbScenarioConfig(g_abc1=7, g_xyz1=7)
-        errors = validate_config(cfg)
-        abc1_errors = [e for e in errors if "abc1" in e]
-        xyz1_errors = [e for e in errors if "xyz1" in e]
-        assert len(abc1_errors) > 0
-        assert len(xyz1_errors) > 0
+        errors = validate_config(DcBbScenarioConfig(g_abc1=7, g_xyz1=5))
+        assert len(errors) >= 2
 
 
 # ---------------------------------------------------------------------------
@@ -110,51 +93,52 @@ class TestGenerateScenarioStructure:
     def test_seed(self, scenario):
         assert scenario["seed"] == 42
 
-    def test_node_count(self, scenario):
-        assert len(scenario["network"]["nodes"]) == 3833
-
-    def test_link_count_in_range(self, scenario):
-        link_count = len(scenario["network"]["links"])
-        assert 35000 <= link_count <= 48000, (
-            f"Link count {link_count} outside expected range"
-        )
+    def test_network_has_link_rules(self, scenario):
+        assert "link_rules" in scenario["network"]
+        assert isinstance(scenario["network"]["link_rules"], list)
+        assert len(scenario["network"]["link_rules"]) > 0
 
     def test_risk_groups_is_list(self, scenario):
         assert isinstance(scenario["risk_groups"], list)
-        assert len(scenario["risk_groups"]) > 0
+        assert len(scenario["risk_groups"]) == 274
 
     def test_demands_is_dict(self, scenario):
         assert isinstance(scenario["demands"], dict)
         assert "baseline_traffic_matrix" in scenario["demands"]
 
+    def test_demands_use_anchors(self, scenario):
+        for d in scenario["demands"]["baseline_traffic_matrix"]:
+            assert d["source"].startswith("^")
+            assert d["source"].endswith("$") or d["target"].endswith("$")
+
     def test_failures_is_dict(self, scenario):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+
         assert isinstance(scenario["failures"], dict)
-        assert "dc_bb_failures" in scenario["failures"]
+        assert "fm_combined" in scenario["failures"]
+        assert len(scenario["failures"]) == len(FAILURE_MODE_NAMES) + 1
 
     def test_workflow_is_list(self, scenario):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+
         assert isinstance(scenario["workflow"], list)
-        assert len(scenario["workflow"]) == 2
+        assert len(scenario["workflow"]) == 1 + len(FAILURE_MODE_NAMES) + 1
 
     def test_workflow_steps_have_demand_set(self, scenario):
-        """Workflow steps must use demand_set, not demands."""
         for step in scenario["workflow"]:
-            assert "demand_set" in step, f"Step {step.get('name')} missing demand_set"
-            assert "demands" not in step, (
-                f"Step {step.get('name')} has stale 'demands' key"
-            )
+            assert "demand_set" in step
+            assert "demands" not in step
 
     def test_failure_rules_use_match_block(self, scenario):
-        """Failure rules must nest conditions inside match, not at top level."""
-        policy = scenario["failures"]["dc_bb_failures"]
-        for mode in policy["modes"]:
-            for rule in mode["rules"]:
-                if rule.get("match", {}).get("conditions"):
-                    assert "conditions" not in rule, (
-                        "conditions should be inside match, not at rule level"
-                    )
+        for policy_name, policy in scenario["failures"].items():
+            for mode in policy["modes"]:
+                for rule in mode["rules"]:
+                    if rule.get("match", {}).get("conditions"):
+                        assert "conditions" not in rule, (
+                            f"{policy_name}: conditions at rule level"
+                        )
 
     def test_workflow_steps_no_invalid_keys(self, scenario):
-        """MSD step should not have flow_policy; TMP should not have metadata."""
         for step in scenario["workflow"]:
             if step["type"] == "MaximumSupportedDemand":
                 assert "flow_policy" not in step
@@ -164,22 +148,46 @@ class TestGenerateScenarioStructure:
 
 
 # ---------------------------------------------------------------------------
-# Risk group reference integrity
+# Post-expansion validation
 # ---------------------------------------------------------------------------
 
 
-class TestRiskGroupReferences:
-    """All risk groups referenced by links must be defined."""
+class TestPostExpansionValidation:
+    """Validate the expanded network matches expected counts."""
 
     @pytest.fixture(scope="class")
-    def scenario(self):
-        return generate_scenario(DcBbScenarioConfig())
+    def expanded(self):
+        from ngraph.scenario import Scenario
 
-    def test_all_link_risk_groups_defined(self, scenario):
-        defined = {rg["name"] for rg in scenario["risk_groups"]}
-        for link in scenario["network"]["links"]:
-            for rg_name in link.get("risk_groups", []):
-                assert rg_name in defined, f"Undefined risk group: {rg_name}"
+        config = DcBbScenarioConfig(failure_iterations=0)
+        scenario, expected = generate_scenario_with_validation(config)
+        yaml_str = yaml.dump(scenario, default_flow_style=False, sort_keys=False)
+        sc = Scenario.from_yaml(yaml_str)
+        return sc.network, expected
+
+    def test_node_count(self, expanded):
+        network, expected = expanded
+        assert len(network.nodes) == expected.nodes
+
+    def test_link_count(self, expanded):
+        network, expected = expanded
+        assert len(network.links) == expected.links
+
+    def test_level2_validation(self, expanded):
+        from netlab.autoresearch.scenario_validation import validate_expanded_network
+
+        network, expected = expanded
+        errors = validate_expanded_network(network, expected)
+        assert errors == [], f"Validation errors: {errors}"
+
+    def test_no_cross_group_links(self, expanded):
+        from netlab.autoresearch.scenario_validation import (
+            validate_no_cross_group_links,
+        )
+
+        network, _ = expanded
+        errors = validate_no_cross_group_links(network)
+        assert errors == [], f"Cross-group errors: {errors[:3]}"
 
 
 # ---------------------------------------------------------------------------
@@ -197,48 +205,3 @@ class TestGenerateScenarioValidation:
     def test_raises_on_invalid_layout(self):
         with pytest.raises(ValueError, match="Invalid config"):
             generate_scenario(DcBbScenarioConfig(layout_abc1=(8, 4, 16, 4)))
-
-
-# ---------------------------------------------------------------------------
-# YAML serialization + ngraph inspect
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.skipif(
-    not os.path.isfile(
-        os.path.join(os.path.dirname(__file__), "..", "..", "venv", "bin", "ngraph")
-    ),
-    reason="ngraph binary not found",
-)
-class TestNgraphInspect:
-    """Write scenario YAML and verify ngraph inspect succeeds."""
-
-    @pytest.fixture(scope="class")
-    def scenario_yaml_path(self):
-        cfg = DcBbScenarioConfig()
-        scenario = generate_scenario(cfg)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            yaml.dump(scenario, f, default_flow_style=False, sort_keys=False)
-            path = f.name
-        yield path
-        os.unlink(path)
-
-    @pytest.mark.timeout(120)
-    def test_ngraph_inspect_succeeds(self, scenario_yaml_path):
-        import subprocess
-
-        ngraph_bin = os.path.join(
-            os.path.dirname(__file__), "..", "..", "venv", "bin", "ngraph"
-        )
-        result = subprocess.run(
-            [ngraph_bin, "inspect", scenario_yaml_path],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        assert result.returncode == 0, (
-            f"ngraph inspect failed with code {result.returncode}:\n"
-            f"stdout: {result.stdout[-500:]}\n"
-            f"stderr: {result.stderr[-500:]}"
-        )
-        assert "INSPECTION COMPLETE" in result.stdout

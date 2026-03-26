@@ -147,11 +147,13 @@ class TestClaudeCLIBackend:
         assert result == "response text"
         args = mock_run.call_args[0][0]
         assert "claude" in args
-        assert "--print" in args
         assert "-p" in args
         # Prompt text follows -p
         p_idx = args.index("-p")
         assert args[p_idx + 1] == "my prompt"
+        assert "--model" in args
+        model_idx = args.index("--model")
+        assert args[model_idx + 1] == "opus"
         # System prompt
         assert "--system-prompt" in args
         sp_idx = args.index("--system-prompt")

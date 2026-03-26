@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlab"
-version = "0.2.2"
+version = "0.3.0"
 description = "Metrics and analysis tools for NetGraph scenarios."
 readme = "README.md"
 authors = [{ name = "Andrey Golovanov" }]
@@ -57,6 +57,8 @@ addopts = "--cov=./ --cov-report term-missing --benchmark-disable-gc --benchmark
 timeout = 30
 markers = [
     "benchmark: marks tests as performance benchmarks (run with '-m benchmark')",
+    "slow: marks tests that take >30s (ngraph subprocess execution)",
+    "timeout: marks tests with custom timeout (requires pytest-timeout)",
 ]
 
 [tool.coverage.run]

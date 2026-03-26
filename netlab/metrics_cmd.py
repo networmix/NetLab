@@ -233,22 +233,10 @@ def analyze_one_seed(
         res: dict, expected_total_at_alpha: Optional[float]
     ) -> None:
         tm_step = res.get("steps", {}).get("tm_placement", {}) or {}
-        tm_meta = tm_step.get("metadata", {}) or {}
-        if bool(tm_meta.get("baseline")) is not True:
-            raise ValueError(
-                "tm_placement.metadata.baseline must be true and baseline must be included"
-            )
-
         tm = tm_step.get("data", {}) or {}
-        fr = tm.get("flow_results", []) or []
-        if not isinstance(fr, list) or not fr:
-            raise ValueError("tm_placement.data.flow_results missing or empty")
-        first = fr[0]
-        if str(first.get("failure_id", "")) != "baseline":
-            raise ValueError(
-                "tm_placement baseline must be first (flow_results[0].failure_id == 'baseline')"
-            )
-        baseline = first
+        baseline = tm.get("baseline")
+        if not isinstance(baseline, dict):
+            raise ValueError("tm_placement.data.baseline dict required")
 
         flows = baseline.get("flows", []) or []
         if not isinstance(flows, list) or not flows:
@@ -320,21 +308,14 @@ def analyze_one_seed(
 
     def _validate_maxflow_baseline(res: dict) -> None:
         mf_step = res.get("steps", {}).get("node_to_node_capacity_matrix", {}) or {}
-        mf_meta = mf_step.get("metadata", {}) or {}
-        if bool(mf_meta.get("baseline")) is not True:
-            raise ValueError(
-                "node_to_node_capacity_matrix.metadata.baseline must be true and baseline must be included"
-            )
         mf = mf_step.get("data", {}) or {}
+        baseline = mf.get("baseline")
+        if not isinstance(baseline, dict):
+            raise ValueError("node_to_node_capacity_matrix.data.baseline dict required")
         fr = mf.get("flow_results", []) or []
         if not isinstance(fr, list) or not fr:
             raise ValueError(
                 "node_to_node_capacity_matrix.data.flow_results missing or empty"
-            )
-        first = fr[0]
-        if str(first.get("failure_id", "")) != "baseline":
-            raise ValueError(
-                "node_to_node_capacity_matrix baseline must be first (flow_results[0].failure_id == 'baseline')"
             )
         for it in fr:
             for rec in it.get("flows", []) or []:

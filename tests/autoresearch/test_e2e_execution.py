@@ -109,19 +109,19 @@ class TestE2EExecution:
         assert alpha_star > 0, f"alpha_star={alpha_star}, expected > 0"
 
     @pytest.mark.timeout(600)
-    def test_tm_placement_present(self, scenario_output):
+    def test_tm_combined_present(self, scenario_output):
         results, *_ = scenario_output
         steps = results["steps"]
-        assert "tm_placement" in steps, (
-            f"No tm_placement in steps. Found: {list(steps.keys())}"
+        assert "tm_combined" in steps, (
+            f"No tm_combined in steps. Found: {list(steps.keys())}"
         )
 
     @pytest.mark.timeout(600)
-    def test_tm_placement_has_flow_results(self, scenario_output):
+    def test_tm_combined_has_flow_results(self, scenario_output):
         results, *_ = scenario_output
-        tm_data = results["steps"]["tm_placement"]["data"]
+        tm_data = results["steps"]["tm_combined"]["data"]
         flow_results = tm_data.get("flow_results")
-        assert flow_results is not None, "flow_results missing from tm_placement data"
+        assert flow_results is not None, "flow_results missing from tm_combined data"
         assert len(flow_results) > 0, "flow_results is empty"
 
     @pytest.mark.timeout(600)
@@ -134,6 +134,6 @@ class TestE2EExecution:
         assert "msd_baseline" in workflow, (
             f"msd_baseline not in workflow metadata. Found: {list(workflow.keys())}"
         )
-        assert "tm_placement" in workflow, (
-            f"tm_placement not in workflow metadata. Found: {list(workflow.keys())}"
+        assert "tm_combined" in workflow, (
+            f"tm_combined not in workflow metadata. Found: {list(workflow.keys())}"
         )

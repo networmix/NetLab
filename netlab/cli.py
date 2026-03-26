@@ -899,6 +899,100 @@ def main() -> None:
 
     ap_auto_run.set_defaults(func=_cmd_autoresearch_run)
 
+    # autoresearch structural-analysis (Phase 1)
+    ap_auto_sa = auto_sub.add_parser(
+        "structural-analysis",
+        help="Phase 1: enumerate configs, compute failure fingerprints, classify feasibility",
+    )
+    ap_auto_sa.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Save results to JSON file (default: print to stdout)",
+    )
+
+    def _cmd_autoresearch_structural_analysis(args: argparse.Namespace) -> None:
+        from netlab.autoresearch.structural_analysis import (
+            print_summary,
+            run_structural_analysis,
+            save_results,
+        )
+
+        results = run_structural_analysis()
+        print_summary(results)
+        if args.output:
+            save_results(results, args.output)
+            print(f"\nResults saved to {args.output}")
+
+    ap_auto_sa.set_defaults(func=_cmd_autoresearch_structural_analysis)
+
+    # autoresearch sweep (Phase 2)
+    ap_auto_sweep = auto_sub.add_parser(
+        "sweep",
+        help="Sweep one DC side (fix other at default), extract alpha + per-mode BAC",
+    )
+    ap_auto_sweep.add_argument(
+        "side",
+        choices=["abc1", "xyz1"],
+        help="DC side to sweep (other side held at default)",
+    )
+    ap_auto_sweep.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Directory for results.jsonl and result directories",
+    )
+    ap_auto_sweep.add_argument("--iterations", type=int, default=200)
+    ap_auto_sweep.add_argument("--timeout", type=int, default=300)
+    ap_auto_sweep.add_argument("--seed", type=int, default=42)
+
+    def _cmd_autoresearch_sweep(args: argparse.Namespace) -> None:
+        from netlab.autoresearch.sweep import SweepConfig, print_results, run_sweep
+
+        config = SweepConfig(
+            output_dir=args.output_dir,
+            failure_iterations=args.iterations,
+            timeout_s=args.timeout,
+            seed=args.seed,
+        )
+        entries = run_sweep(config, side=args.side)
+        print_results(entries)
+
+    ap_auto_sweep.set_defaults(func=_cmd_autoresearch_sweep)
+
+    # autoresearch cross-sweep
+    ap_auto_xsweep = auto_sub.add_parser(
+        "cross-sweep",
+        help="Sweep all ABC1 × XYZ1 combinations, extract alpha + per-mode BAC",
+    )
+    ap_auto_xsweep.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Directory for results.jsonl and result directories",
+    )
+    ap_auto_xsweep.add_argument("--iterations", type=int, default=200)
+    ap_auto_xsweep.add_argument("--timeout", type=int, default=300)
+    ap_auto_xsweep.add_argument("--seed", type=int, default=42)
+
+    def _cmd_autoresearch_cross_sweep(args: argparse.Namespace) -> None:
+        from netlab.autoresearch.sweep import (
+            SweepConfig,
+            print_results,
+            run_cross_sweep,
+        )
+
+        config = SweepConfig(
+            output_dir=args.output_dir,
+            failure_iterations=args.iterations,
+            timeout_s=args.timeout,
+            seed=args.seed,
+        )
+        entries = run_cross_sweep(config)
+        print_results(entries)
+
+    ap_auto_xsweep.set_defaults(func=_cmd_autoresearch_cross_sweep)
+
     args = ap.parse_args()
     # Override log level if -v provided
     if bool(getattr(args, "verbose", False)):

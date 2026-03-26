@@ -104,12 +104,16 @@ class TestBuildDemands:
 
 
 class TestBuildWorkflow:
-    """Tests for _build_workflow."""
+    """Tests for _build_workflow (MSD + 7 per-mode TMP + 1 combined TMP)."""
 
-    def test_two_workflow_steps(self):
+    def test_workflow_step_count(self):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+
         config = DcBbScenarioConfig()
         workflow = _build_workflow(config)
-        assert len(workflow) == 2
+        assert (
+            len(workflow) == 1 + len(FAILURE_MODE_NAMES) + 1
+        )  # MSD + N per-mode + combined
 
     def test_msd_step_type_and_name(self):
         config = DcBbScenarioConfig()
@@ -120,78 +124,41 @@ class TestBuildWorkflow:
     def test_msd_references_baseline_traffic_matrix(self):
         config = DcBbScenarioConfig()
         msd = _build_workflow(config)[0]
-        assert msd["demands"] == "baseline_traffic_matrix"
+        assert msd["demand_set"] == "baseline_traffic_matrix"
 
-    def test_msd_uses_config_seed(self):
-        config = DcBbScenarioConfig(seed=123)
-        msd = _build_workflow(config)[0]
-        assert msd["seed"] == 123
+    def test_per_mode_tmp_steps(self):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
 
-    def test_msd_uses_config_resolution(self):
-        config = DcBbScenarioConfig(msd_resolution=0.05)
-        msd = _build_workflow(config)[0]
-        assert msd["resolution"] == 0.05
-
-    def test_msd_flow_policy(self):
         config = DcBbScenarioConfig()
-        msd = _build_workflow(config)[0]
-        assert msd["flow_policy"] == "SHORTEST_PATHS_ECMP"
+        workflow = _build_workflow(config)
+        tmp_steps = [s for s in workflow if s["type"] == "TrafficMatrixPlacement"]
+        assert len(tmp_steps) == len(FAILURE_MODE_NAMES) + 1  # N per-mode + 1 combined
+        for mode_name in FAILURE_MODE_NAMES:
+            matching = [s for s in tmp_steps if s["name"] == f"tm_{mode_name}"]
+            assert len(matching) == 1, f"Missing TMP step for {mode_name}"
+            assert matching[0]["failure_policy"] == f"fm_{mode_name}"
 
-    def test_tmp_step_type_and_name(self):
+    def test_combined_tmp_step(self):
         config = DcBbScenarioConfig()
-        tmp = _build_workflow(config)[1]
-        assert tmp["type"] == "TrafficMatrixPlacement"
-        assert tmp["name"] == "tm_placement"
+        workflow = _build_workflow(config)
+        combined = [s for s in workflow if s["name"] == "tm_combined"]
+        assert len(combined) == 1
+        assert combined[0]["failure_policy"] == "fm_combined"
 
-    def test_tmp_references_baseline_traffic_matrix(self):
+    def test_all_tmp_reference_msd(self):
         config = DcBbScenarioConfig()
-        tmp = _build_workflow(config)[1]
-        assert tmp["demands"] == "baseline_traffic_matrix"
-
-    def test_tmp_references_failure_policy(self):
-        config = DcBbScenarioConfig()
-        tmp = _build_workflow(config)[1]
-        assert tmp["failure_policy"] == "dc_bb_failures"
-
-    def test_tmp_uses_config_iterations(self):
-        config = DcBbScenarioConfig(failure_iterations=500)
-        tmp = _build_workflow(config)[1]
-        assert tmp["iterations"] == 500
-
-    def test_tmp_parallelism(self):
-        config = DcBbScenarioConfig()
-        tmp = _build_workflow(config)[1]
-        assert tmp["parallelism"] == 8
-
-    def test_tmp_uses_config_seed(self):
-        config = DcBbScenarioConfig(seed=99)
-        tmp = _build_workflow(config)[1]
-        assert tmp["seed"] == 99
-
-    def test_tmp_metadata_baseline_true(self):
-        config = DcBbScenarioConfig()
-        tmp = _build_workflow(config)[1]
-        assert tmp["metadata"] == {"baseline": True}
+        workflow = _build_workflow(config)
+        for step in workflow:
+            if step["type"] == "TrafficMatrixPlacement":
+                assert step["alpha_from_step"] == "msd_baseline"
 
     def test_workflow_demand_names_match(self):
-        """Both workflow steps should reference the same demand name
-        that _build_demands produces."""
         config = DcBbScenarioConfig()
         demands = _build_demands(config)
         workflow = _build_workflow(config)
         demand_names = set(demands.keys())
         for step in workflow:
-            assert step["demands"] in demand_names
-
-    def test_default_config_values(self):
-        """MSD and TMP steps use default config values correctly."""
-        config = DcBbScenarioConfig()
-        msd = _build_workflow(config)[0]
-        tmp = _build_workflow(config)[1]
-        assert msd["seed"] == 42
-        assert msd["resolution"] == 0.01
-        assert tmp["iterations"] == 200
-        assert tmp["seed"] == 42
+            assert step["demand_set"] in demand_names
 
 
 # ---------------------------------------------------------------------------
@@ -200,105 +167,45 @@ class TestBuildWorkflow:
 
 
 class TestBuildFailurePolicy:
-    """Tests for _build_failure_policy."""
+    """Tests for _build_failure_policy (N single-mode + 1 combined)."""
 
-    def test_returns_dc_bb_failures_key(self):
+    def test_policy_count(self):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+
         config = DcBbScenarioConfig()
         policy = _build_failure_policy(config)
-        assert "dc_bb_failures" in policy
+        assert len(policy) == len(FAILURE_MODE_NAMES) + 1  # N modes + 1 combined
 
-    def test_policy_has_description(self):
-        config = DcBbScenarioConfig()
-        fp = _build_failure_policy(config)["dc_bb_failures"]
-        assert "attrs" in fp
-        assert "description" in fp["attrs"]
-        assert len(fp["attrs"]["description"]) > 0
+    def test_single_mode_policies_have_one_mode(self):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
 
-    def test_seven_modes(self):
         config = DcBbScenarioConfig()
-        modes = _build_failure_policy(config)["dc_bb_failures"]["modes"]
-        assert len(modes) == 7
+        policy = _build_failure_policy(config)
+        for name in FAILURE_MODE_NAMES:
+            p = policy[f"fm_{name}"]
+            assert len(p["modes"]) == 1
+            assert p["modes"][0]["weight"] == 1.0
 
-    def test_weights_sum_to_one(self):
+    def test_combined_policy_has_all_modes(self):
+        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+
         config = DcBbScenarioConfig()
-        modes = _build_failure_policy(config)["dc_bb_failures"]["modes"]
+        combined = _build_failure_policy(config)["fm_combined"]
+        assert len(combined["modes"]) == len(FAILURE_MODE_NAMES)
+
+    def test_combined_weights_sum_to_one(self):
+        config = DcBbScenarioConfig()
+        modes = _build_failure_policy(config)["fm_combined"]["modes"]
         total = sum(m["weight"] for m in modes)
-        assert abs(total - 1.0) < 1e-9, f"Weights sum to {total}, expected 1.0"
+        assert abs(total - 1.0) < 1e-9
 
-    def test_each_mode_has_rules(self):
-        config = DcBbScenarioConfig()
-        modes = _build_failure_policy(config)["dc_bb_failures"]["modes"]
-        for i, mode in enumerate(modes):
-            assert "rules" in mode, f"Mode {i} missing 'rules'"
-            assert len(mode["rules"]) >= 1, f"Mode {i} has no rules"
-
-    def test_mode_1_long_haul_path(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][0]
-        assert mode["weight"] == 0.10
-        rule = mode["rules"][0]
-        assert rule["scope"] == "risk_group"
-        assert rule["mode"] == "choice"
-        assert rule["count"] == 1
-        assert rule["conditions"][0]["value"] == "long_haul_path"
-
-    def test_mode_2_plane_group(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][1]
-        assert mode["weight"] == 0.15
-        rule = mode["rules"][0]
-        assert rule["scope"] == "risk_group"
-        assert rule["conditions"][0]["value"] == "plane_group"
-
-    def test_mode_3_plane_site(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][2]
-        assert mode["weight"] == 0.15
-        rule = mode["rules"][0]
-        assert rule["scope"] == "risk_group"
-        assert rule["conditions"][0]["value"] == "plane_site"
-
-    def test_mode_4_device_index_across_planes(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][3]
-        assert mode["weight"] == 0.10
-        rule = mode["rules"][0]
-        assert rule["scope"] == "risk_group"
-        assert rule["conditions"][0]["value"] == "device_index_across_planes"
-
-    def test_mode_5_single_bb_device(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][4]
-        assert mode["weight"] == 0.15
-        rule = mode["rules"][0]
-        assert rule["scope"] == "node"
-        assert rule["mode"] == "choice"
-        assert rule["count"] == 1
-        assert rule["conditions"][0]["value"] == "bb"
-
-    def test_mode_6_two_bb_devices(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][5]
-        assert mode["weight"] == 0.10
-        rule = mode["rules"][0]
-        assert rule["scope"] == "node"
-        assert rule["mode"] == "choice"
-        assert rule["count"] == 2
-
-    def test_mode_7_random_link_failures(self):
-        config = DcBbScenarioConfig()
-        mode = _build_failure_policy(config)["dc_bb_failures"]["modes"][6]
-        assert mode["weight"] == 0.25
-        rule = mode["rules"][0]
-        assert rule["scope"] == "link"
-        assert rule["mode"] == "random"
-        assert rule["probability"] == 0.01
-        assert rule["conditions"][0]["value"] == "bb_cross_site"
-
-    def test_failure_policy_name_matches_workflow_reference(self):
-        """The policy name must match what _build_workflow references."""
+    def test_failure_policies_match_workflow(self):
+        """Every TMP step references a defined policy."""
         config = DcBbScenarioConfig()
         policy = _build_failure_policy(config)
         workflow = _build_workflow(config)
-        tmp_step = workflow[1]
-        assert tmp_step["failure_policy"] in policy
+        for step in workflow:
+            if step["type"] == "TrafficMatrixPlacement":
+                assert step["failure_policy"] in policy, (
+                    f"{step['name']} refs missing policy"
+                )

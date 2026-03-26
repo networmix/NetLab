@@ -126,6 +126,12 @@ exports/
 *.pickle
 *.pkl
 
+# Session handoff notes
+HANDOFF.md
+
+# uv lock file (not used for distribution)
+uv.lock
+
 # Temporary analysis & CLI output
 *_results.json
 results*.json
@@ -156,3 +162,11 @@ dev/perf_plots/
 # Experiment results (generated outputs, not source configs)
 experiments/*/results/
 experiments/**/results/
+
+# Research project outputs (simulation results, generated scenarios)
+# Config files (config.yml, objective.yml, etc.) ARE tracked.
+research_projects/*/results/
+research_projects/**/results/
+research_projects/**/phase*/
+research_projects/lm_*/
+research_projects/square_mesh_*/

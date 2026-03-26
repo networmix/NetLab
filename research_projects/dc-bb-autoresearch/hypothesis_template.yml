@@ -5,75 +5,79 @@ params:
     default: "16"
     description: >
       Mesh group count for ABC1 (FADU) <-> BB.
-      G=16: 16 BB/FADU, 9,216 links (uses all 16 ports — satisfies 75% rule).
-      G=32: 8 BB/FADU, 4,608 links (fails 75% rule — DevIdx causes 50% loss).
-      G=64: 4 BB/FADU, 2,304 links (fails 75% rule — multiple failure types cause >=50% loss).
+      G=16: k_dc=16 BB/FADU, 9,216 links. Only G that passes feasibility (>=75% retention).
+      G=32: k_dc=8, 4,608 links. Fails: device-index causes 50% loss.
+      G=64: k_dc=4, 2,304 links. Fails: device-index causes 100% loss.
+
   g_xyz1:
     type: enum
     values: ["64", "128", "256"]
     default: "64"
     description: >
       Mesh group count for XYZ1 (XSW) <-> BB.
-      G=64: 4 BB/XSW, 6,144 links (best available — 4 ports is XSW max).
-      G=128: 2 BB/XSW, 3,072 links (single failure can remove 50%+).
-      G=256: 1 BB/XSW, 1,536 links (any BB failure disconnects XSW entirely).
+      G=64: k_dc=4, 6,144 links. Best available (4 ports is XSW max).
+      G=128: k_dc=2, 3,072 links. Single failure removes 50%+.
+      G=256: k_dc=1, 1,536 links. Any BB failure disconnects XSW. Lower alpha but better BAC.
+
   layout_abc1:
     type: enum
     values:
-      # G=16 layouts (block = DC x BB)
-      - "4x4_4x4"    # 4r×9c <> 4r×4c
-      - "4x4_8x2"    # 4r×9c <> 8r×2c
-      - "4x4_16x1"   # 4r×9c <> 16r×1c  ✓ best for resilience
-      - "8x2_4x4"    # 2r×18c <> 4r×4c
-      - "8x2_8x2"    # 2r×18c <> 8r×2c
-      - "8x2_16x1"   # 2r×18c <> 16r×1c  ✓ best for resilience
-      - "16x1_4x4"   # 1r×36c <> 4r×4c
-      - "16x1_8x2"   # 1r×36c <> 8r×2c
-      - "16x1_16x1"  # 1r×36c <> 16r×1c  ✓ best for resilience
-      # G=32 layouts
-      - "8x4_8x4"    # 2r×9c <> 8r×1c
-      - "8x4_16x2"   # 2r×9c <> 4r×2c
-      - "8x4_32x1"   # 2r×9c <> 2r×4c
-      - "16x2_8x4"   # 1r×18c <> 8r×1c
-      - "16x2_16x2"  # 1r×18c <> 4r×2c
-      - "16x2_32x1"  # 1r×18c <> 2r×4c
-      # G=64 layouts
-      - "16x4_16x4"  # 1r×9c <> 4r×1c
-      - "16x4_32x2"  # 1r×9c <> 2r×2c
-      - "16x4_64x1"  # 1r×9c <> 1r×4c
+      # === VALID FOR G=16 ONLY ===
+      - "4x4_4x4"    # DC: 4rx9c  BB: 4rx4c   — PG=100%, PS=25%, DI=25%
+      - "4x4_8x2"    # DC: 4rx9c  BB: 8rx2c   — PG=50%,  PS=12%, DI=25%
+      - "4x4_16x1"   # DC: 4rx9c  BB: 16rx1c  — PG=25%,  PS=6%,  DI=25%  ✓ FEASIBLE
+      - "8x2_4x4"    # DC: 2rx18c BB: 4rx4c
+      - "8x2_8x2"    # DC: 2rx18c BB: 8rx2c
+      - "8x2_16x1"   # DC: 2rx18c BB: 16rx1c  ✓ FEASIBLE
+      - "16x1_4x4"   # DC: 1rx36c BB: 4rx4c
+      - "16x1_8x2"   # DC: 1rx36c BB: 8rx2c
+      - "16x1_16x1"  # DC: 1rx36c BB: 16rx1c  ✓ FEASIBLE
+      # === VALID FOR G=32 ONLY ===
+      - "8x4_8x4"    # DC: 2rx9c  BB: 8rx1c
+      - "8x4_16x2"   # DC: 2rx9c  BB: 4rx2c
+      - "8x4_32x1"   # DC: 2rx9c  BB: 2rx4c
+      - "16x2_8x4"   # DC: 1rx18c BB: 8rx1c
+      - "16x2_16x2"  # DC: 1rx18c BB: 4rx2c
+      - "16x2_32x1"  # DC: 1rx18c BB: 2rx4c
+      # === VALID FOR G=64 ONLY ===
+      - "16x4_16x4"  # DC: 1rx9c  BB: 4rx1c
+      - "16x4_32x2"  # DC: 1rx9c  BB: 2rx2c
+      - "16x4_64x1"  # DC: 1rx9c  BB: 1rx4c
     default: "4x4_16x1"
     description: >
-      Grid factorization for ABC1 side: gr_dc x gc_dc _ gr_bb x gc_bb.
-      MUST match g_abc1. Comments show the mesh group block shape (ArxBc <> CrxDc).
-      Best resilience: BB block with most rows (spreads across planes).
+      Grid factorization: gr_dc x gc_dc _ gr_bb x gc_bb. MUST match g_abc1.
+      Format after underscore determines BB block shape (resilience).
+      The DC part (before underscore) affects physical device grouping.
+      IMPORTANT: Layouts are G-specific. Using a G=32 layout with G=16 will error.
+
   layout_xyz1:
     type: enum
     values:
-      # G=64 layouts
-      - "8x8_16x4"   # 8r×3c <> 4r×1c  ✓ best plane-site resilience
-      - "8x8_32x2"   # 8r×3c <> 2r×2c
-      - "8x8_64x1"   # 8r×3c <> 1r×4c
-      - "16x4_16x4"  # 4r×6c <> 4r×1c  ✓ best plane-site resilience
-      - "16x4_32x2"  # 4r×6c <> 2r×2c
-      - "16x4_64x1"  # 4r×6c <> 1r×4c
-      - "32x2_16x4"  # 2r×12c <> 4r×1c  ✓ best plane-site resilience
-      - "32x2_32x2"  # 2r×12c <> 2r×2c
-      - "32x2_64x1"  # 2r×12c <> 1r×4c
-      - "64x1_16x4"  # 1r×24c <> 4r×1c  ✓ best plane-site resilience
-      - "64x1_32x2"  # 1r×24c <> 2r×2c
-      - "64x1_64x1"  # 1r×24c <> 1r×4c
-      # G=128 layouts
-      - "16x8_32x4"  # 4r×3c <> 2r×1c
-      - "16x8_64x2"  # 4r×3c <> 1r×2c
-      - "32x4_32x4"  # 2r×6c <> 2r×1c
-      - "32x4_64x2"  # 2r×6c <> 1r×2c
-      - "64x2_32x4"  # 1r×12c <> 2r×1c
-      - "64x2_64x2"  # 1r×12c <> 1r×2c
-      # G=256 layouts
-      - "32x8_64x4"  # 2r×3c <> 1r×1c
-      - "64x4_64x4"  # 1r×6c <> 1r×1c
-    default: "8x8_16x4"
+      # === VALID FOR G=64 ONLY ===
+      - "8x8_16x4"   # DC: 8rx3c   BB: 4rx1c  — best plane-site (25%)
+      - "8x8_32x2"   # DC: 8rx3c   BB: 2rx2c
+      - "8x8_64x1"   # DC: 8rx3c   BB: 1rx4c
+      - "16x4_16x4"  # DC: 4rx6c   BB: 4rx1c  — best plane-site (25%)
+      - "16x4_32x2"  # DC: 4rx6c   BB: 2rx2c
+      - "16x4_64x1"  # DC: 4rx6c   BB: 1rx4c
+      - "32x2_16x4"  # DC: 2rx12c  BB: 4rx1c
+      - "32x2_32x2"  # DC: 2rx12c  BB: 2rx2c
+      - "32x2_64x1"  # DC: 2rx12c  BB: 1rx4c
+      - "64x1_16x4"  # DC: 1rx24c  BB: 4rx1c
+      - "64x1_32x2"  # DC: 1rx24c  BB: 2rx2c
+      - "64x1_64x1"  # DC: 1rx24c  BB: 1rx4c
+      # === VALID FOR G=128 ONLY ===
+      - "16x8_32x4"  # DC: 4rx3c  BB: 2rx1c
+      - "16x8_64x2"  # DC: 4rx3c  BB: 1rx2c
+      - "32x4_32x4"  # DC: 2rx6c  BB: 2rx1c
+      - "32x4_64x2"  # DC: 2rx6c  BB: 1rx2c
+      - "64x2_32x4"  # DC: 1rx12c BB: 2rx1c
+      - "64x2_64x2"  # DC: 1rx12c BB: 1rx2c
+      # === VALID FOR G=256 ONLY ===
+      - "32x8_64x4"  # DC: 2rx3c  BB: 1rx1c
+      - "64x4_64x4"  # DC: 1rx6c  BB: 1rx1c
+    default: "16x4_16x4"
     description: >
-      Grid factorization for XYZ1 side: gr_dc x gc_dc _ gr_bb x gc_bb.
-      MUST match g_xyz1. XSW grid is 64×24 (dev×plane).
-      Best plane-site resilience: BB block with 4 rows (4r×1c spreads across 4 planes).
+      Grid factorization: gr_dc x gc_dc _ gr_bb x gc_bb. MUST match g_xyz1.
+      XSW grid is 64x24 (device x plane). BB block shape after underscore determines resilience.
+      IMPORTANT: Layouts are G-specific. Check the G=N header comments.

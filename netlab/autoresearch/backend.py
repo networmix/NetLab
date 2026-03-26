@@ -3,7 +3,7 @@
 Provides:
 - LLMBackend: ABC for single-shot text generation
 - MockBackend: scripted responses for testing
-- ClaudeCLIBackend: subprocess wrapper around `claude --print`
+- ClaudeCLIBackend: subprocess wrapper around `claude -p`
 - CodexCLIBackend: subprocess wrapper around `codex exec`
 - OpenAICompatibleBackend: HTTP client for OpenAI-compatible APIs
 """
@@ -53,7 +53,10 @@ class ClaudeCLIBackend(LLMBackend):
         self.model = model
 
     def generate(self, prompt: str, system: str = "") -> str:
-        cmd = ["claude", "--print", "-p", prompt]
+        # Claude Code headless mode uses -p/--print with the prompt as its value.
+        cmd = ["claude", "-p", prompt]
+        if self.model:
+            cmd.extend(["--model", self.model])
         if system:
             cmd.extend(["--system-prompt", system])
         result = subprocess.run(

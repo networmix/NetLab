@@ -4,111 +4,96 @@
 
 Two data centers (ABC1 and XYZ1) connected through a shared 64-plane backbone.
 
-**ABC1 (DCType1):** 576 FADU devices arranged in a 16×36 grid (16 HGRIDs × 36 FADU/HGRID). Each FADU has up to 16 BB-facing ports.
+**ABC1 (DCType1):** 576 FADU devices in a 16×36 grid (16 HGRIDs × 36 FADU/HGRID). Up to 16 BB-facing ports per FADU.
 
-**XYZ1 (DCTypeF):** 1,536 XSW devices arranged in a 64×24 grid (64 devices/plane × 24 planes). Each XSW has up to 4 BB-facing ports.
+**XYZ1 (DCTypeF):** 1,536 XSW devices in a 64×24 grid (64 devices/plane × 24 planes). Up to 4 BB-facing ports per XSW.
 
-**Backbone:** 256 BB devices per site, arranged in a 64×4 grid (64 planes × 4 devices/plane). Dual long-haul paths (Path_A, Path_B) cross-connect the two sites.
+**Backbone:** 256 BB devices per site (64 planes × 4 devices/plane). Dual long-haul paths (Path_A, Path_B) cross-connect at 800 Gbps per link. Total cross-site: 2,048 links.
 
 ## Mesh Group Interconnect
 
-DC devices connect to BB devices through **mesh groups**. G groups partition both the DC grid and the BB grid into G equal-sized rectangular blocks. All DC devices in group i connect to all BB devices in group i (full mesh within group).
+G groups partition both DC and BB grids into equal rectangular blocks. Full mesh within each group. Notation `ArxBc <> CrxDc`: DC block (A rows × B cols) paired with BB block (C rows × D cols).
 
-### Notation: `ArxBc <> CrxDc`
-
-This describes the **block shape** of ONE mesh group:
-- Left: **A rows × B columns** of DC devices
-- Right: **C rows × D columns** of BB devices
-- A×B = DC_total/G devices per group on DC side
-- C×D = BB_total/G devices per group on BB side
-- Each group has A×B×C×D links (full mesh)
-
-The DC and BB factorizations are independent — they must produce the same G but can partition their grids differently.
-
-**Physical meaning of rows and columns:**
-- FADU grid: rows = HGRIDs (failure-independent), columns = FADU index within HGRID
-- XSW grid: rows = device index within plane, columns = plane index
-- BB grid: rows = planes, columns = device index within plane
-
-**Why the BB block shape matters:** BB rows are planes. The failure model includes plane-site failures (all devices in one plane at one site), plane group failures (4 consecutive planes), and device-index-across-plane-group failures (same device index across 4 planes). The BB block shape determines how many of a group's BB devices fall within a single failure domain.
-
-### Example: G=64 on ABC1 (k_dc=4 BB per FADU)
-
-| Layout | BB block | Plane-site failure | Dev-idx-across-PG |
-|---|---|---|---|
-| `1r×9c <> 1r×4c` | 1 plane, all 4 devs | **100% loss** (all BB in same plane) | 25% loss |
-| `1r×9c <> 2r×2c` | 2 planes, 2 devs each | **50% loss** (ECMP stranding) | 50% loss |
-| `1r×9c <> 4r×1c` | 4 planes, 1 dev each | 25% loss | **100% loss** (block aligns with PG) |
-
-Same G, same link count, same total capacity — but completely different failure behavior.
+The **BB block shape** determines failure resilience — how a group's BB connections align with failure domains (planes, plane groups, device indices). The **DC block shape** determines which physical devices share a mesh group — affecting cabling and traffic locality.
 
 ## Design Rules
 
-### Rule 1: No hanging devices
-After any single non-LH-path failure, every DC device must retain ≥1 BB connection. A hanging device forces traffic reconvergence through the DC Clos — adding latency and creating congestion on alternative paths.
+1. **No hanging:** Every DC device retains ≥1 BB connection after any single non-LH failure.
+2. **≥75% retention:** Each device keeps ≥75% of BB connections under any single non-LH failure (excluding plane_group which affects only ~1.6% of devices per event).
+3. **Maximize G** subject to Rules 1-2 (larger G = fewer ports = lower cost).
 
-**Formally:** For every DC device d and every single failure f (excluding LH path):
-`surviving_BB_connections(d, f) ≥ 1`
+## Simulation Results
 
-### Rule 2: ≥75% capacity retention under single failure
-Excluding LH path failures (which inherently lose 50% cross-site capacity), any single failure should leave each device with ≥75% of its BB connections. ECMP distributes traffic equally across connections — losing >25% means significant traffic disruption.
+All configs were simulated with ngraph (200 failure iterations, 7 weighted failure modes). Metrics:
+- **alpha_star**: Maximum demand multiplier the topology supports (higher = more capacity)
+- **BAC AUC**: Bandwidth Availability Curve area under curve (higher = more resilient under failures)
 
-**Formally:** For every DC device d and every single failure f (excluding LH path):
-`surviving_BB_connections(d, f) / total_BB_connections(d) ≥ 0.75`
+### ABC1 Results (other side fixed at G_xyz1=64)
 
-This requires `total_BB_connections(d) ≥ 4` AND the layout must spread those connections across at least 4 independent failure domains.
+| G | k_dc | BB Block | alpha* | BAC AUC | Feasible |
+|---|------|----------|--------|---------|----------|
+| 16 | 16 | 16rx1c | 9.21 | 1.0000 | ✓ |
+| 16 | 16 | 4rx4c | 9.21 | 1.0000 | ✓ |
+| 16 | 16 | 8rx2c | 9.21 | 0.9994 | ✓ |
+| 32 | 8 | 8rx1c | 9.21 | 1.0000 | ✗ |
+| 32 | 8 | 4rx2c | 9.21 | 1.0000 | ✗ |
+| 32 | 8 | 2rx4c | 9.21 | 1.0000 | ✗ |
+| 64 | 4 | 4rx1c | 9.21 | 0.8900 | ✗ |
+| 64 | 4 | 2rx2c | 9.21 | 0.8885 | ✗ |
+| 64 | 4 | 1rx4c | 9.21 | 0.8891 | ✗ |
 
-### Rule 3: Largest viable G
-Larger G = fewer ports per device = lower cost. Prefer the largest G that satisfies Rules 1 and 2.
+**Key finding:** Alpha is identical (9.21) across all ABC1 configs — ABC1 DC-BB (921.6 Gbps aggregate) is always the capacity bottleneck regardless of G or layout. BAC differentiates: G=16/32 achieve BAC ≈ 1.0, G=64 drops to 0.89.
 
-**Formally:** Maximize G subject to Rules 1 and 2 being satisfied for all devices and all non-LH failure types.
+### XYZ1 Results (other side fixed at G_abc1=64)
 
-## Structural Analysis Results
+| G | k_dc | BB Block | alpha* | BAC AUC | Feasible |
+|---|------|----------|--------|---------|----------|
+| 64 | 4 | 4rx1c | 9.21 | 0.8900 | ✗ |
+| 64 | 4 | 2rx2c | 9.21 | 0.8851 | ✗ |
+| 64 | 4 | 1rx4c | 9.21 | 0.8943 | ✗ |
+| 128 | 2 | 2rx1c | 9.21 | 0.8697 | ✗ |
+| 128 | 2 | 1rx2c | 9.21 | 0.8697 | ✗ |
+| 256 | 1 | 1rx1c | 6.14 | 0.9405 | ✗ |
 
-### ABC1 side (FADU, 16 BB-facing ports)
+**Key finding:** G=64 and G=128 achieve full alpha (9.21, bottlenecked at ABC1). G=256 has lower alpha (6.14, XYZ1 becomes bottleneck at 614.4 Gbps) but best BAC (0.94). No XYZ1 config passes structural feasibility — 4 BB ports is too few for the 75% rule.
 
-| G | k_dc | Best BB block | Plane-site | Dev-idx-PG | Plane group | Rules |
-|---|---|---|---|---|---|---|
-| **16** | 16 | **16r×1c** | 6% loss | **25% loss** | 25% loss | ✓ pass |
-| 32 | 8 | 8r×1c (best) | 12% loss | **50% loss** | 50% loss | ✗ fail |
-| 64 | 4 | 4r×1c (best) | 25% loss | **100% loss** | 100% loss | ✗ fail |
+### Cross-Side Results (54 combinations, top by BAC)
 
-**Answer for ABC1: G=16 with BB block `16r×1c`** (spread each group's 16 BB devices across 16 different planes, 1 device per plane). The DC-side block shape doesn't affect failure properties — all 3 options (`4r×9c`, `2r×18c`, `1r×36c`) are equivalent for resilience.
+| G_abc1 | BB_abc1 | G_xyz1 | BB_xyz1 | alpha* | BAC AUC |
+|--------|---------|--------|---------|--------|---------|
+| 16/32 | any | 64 | any | 9.21 | 1.0000 |
+| 16/32 | any | 128 | any | 9.21 | 0.9651-0.9660 |
+| 64 | 1rx4c | 256 | 1rx1c | 6.14 | 0.9511 |
+| 16 | 16rx1c | 256 | 1rx1c | 6.14 | 0.9488 |
+| 64 | any | 64 | any | 9.21 | 0.8849-0.8946 |
+| 64 | any | 128 | any | 9.21 | 0.8694-0.8700 |
 
-### XYZ1 side (XSW, 4 BB-facing ports)
+**Key findings:**
+1. **Best resilience + full capacity:** ABC1 G=16 or G=32 with XYZ1 G=64. BAC = 1.0 with alpha = 9.21.
+2. **ABC1 G matters for BAC:** G=16/32 gives BAC ≈ 1.0; G=64 drops to 0.89. The BB block within G doesn't significantly affect cross-side BAC.
+3. **XYZ1 G=256 tradeoff:** Better BAC (0.94) but 33% less capacity (alpha 6.14 vs 9.21).
+4. **Cross-side interaction:** ABC1 BB block affects BAC slightly when XYZ1 is at G=256 (range 0.93-0.95), but not when XYZ1 is at G=64 (all ≈ 1.0).
 
-| G | k_dc | Best BB block | Plane-site | Dev-idx-PG | Rules |
-|---|---|---|---|---|---|
-| 64 | 4 | 4r×1c | 25% loss | **100% loss** | ✗ fail |
-| 128 | 2 | 2r×1c | 50% loss | **100% loss** | ✗ fail |
-| 256 | 1 | — | 100% loss | 100% loss | ✗ fail |
+## Research Questions
 
-**No G value satisfies both rules on XYZ1.** The XSW port budget (4 ports) is the binding constraint. With only 4 BB connections, any correlated failure removing ≥2 connections exceeds 25% loss.
+Given the simulation data above:
 
-**Best available for XYZ1: G=64, BB block `4r×1c`** — minimizes plane-site loss (25%) and avoids hanging under that failure type. But device-index-across-plane-group remains catastrophic.
+1. **Deployment recommendation:** Which ABC1 × XYZ1 combination should be deployed? Consider the tradeoff between port cost (higher G = fewer ports), capacity (alpha), and resilience (BAC).
 
-## What to Explore
+2. **G=32 on ABC1:** It achieves BAC = 1.0 like G=16 but uses half the BB ports (8 vs 16 per FADU). The structural analysis flags it as infeasible (device-index causes 50% loss). Is the simulation BAC of 1.0 trustworthy, or is 200 iterations insufficient to reveal the vulnerability?
 
-Given the structural analysis, the research questions are:
+3. **XYZ1 G=256 vs G=64:** Is the 33% capacity reduction acceptable for the BAC improvement? Under what traffic load assumptions?
 
-1. **Verify the structural predictions with simulation.** Does the `16r×1c` BB block on ABC1 actually achieve the predicted resilience? Does `4r×1c` on XYZ1?
+4. **DC-side block choice:** For the recommended G values, does the DC-side factorization matter for operational reasons (cabling, traffic locality, failure blast radius)?
 
-2. **Cross-side interaction.** ABC1 and XYZ1 share the backbone. Does the ABC1 layout choice affect XYZ1 performance (or vice versa)?
-
-3. **DC-side block sensitivity.** On ABC1 with G=16, the 3 DC-side blocks (`4r×9c`, `2r×18c`, `1r×36c`) should be equivalent for BB-failure resilience. But do they differ for DC-internal failure scenarios?
-
-4. **XYZ1 tradeoff.** Given that XYZ1 can't satisfy the 75% rule, which failure types matter most? Is the device-index-across-plane-group failure realistic enough to optimize against, or should we accept it and optimize plane-site resilience instead?
+5. **Sensitivity to failure weights:** The Monte Carlo uses fixed weights (LH path 10%, plane group 15%, plane-site 15%, device-index 10%, single BB 15%, dual BB 10%, random link 25%). How sensitive is the ranking to these weights?
 
 ## Parameters
 
-- `g_abc1`: 16, 32, 64 (mesh group count for ABC1-BB)
-- `g_xyz1`: 64, 128, 256 (mesh group count for XYZ1-BB)
-- `layout_abc1`: Block shape for ABC1 mesh groups (valid options depend on G)
-- `layout_xyz1`: Block shape for XYZ1 mesh groups (valid options depend on G)
-
-**Constraint:** Layout must be valid for the chosen G. If you pick an invalid combination, the system will report a generation error.
-
-## Output
+- `g_abc1`: 16, 32, 64
+- `g_xyz1`: 64, 128, 256
+- `layout_abc1`: Grid factorization (MUST match g_abc1 — see template comments)
+- `layout_xyz1`: Grid factorization (MUST match g_xyz1)
 
 Return your parameter choices as YAML:
 ```yaml
@@ -116,5 +101,5 @@ params:
   g_abc1: "16"
   g_xyz1: "64"
   layout_abc1: "4x4_16x1"
-  layout_xyz1: "8x8_64x1"
+  layout_xyz1: "16x4_16x4"
 ```

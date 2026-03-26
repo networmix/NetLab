@@ -196,147 +196,6 @@
       "data": {
         "flow_results": [
           {
-            "failure_id": "baseline",
-            "failure_state": null,
-            "flows": [
-              {
-                "source": "metro1/dc1/dc/dc",
-                "destination": "metro2/dc1/dc/dc",
-                "priority": 0,
-                "demand": 25312.5,
-                "placed": 25312.5,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "414": 12800.0,
-                  "678": 12512.5
-                },
-                "data": {
-                  "policy_metrics": {
-                    "spf_calls_total": 2.0,
-                    "flows_created_total": 3.0,
-                    "reopt_calls_total": 0.0,
-                    "place_iterations_total": 2.0
-                  }
-                }
-              },
-              {
-                "source": "metro2/dc1/dc/dc",
-                "destination": "metro1/dc1/dc/dc",
-                "priority": 0,
-                "demand": 25312.5,
-                "placed": 25312.5,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "414": 12800.0,
-                  "678": 12512.5
-                },
-                "data": {
-                  "policy_metrics": {
-                    "spf_calls_total": 2.0,
-                    "flows_created_total": 3.0,
-                    "reopt_calls_total": 0.0,
-                    "place_iterations_total": 2.0
-                  }
-                }
-              },
-              {
-                "source": "metro1/dc1/dc/dc",
-                "destination": "metro5/dc1/dc/dc",
-                "priority": 0,
-                "demand": 25312.5,
-                "placed": 25312.5,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "979": 12800.0,
-                  "1205": 12512.5
-                },
-                "data": {
-                  "policy_metrics": {
-                    "spf_calls_total": 2.0,
-                    "flows_created_total": 3.0,
-                    "reopt_calls_total": 0.0,
-                    "place_iterations_total": 2.0
-                  }
-                }
-              },
-              {
-                "source": "metro5/dc1/dc/dc",
-                "destination": "metro1/dc1/dc/dc",
-                "priority": 0,
-                "demand": 25312.5,
-                "placed": 25312.5,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "979": 12800.0,
-                  "1205": 12512.5
-                },
-                "data": {
-                  "policy_metrics": {
-                    "spf_calls_total": 2.0,
-                    "flows_created_total": 3.0,
-                    "reopt_calls_total": 0.0,
-                    "place_iterations_total": 2.0
-                  }
-                }
-              },
-              {
-                "source": "metro2/dc1/dc/dc",
-                "destination": "metro5/dc1/dc/dc",
-                "priority": 0,
-                "demand": 25312.5,
-                "placed": 25312.5,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "735": 12800.0,
-                  "901": 12512.5
-                },
-                "data": {
-                  "policy_metrics": {
-                    "spf_calls_total": 2.0,
-                    "flows_created_total": 3.0,
-                    "reopt_calls_total": 0.0,
-                    "place_iterations_total": 2.0
-                  }
-                }
-              },
-              {
-                "source": "metro5/dc1/dc/dc",
-                "destination": "metro2/dc1/dc/dc",
-                "priority": 0,
-                "demand": 25312.5,
-                "placed": 25312.5,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "735": 12800.0,
-                  "901": 12512.5
-                },
-                "data": {
-                  "policy_metrics": {
-                    "spf_calls_total": 2.0,
-                    "flows_created_total": 3.0,
-                    "reopt_calls_total": 0.0,
-                    "place_iterations_total": 2.0
-                  }
-                }
-              }
-            ],
-            "summary": {
-              "total_demand": 151875.0,
-              "total_placed": 151875.0,
-              "overall_ratio": 1.0,
-              "dropped_flows": 0,
-              "num_flows": 6
-            },
-            "data": {
-              "iteration_metrics": {
-                "spf_calls_total": 12.0,
-                "flows_created_total": 18.0,
-                "reopt_calls_total": 0.0,
-                "place_iterations_total": 12.0
-              }
-            }
-          },
-          {
             "failure_id": "fc883ec9e31b3859",
             "failure_state": null,
             "flows": [
@@ -145057,6 +144916,147 @@
           ],
           "alpha": 1.6875,
           "alpha_source": "msd_baseline"
+        },
+        "baseline": {
+          "failure_id": "baseline",
+          "failure_state": null,
+          "flows": [
+            {
+              "source": "metro1/dc1/dc/dc",
+              "destination": "metro2/dc1/dc/dc",
+              "priority": 0,
+              "demand": 25312.5,
+              "placed": 25312.5,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "414": 12800.0,
+                "678": 12512.5
+              },
+              "data": {
+                "policy_metrics": {
+                  "spf_calls_total": 2.0,
+                  "flows_created_total": 3.0,
+                  "reopt_calls_total": 0.0,
+                  "place_iterations_total": 2.0
+                }
+              }
+            },
+            {
+              "source": "metro2/dc1/dc/dc",
+              "destination": "metro1/dc1/dc/dc",
+              "priority": 0,
+              "demand": 25312.5,
+              "placed": 25312.5,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "414": 12800.0,
+                "678": 12512.5
+              },
+              "data": {
+                "policy_metrics": {
+                  "spf_calls_total": 2.0,
+                  "flows_created_total": 3.0,
+                  "reopt_calls_total": 0.0,
+                  "place_iterations_total": 2.0
+                }
+              }
+            },
+            {
+              "source": "metro1/dc1/dc/dc",
+              "destination": "metro5/dc1/dc/dc",
+              "priority": 0,
+              "demand": 25312.5,
+              "placed": 25312.5,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "979": 12800.0,
+                "1205": 12512.5
+              },
+              "data": {
+                "policy_metrics": {
+                  "spf_calls_total": 2.0,
+                  "flows_created_total": 3.0,
+                  "reopt_calls_total": 0.0,
+                  "place_iterations_total": 2.0
+                }
+              }
+            },
+            {
+              "source": "metro5/dc1/dc/dc",
+              "destination": "metro1/dc1/dc/dc",
+              "priority": 0,
+              "demand": 25312.5,
+              "placed": 25312.5,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "979": 12800.0,
+                "1205": 12512.5
+              },
+              "data": {
+                "policy_metrics": {
+                  "spf_calls_total": 2.0,
+                  "flows_created_total": 3.0,
+                  "reopt_calls_total": 0.0,
+                  "place_iterations_total": 2.0
+                }
+              }
+            },
+            {
+              "source": "metro2/dc1/dc/dc",
+              "destination": "metro5/dc1/dc/dc",
+              "priority": 0,
+              "demand": 25312.5,
+              "placed": 25312.5,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "735": 12800.0,
+                "901": 12512.5
+              },
+              "data": {
+                "policy_metrics": {
+                  "spf_calls_total": 2.0,
+                  "flows_created_total": 3.0,
+                  "reopt_calls_total": 0.0,
+                  "place_iterations_total": 2.0
+                }
+              }
+            },
+            {
+              "source": "metro5/dc1/dc/dc",
+              "destination": "metro2/dc1/dc/dc",
+              "priority": 0,
+              "demand": 25312.5,
+              "placed": 25312.5,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "735": 12800.0,
+                "901": 12512.5
+              },
+              "data": {
+                "policy_metrics": {
+                  "spf_calls_total": 2.0,
+                  "flows_created_total": 3.0,
+                  "reopt_calls_total": 0.0,
+                  "place_iterations_total": 2.0
+                }
+              }
+            }
+          ],
+          "summary": {
+            "total_demand": 151875.0,
+            "total_placed": 151875.0,
+            "overall_ratio": 1.0,
+            "dropped_flows": 0,
+            "num_flows": 6
+          },
+          "data": {
+            "iteration_metrics": {
+              "spf_calls_total": 12.0,
+              "flows_created_total": 18.0,
+              "reopt_calls_total": 0.0,
+              "place_iterations_total": 12.0
+            }
+          }
         }
       }
     },
