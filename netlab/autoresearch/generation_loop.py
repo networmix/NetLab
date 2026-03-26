@@ -158,7 +158,7 @@ def _parse_int(s: str) -> int:
         return 0
 
 
-_GENERATION_SYSTEM_PROMPT = """\
+_GENERATION_SYSTEM_PROMPT_HEADER = """\
 You are a network topology engineer generating ngraph scenario YAML files.
 
 You will receive a connectivity idea and must produce a complete ngraph
@@ -166,39 +166,84 @@ scenario YAML. After each attempt, you will receive the ngraph inspect
 output showing what was actually built. Compare it against the original
 intent and fix any mismatches.
 
-CRITICAL: The top-level keys must be: seed, network, risk_groups, demands,
-failures, workflow. Nodes and links go INSIDE the network key.
-
-Minimal working example:
-
-seed: 42
-network:
-  nodes:
-    A: {}
-    B: {}
-  links:
-    - source: A
-      target: B
-      capacity: 100
-      cost: 1
-demands:
-  tm:
-    - source: ^A$
-      target: ^B$
-      volume: 10
-      mode: combine
-      flow_policy: SHORTEST_PATHS_ECMP
-workflow:
-  - type: MaximumSupportedDemand
-    name: msd_baseline
-    demand_set: tm
-    resolution: 0.1
-
-All links are bidirectional by default (ngraph adds reverse automatically).
-Use `risk_groups: [name]` on link definitions to assign to failure domains.
-Failure policies use `scope: node|link|risk_group` with `mode: choice` and
-`match.conditions` to select targets.
+Return ONLY valid YAML. No markdown fences, no explanation.
 """
+
+# Loaded at module import from the skills directory if available,
+# otherwise falls back to a built-in minimal reference.
+_DSL_REFERENCE: str | None = None
+
+
+def _load_dsl_reference() -> str:
+    """Load the ngraph DSL skill reference for use as system prompt context."""
+    global _DSL_REFERENCE
+    if _DSL_REFERENCE is not None:
+        return _DSL_REFERENCE
+
+    # Try loading from the skills directory
+    from pathlib import Path
+
+    skill_paths = [
+        Path(__file__).parent.parent.parent.parent
+        / "skills"
+        / "netgraph-dsl"
+        / "SKILL.md",
+        Path.home()
+        / "ws"
+        / "project_netgraph"
+        / "skills"
+        / "netgraph-dsl"
+        / "SKILL.md",
+    ]
+    for skill_path in skill_paths:
+        if skill_path.exists():
+            _DSL_REFERENCE = skill_path.read_text()
+            return _DSL_REFERENCE
+
+    # Fallback: built-in minimal reference
+    _DSL_REFERENCE = """\
+CRITICAL RULES:
+- Top-level keys: seed, network, risk_groups, demands, failures, workflow
+- nodes and links go INSIDE the network key
+- All links are bidirectional (ngraph adds reverse automatically)
+- Use risk_groups: [name] on link defs to assign failure domains
+- Node attrs enable failure targeting: {role: bb} matches scope: node
+
+Failure policy structure (EXACT nesting required):
+failures:
+  policy_name:
+    modes:
+      - weight: 1.0
+        rules:
+          - scope: node        # node | link | risk_group
+            mode: choice       # choice | all | random
+            count: 1
+            match:
+              conditions:
+                - attr: role
+                  op: "=="     # == | != | contains | in
+                  value: bb
+
+TrafficMatrixPlacement workflow step (all fields required):
+  - type: TrafficMatrixPlacement
+    name: tm_step
+    demand_set: tm
+    failure_policy: policy_name
+    iterations: 10
+    parallelism: 1
+    placement_rounds: auto
+    seed: 42
+    include_flow_details: true
+    alpha_from_step: msd_baseline
+    alpha_from_field: data.alpha_star
+"""
+    return _DSL_REFERENCE
+
+
+def _get_generation_system_prompt() -> str:
+    """Build the full system prompt for scenario generation."""
+    return _GENERATION_SYSTEM_PROMPT_HEADER + "\n" + _load_dsl_reference()
+
 
 _GENERATION_PROMPT_TEMPLATE = """\
 Generate a complete ngraph scenario YAML for this connectivity idea:
@@ -281,7 +326,7 @@ def run_generation_loop(
                     validation_errors=validation_errors,
                 )
 
-            response = backend.generate(prompt, system=_GENERATION_SYSTEM_PROMPT)
+            response = backend.generate(prompt, system=_get_generation_system_prompt())
 
             # Extract YAML from response
             yaml_text = _extract_yaml(response)
