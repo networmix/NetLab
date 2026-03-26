@@ -136,7 +136,7 @@ class TestMockBackend:
 class TestClaudeCLIBackend:
     def test_subprocess_args_format(self):
         """Claude CLI format: subprocess args contain expected flags and values."""
-        backend = ClaudeCLIBackend(model="opus")
+        backend = ClaudeCLIBackend(model="opus", command="/usr/bin/claude")
 
         with patch("netlab.autoresearch.backend.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
@@ -162,7 +162,7 @@ class TestClaudeCLIBackend:
 
     def test_subprocess_no_system(self):
         """Claude CLI omits --system-prompt when system is empty."""
-        backend = ClaudeCLIBackend()
+        backend = ClaudeCLIBackend(command="/usr/bin/claude")
 
         with patch("netlab.autoresearch.backend.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
@@ -176,7 +176,7 @@ class TestClaudeCLIBackend:
 
     def test_subprocess_failure_raises(self):
         """Claude CLI raises RuntimeError on non-zero exit code."""
-        backend = ClaudeCLIBackend()
+        backend = ClaudeCLIBackend(command="/usr/bin/claude")
 
         with patch("netlab.autoresearch.backend.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 1
@@ -207,7 +207,7 @@ class TestClaudeCLIBackend:
 class TestCodexCLIBackend:
     def test_subprocess_args_format(self, tmp_path):
         """Codex CLI format: subprocess args contain expected flags and values."""
-        backend = CodexCLIBackend(model="o4-mini")
+        backend = CodexCLIBackend(model="o4-mini", command="/usr/bin/codex")
 
         with (
             patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
@@ -242,7 +242,7 @@ class TestCodexCLIBackend:
 
     def test_subprocess_no_system(self):
         """Codex CLI: prompt without system instructions does not prepend system text."""
-        backend = CodexCLIBackend()
+        backend = CodexCLIBackend(command="/usr/bin/codex")
 
         with (
             patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
@@ -261,7 +261,7 @@ class TestCodexCLIBackend:
 
     def test_subprocess_failure_raises(self):
         """Codex CLI raises RuntimeError on non-zero exit code."""
-        backend = CodexCLIBackend()
+        backend = CodexCLIBackend(command="/usr/bin/codex")
 
         with (
             patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
