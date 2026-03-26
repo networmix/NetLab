@@ -149,6 +149,19 @@ project_dir/
 
 The LLM never extracts numbers from results. The metrics pipeline (same code that passed 252 hand-calculated assertions) computes all numbers programmatically. The LLM receives verified metrics and provides only interpretation — connecting numbers to topology structure.
 
+### CLI
+
+```bash
+# Template-based runner (parameter sweep with LLM feedback)
+netlab autoresearch init --base-scenario scenario.yml --output project/
+netlab autoresearch run project/ --backend claude-cli --model sonnet
+
+# DC-BB structural analysis and parametric sweep
+netlab autoresearch structural-analysis
+netlab autoresearch sweep abc1 --output-dir results/
+netlab autoresearch cross-sweep --output-dir results/
+```
+
 ## Repository Structure
 
 ```
@@ -162,7 +175,6 @@ metrics/                    # Verified metrics pipeline
   aggregate.py              # Cross-seed aggregation
   costpower.py              # Cost and power normalization
   matrixdump.py             # Per-pair placement matrices
-  metrics_report.py         # → autoresearch (in netlab/)
 netlab/
   cli.py                    # CLI entry point
   metrics_cmd.py            # Metrics command orchestration
@@ -171,7 +183,7 @@ netlab/
     analysis_loop.py        # Inner Loop 2: metrics → interpretation
     metrics_report.py       # Programmatic metrics → markdown
     hypothesis_manager.py   # Outer loop: hypothesis cycles + persistence
-    backend.py              # LLM backends (Claude CLI, OpenAI, mock)
+    backend.py              # LLM backends (Claude CLI, Codex CLI, OpenAI, mock)
     scenario_generator.py   # DC-BB topology generator
     sweep.py                # Parametric sweep runner
 tests/
