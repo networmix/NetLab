@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
+from netlab.runtime import require_executable
+
 
 @dataclass
 class ExpectedCounts:
@@ -172,12 +174,13 @@ def validate_inspect_output(inspect_stdout: str, expected: ExpectedCounts) -> li
 def validate_scenario_file(
     scenario_path: Path,
     expected: ExpectedCounts,
-    ngraph_bin: str = "ngraph",
+    ngraph_bin: str | None = None,
 ) -> list[str]:
     """Run ngraph inspect and validate against expected counts.
 
     Level 1 validation: fast, uses ngraph CLI.
     """
+    ngraph_bin = ngraph_bin or require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
     result = subprocess.run(
         [ngraph_bin, "inspect", str(scenario_path)],
         capture_output=True,

@@ -68,7 +68,6 @@ class TestHypothesisManager:
             project_dir=tmp_path,
             backend=backend,
             ngraph_bin=_find_ngraph(),
-            simulation_timeout_s=60,
         )
 
         cycle = manager.run_cycle("Two nodes connected by a 100 Gbps link")

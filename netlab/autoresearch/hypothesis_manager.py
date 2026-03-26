@@ -12,15 +12,15 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
 
 import yaml
+
+from netlab.runtime import require_executable
 
 from .analysis_loop import AnalysisResult, run_analysis_loop
 from .backend import LLMBackend
@@ -90,12 +90,12 @@ class HypothesisManager:
         project_dir: Path,
         backend: LLMBackend,
         ngraph_bin: str | None = None,
-        simulation_timeout_s: int = 600,
     ) -> None:
         self._project_dir = project_dir
         self._backend = backend
-        self._ngraph_bin = ngraph_bin or shutil.which("ngraph") or "ngraph"
-        self._simulation_timeout_s = simulation_timeout_s
+        self._ngraph_bin = ngraph_bin or require_executable(
+            "ngraph", env_var="NETLAB_NGRAPH_BIN"
+        )
 
         # Ensure directories exist
         self._cycles_dir = project_dir / "cycles"
@@ -244,98 +244,16 @@ class HypothesisManager:
             )
             return cycle
 
-        # Persist validated scenario
+        # Generation loop now includes simulation — results come with it.
+        # Persist scenario (generation loop may have used a temp directory).
         scenario_path = cycle_dir / "scenario.yml"
         if gen_result.scenario_path and gen_result.scenario_path != scenario_path:
             shutil.copy2(gen_result.scenario_path, scenario_path)
 
-        # Step 2: Simulate
-        results_dir = cycle_dir / "results"
-        results_dir.mkdir(exist_ok=True)
-        try:
-            sim_result = subprocess.run(
-                [self._ngraph_bin, "run", str(scenario_path), "-o", str(results_dir)],
-                capture_output=True,
-                text=True,
-                timeout=self._simulation_timeout_s,
-            )
-            if sim_result.returncode != 0:
-                error_msg = f"ngraph run failed: {sim_result.stderr[-300:]}"
-                cycle = HypothesisCycle(
-                    cycle_id=cycle_id,
-                    hypothesis=hypothesis,
-                    hypothesis_hash=h_hash,
-                    status="simulation_failed",
-                    generation=gen_result,
-                    error=error_msg,
-                    duration_s=round(time.time() - t0, 1),
-                    timestamp=_now_iso(),
-                )
-                self._append_log(
-                    CycleLogEntry(
-                        cycle_id=cycle_id,
-                        hypothesis_hash=h_hash,
-                        status="simulation_failed",
-                        error=error_msg,
-                        generation_iterations=gen_result.iterations_used,
-                        timestamp=_now_iso(),
-                        duration_s=cycle.duration_s,
-                    )
-                )
-                return cycle
-        except subprocess.TimeoutExpired:
-            cycle = HypothesisCycle(
-                cycle_id=cycle_id,
-                hypothesis=hypothesis,
-                hypothesis_hash=h_hash,
-                status="simulation_timeout",
-                generation=gen_result,
-                error=f"Simulation timed out after {self._simulation_timeout_s}s",
-                duration_s=round(time.time() - t0, 1),
-                timestamp=_now_iso(),
-            )
-            self._append_log(
-                CycleLogEntry(
-                    cycle_id=cycle_id,
-                    hypothesis_hash=h_hash,
-                    status="simulation_timeout",
-                    generation_iterations=gen_result.iterations_used,
-                    timestamp=_now_iso(),
-                    duration_s=cycle.duration_s,
-                )
-            )
-            return cycle
+        results_data = gen_result.results_data
+        assert results_data is not None  # guaranteed by generation loop success
 
-        # Load results
-        results_files = list(results_dir.glob("*.results.json"))
-        if not results_files:
-            error_msg = "No results.json produced by ngraph"
-            cycle = HypothesisCycle(
-                cycle_id=cycle_id,
-                hypothesis=hypothesis,
-                hypothesis_hash=h_hash,
-                status="simulation_failed",
-                generation=gen_result,
-                error=error_msg,
-                duration_s=round(time.time() - t0, 1),
-                timestamp=_now_iso(),
-            )
-            self._append_log(
-                CycleLogEntry(
-                    cycle_id=cycle_id,
-                    hypothesis_hash=h_hash,
-                    status="simulation_failed",
-                    error=error_msg,
-                    timestamp=_now_iso(),
-                    duration_s=cycle.duration_s,
-                )
-            )
-            return cycle
-
-        with results_files[0].open() as f:
-            results_data: dict[str, Any] = json.load(f)
-
-        # Step 3: Analyze
+        # Step 2: Analyze
         analysis = run_analysis_loop(
             results=results_data,
             hypothesis=hypothesis,
@@ -371,7 +289,9 @@ class HypothesisManager:
             hypothesis_hash=h_hash,
             status=status,
             generation=gen_result,
-            simulation_path=str(results_files[0]),
+            simulation_path=str(gen_result.results_path)
+            if gen_result.results_path
+            else None,
             analysis=analysis,
             duration_s=round(time.time() - t0, 1),
             timestamp=_now_iso(),

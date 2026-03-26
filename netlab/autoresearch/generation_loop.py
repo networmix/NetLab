@@ -22,6 +22,8 @@ from typing import Any
 
 import yaml
 
+from netlab.runtime import require_executable
+
 from .backend import LLMBackend
 
 
@@ -51,11 +53,17 @@ class InspectResult:
 
 @dataclass
 class GenerationResult:
-    """Output of the generation loop."""
+    """Output of the generation loop.
+
+    On success, contains both the validated scenario and the simulation
+    results (since the simulation is run as part of validation).
+    """
 
     success: bool
     scenario_yaml: str = ""
     scenario_path: Path | None = None
+    results_path: Path | None = None
+    results_data: dict | None = None
     inspect: InspectResult | None = None
     iterations_used: int = 0
     error: str = ""
@@ -256,7 +264,7 @@ Return ONLY the YAML content, no explanation. Start with `seed:`.
 """
 
 _REVISION_PROMPT_TEMPLATE = """\
-The scenario you generated was inspected by ngraph. Here is the result:
+The scenario you generated failed validation:
 
 {inspect_summary}
 
@@ -265,7 +273,13 @@ The original connectivity idea was:
 
 {validation_errors}
 
-Please fix the scenario YAML to match the intent. Return ONLY the YAML content.
+Common issues:
+- Demand source/target regex must match existing node names
+- Failure rule mode must be "choice" (not "random") with count: N
+- All nodes referenced in links must be defined in the nodes section
+- WorkflowType is TrafficMatrixPlacement (not TrafficMatrixPerformance)
+
+Fix the scenario YAML. Return ONLY the YAML content.
 """
 
 
@@ -292,11 +306,10 @@ def run_generation_loop(
         GenerationResult with the validated scenario or error details.
     """
     if ngraph_bin is None:
-        ngraph_bin = shutil.which("ngraph")
-        if ngraph_bin is None:
-            return GenerationResult(
-                success=False, error="ngraph binary not found on PATH"
-            )
+        try:
+            ngraph_bin = require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
+        except RuntimeError as exc:
+            return GenerationResult(success=False, error=str(exc))
 
     cleanup_work_dir = False
     if work_dir is None:
@@ -359,10 +372,24 @@ def run_generation_loop(
                     last_inspect.errors = viability_errors
                     continue
 
+                # Run simulation as definitive validation.
+                # For LLM-generated scenarios (10-20 nodes), this takes <1s.
+                # Catches issues inspect misses: unresolved demand patterns,
+                # invalid failure policies, workflow reference errors.
+                sim_result = _run_simulation(scenario_path, ngraph_bin, work_dir)
+                if not sim_result.success:
+                    last_inspect = InspectResult(
+                        success=False,
+                        errors=[f"Simulation failed: {sim_result.error}"],
+                    )
+                    continue
+
                 return GenerationResult(
                     success=True,
                     scenario_yaml=yaml_text,
                     scenario_path=scenario_path,
+                    results_path=sim_result.results_path,
+                    results_data=sim_result.results_data,
                     inspect=last_inspect,
                     iterations_used=iteration + 1,
                 )
@@ -379,6 +406,66 @@ def run_generation_loop(
     finally:
         if cleanup_work_dir and work_dir.exists():
             shutil.rmtree(work_dir, ignore_errors=True)
+
+
+@dataclass
+class _SimResult:
+    """Internal result from a trial simulation run."""
+
+    success: bool
+    results_path: Path | None = None
+    results_data: dict | None = None
+    error: str = ""
+
+
+def _run_simulation(scenario_path: Path, ngraph_bin: str, work_dir: Path) -> _SimResult:
+    """Run ngraph on the scenario as a validation step.
+
+    Returns the results if successful, or an error message if not.
+    Timeout is short (60s) since LLM-generated scenarios are small.
+    """
+    import json
+
+    results_dir = work_dir / "results"
+    results_dir.mkdir(exist_ok=True)
+    try:
+        proc = subprocess.run(
+            [ngraph_bin, "run", str(scenario_path), "-o", str(results_dir)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        return _SimResult(success=False, error="Simulation timed out (60s)")
+
+    if proc.returncode != 0:
+        # Extract useful error from stderr
+        stderr = proc.stderr.strip()
+        error_lines = [
+            line
+            for line in stderr.splitlines()
+            if "error" in line.lower() or "Error" in line
+        ]
+        error_msg = "; ".join(error_lines[-3:]) if error_lines else stderr[-300:]
+        return _SimResult(success=False, error=error_msg)
+
+    # Find and load results
+    results_files = list(results_dir.glob("*.results.json"))
+    if not results_files:
+        return _SimResult(success=False, error="No results file produced")
+
+    results_path = results_files[0]
+    try:
+        with results_path.open() as f:
+            results_data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        return _SimResult(success=False, error=f"Failed to load results: {e}")
+
+    return _SimResult(
+        success=True,
+        results_path=results_path,
+        results_data=results_data,
+    )
 
 
 def _check_viability(inspect: InspectResult) -> list[str]:

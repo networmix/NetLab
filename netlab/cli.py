@@ -33,6 +33,7 @@ import yaml
 from metrics.aggregate import write_json_atomic
 
 from .log_config import configure_from_env, set_global_log_level
+from .runtime import resolve_invoke
 
 
 def die(msg: str, code: int = 1) -> NoReturn:
@@ -127,27 +128,33 @@ def _create_run_provenance(
     return provenance
 
 
-def _detect_topogen_invoke() -> List[str]:
-    if shutil.which("topogen"):
-        return ["topogen"]
-    if shutil.which("python3"):
-        return ["python3", "-m", "topogen"]
-    if shutil.which("python"):
-        return ["python", "-m", "topogen"]
+def _detect_topogen_invoke(explicit: str | None = None) -> List[str]:
+    invoke = resolve_invoke(
+        "topogen",
+        explicit=explicit,
+        env_var="NETLAB_TOPOGEN_BIN",
+        python_module="topogen",
+    )
+    if invoke is not None:
+        return invoke
     die(
-        "Neither 'topogen' nor Python found on PATH. Activate your venv or install TopoGen."
+        "Could not resolve TopoGen. Set --topogen-bin or $NETLAB_TOPOGEN_BIN, "
+        "put 'topogen' on PATH, or install it in the current Python environment."
     )
 
 
-def _detect_ngraph_invoke() -> List[str]:
-    if shutil.which("ngraph"):
-        return ["ngraph"]
-    if shutil.which("python3"):
-        return ["python3", "-m", "ngraph"]
-    if shutil.which("python"):
-        return ["python", "-m", "ngraph"]
+def _detect_ngraph_invoke(explicit: str | None = None) -> List[str]:
+    invoke = resolve_invoke(
+        "ngraph",
+        explicit=explicit,
+        env_var="NETLAB_NGRAPH_BIN",
+        python_module="ngraph",
+    )
+    if invoke is not None:
+        return invoke
     die(
-        "Neither 'ngraph' nor Python found on PATH. Activate your venv or install ngraph."
+        "Could not resolve ngraph. Set --ngraph-bin or $NETLAB_NGRAPH_BIN, "
+        "put 'ngraph' on PATH, or install it in the current Python environment."
     )
 
 
@@ -397,7 +404,7 @@ def _cmd_build(args: argparse.Namespace) -> None:
         die(f"No YAMLs under {masters_dir}")
 
     ensure_dir(scenarios_dir)
-    topogen_invoke = _detect_topogen_invoke()
+    topogen_invoke = _detect_topogen_invoke(getattr(args, "topogen_bin", None))
 
     print("\n===== Generate Plan =====")
     print(f"Masters dir:    {masters_dir}")
@@ -458,8 +465,8 @@ def _cmd_run(args: argparse.Namespace) -> None:
         die(f"No YAMLs under {masters_dir}")
 
     ensure_dir(scenarios_dir)
-    topogen_invoke = _detect_topogen_invoke()
-    ngraph_invoke = _detect_ngraph_invoke()
+    topogen_invoke = _detect_topogen_invoke(getattr(args, "topogen_bin", None))
+    ngraph_invoke = _detect_ngraph_invoke(getattr(args, "ngraph_bin", None))
 
     print("\n===== Experiment Plan =====")
     print(f"Masters dir:    {masters_dir}")
@@ -635,6 +642,12 @@ def _cmd_run(args: argparse.Namespace) -> None:
 def main() -> None:
     # Initialize logging for NetLab; level can be overridden via NETLAB_LOG_LEVEL
     configure_from_env()
+    from netlab.autoresearch.backend import (
+        DEFAULT_CLAUDE_MODEL,
+        DEFAULT_OPENAI_MODEL,
+        SUPPORTED_BACKENDS,
+    )
+
     ap = argparse.ArgumentParser(prog="netlab", description="NetLab CLI")
     ap.add_argument(
         "-v",
@@ -662,6 +675,15 @@ def main() -> None:
     )
     ap_build.add_argument(
         "--force", action="store_true", help="Force both generate and build"
+    )
+    ap_build.add_argument(
+        "--topogen-bin",
+        type=str,
+        default=None,
+        help=(
+            "Path to the TopoGen executable "
+            "(default: $NETLAB_TOPOGEN_BIN, PATH, or current Python environment)."
+        ),
     )
     ap_build.add_argument(
         "--build-jobs", type=int, default=max(1, (os.cpu_count() or 4) // 2)
@@ -696,6 +718,24 @@ def main() -> None:
         "--force", action="store_true", help="Force both build and ngraph run"
     )
     ap_run.add_argument("--force-run", action="store_true", help="Force ngraph run")
+    ap_run.add_argument(
+        "--topogen-bin",
+        type=str,
+        default=None,
+        help=(
+            "Path to the TopoGen executable "
+            "(default: $NETLAB_TOPOGEN_BIN, PATH, or current Python environment)."
+        ),
+    )
+    ap_run.add_argument(
+        "--ngraph-bin",
+        type=str,
+        default=None,
+        help=(
+            "Path to the ngraph executable "
+            "(default: $NETLAB_NGRAPH_BIN, PATH, or current Python environment)."
+        ),
+    )
     ap_run.add_argument(
         "--build-jobs", type=int, default=max(1, (os.cpu_count() or 4) // 2)
     )
@@ -870,8 +910,46 @@ def main() -> None:
         "--backend",
         type=str,
         default="mock",
-        choices=["mock", "claude-cli", "openai"],
+        choices=list(SUPPORTED_BACKENDS),
         help="LLM backend to use (default: mock)",
+    )
+    ap_auto_run.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=(
+            "Model identifier for the selected backend. "
+            f"Defaults: claude-cli={DEFAULT_CLAUDE_MODEL}, "
+            "codex-cli=CLI default, "
+            f"openai={DEFAULT_OPENAI_MODEL}."
+        ),
+    )
+    ap_auto_run.add_argument(
+        "--openai-base-url",
+        type=str,
+        default=None,
+        help=(
+            "Base URL for the OpenAI-compatible backend "
+            "(default: $OPENAI_BASE_URL or https://api.openai.com)."
+        ),
+    )
+    ap_auto_run.add_argument(
+        "--backend-bin",
+        type=str,
+        default=None,
+        help=(
+            "Executable path for CLI-backed LLMs "
+            "(default: $CLAUDE_BIN/$CODEX_BIN, PATH, or current venv)."
+        ),
+    )
+    ap_auto_run.add_argument(
+        "--ngraph-bin",
+        type=str,
+        default=None,
+        help=(
+            "Path to the ngraph executable "
+            "(default: $NETLAB_NGRAPH_BIN, PATH, or current venv)."
+        ),
     )
     ap_auto_run.add_argument(
         "--max-experiments",

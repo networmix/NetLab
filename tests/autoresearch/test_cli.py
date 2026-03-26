@@ -9,7 +9,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from netlab.autoresearch.cli import autoresearch_init, autoresearch_run
+from netlab.autoresearch.backend import (
+    ClaudeCLIBackend,
+    CodexCLIBackend,
+    OpenAICompatibleBackend,
+)
+from netlab.autoresearch.cli import _build_backend, autoresearch_init, autoresearch_run
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -36,6 +41,13 @@ def _make_init_args(base_scenario: Path, output: Path) -> argparse.Namespace:
 def _make_run_args(
     project_dir: Path,
     backend: str = "mock",
+    model: str | None = None,
+    backend_bin: str | None = None,
+    ngraph_bin: str | None = None,
+    openai_base_url: str | None = None,
+    openai_model: str | None = None,
+    claude_model: str | None = None,
+    codex_model: str | None = None,
     max_experiments: int = 1,
     timeout: int = 120,
     seed: int = 42,
@@ -43,6 +55,13 @@ def _make_run_args(
     return argparse.Namespace(
         project_dir=project_dir,
         backend=backend,
+        model=model,
+        backend_bin=backend_bin,
+        ngraph_bin=ngraph_bin,
+        openai_base_url=openai_base_url,
+        openai_model=openai_model,
+        claude_model=claude_model,
+        codex_model=codex_model,
         max_experiments=max_experiments,
         timeout=timeout,
         seed=seed,
@@ -241,6 +260,50 @@ class TestRunMissingProjectDir:
         assert exc_info.value.code != 0
 
 
+class TestBackendFactory:
+    def test_build_backend_claude_uses_generic_model(self, tmp_path: Path) -> None:
+        args = _make_run_args(
+            project_dir=tmp_path,
+            backend="claude-cli",
+            model="sonnet",
+            backend_bin="/tmp/claude-bin",
+        )
+
+        backend = _build_backend(args)
+
+        assert isinstance(backend, ClaudeCLIBackend)
+        assert backend.model == "sonnet"
+        assert backend.command == "/tmp/claude-bin"
+
+    def test_build_backend_codex_uses_generic_model(self, tmp_path: Path) -> None:
+        args = _make_run_args(
+            project_dir=tmp_path,
+            backend="codex-cli",
+            model="gpt-5.4",
+            backend_bin="/tmp/codex-bin",
+        )
+
+        backend = _build_backend(args)
+
+        assert isinstance(backend, CodexCLIBackend)
+        assert backend.model == "gpt-5.4"
+        assert backend.command == "/tmp/codex-bin"
+
+    def test_build_backend_openai_uses_model_and_base_url(self, tmp_path: Path) -> None:
+        args = _make_run_args(
+            project_dir=tmp_path,
+            backend="openai",
+            model="gpt-test",
+            openai_base_url="https://example.invalid",
+        )
+
+        backend = _build_backend(args)
+
+        assert isinstance(backend, OpenAICompatibleBackend)
+        assert backend.model == "gpt-test"
+        assert backend.base_url == "https://example.invalid"
+
+
 # ---------------------------------------------------------------------------
 # Argparse wiring tests (test that netlab cli.py registers the subcommands)
 # ---------------------------------------------------------------------------
@@ -277,7 +340,7 @@ class TestArgparseWiring:
         assert "run" in captured.out
 
     def test_autoresearch_run_help(self, capsys: pytest.CaptureFixture) -> None:
-        """netlab autoresearch run --help lists --backend, --max-experiments, --timeout, --seed."""
+        """netlab autoresearch run --help lists backend/model options and core controls."""
         import netlab.cli as cli_mod
 
         with pytest.raises(SystemExit) as exc_info:
@@ -293,6 +356,48 @@ class TestArgparseWiring:
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
         assert "--backend" in captured.out
+        assert "codex-cli" in captured.out
+        assert "--model" in captured.out
+        assert "--openai-base-url" in captured.out
+        assert "--backend-bin" in captured.out
+        assert "--ngraph-bin" in captured.out
         assert "--max-experiments" in captured.out
         assert "--timeout" in captured.out
         assert "--seed" in captured.out
+
+    def test_build_help_lists_topogen_bin(self, capsys: pytest.CaptureFixture) -> None:
+        import netlab.cli as cli_mod
+
+        with pytest.raises(SystemExit) as exc_info:
+            import sys
+
+            old_argv = sys.argv
+            sys.argv = ["netlab", "build", "--help"]
+            try:
+                cli_mod.main()
+            finally:
+                sys.argv = old_argv
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "--topogen-bin" in captured.out
+
+    def test_run_help_lists_binary_overrides(
+        self, capsys: pytest.CaptureFixture
+    ) -> None:
+        import netlab.cli as cli_mod
+
+        with pytest.raises(SystemExit) as exc_info:
+            import sys
+
+            old_argv = sys.argv
+            sys.argv = ["netlab", "run", "--help"]
+            try:
+                cli_mod.main()
+            finally:
+                sys.argv = old_argv
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "--topogen-bin" in captured.out
+        assert "--ngraph-bin" in captured.out

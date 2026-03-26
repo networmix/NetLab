@@ -10,9 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import subprocess
-import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -37,19 +35,21 @@ from netlab.autoresearch.prompt import (
     parse_hypothesis_response,
     render_memory_section,
 )
+from netlab.runtime import require_executable
 
 logger = logging.getLogger(__name__)
 
 
 def _default_ngraph_bin() -> str:
-    """Resolve ngraph binary from the same venv as the current interpreter."""
-    return os.path.join(os.path.dirname(sys.executable), "ngraph")
+    """Resolve ngraph binary from explicit env, PATH, or current interpreter venv."""
+    return require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
 
 
 @dataclass
 class RunConfig:
     project_dir: Path
     backend: LLMBackend
+    ngraph_bin: str | None = None
     max_experiments: int = 50
     timeout_s: int = 600
     seed: int = 42
@@ -67,7 +67,7 @@ class AutoResearchRunner:
         self._ngraph_call_count = 0
 
         # Resolve ngraph binary path (overridable for testing)
-        self._ngraph_bin = _default_ngraph_bin()
+        self._ngraph_bin = config.ngraph_bin or _default_ngraph_bin()
 
         # Load project files
         self._program_md = (self._project_dir / "program.md").read_text(

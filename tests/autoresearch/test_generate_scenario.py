@@ -152,6 +152,7 @@ class TestGenerateScenarioStructure:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.timeout(180)
 class TestPostExpansionValidation:
     """Validate the expanded network matches expected counts."""
 

@@ -134,6 +134,22 @@ class TestInitValidatesPlaceholders:
             AutoResearchRunner(config)
 
 
+class TestNgraphResolution:
+    def test_explicit_ngraph_bin_is_used(self, tmp_path: Path) -> None:
+        proj = make_project(tmp_path)
+        backend = MockBackend([])
+        config = RunConfig(
+            project_dir=proj,
+            backend=backend,
+            ngraph_bin="/tmp/custom-ngraph",
+            max_experiments=0,
+        )
+
+        runner = AutoResearchRunner(config)
+
+        assert runner._ngraph_bin == "/tmp/custom-ngraph"
+
+
 # ---------------------------------------------------------------------------
 # Happy path test (uses real ngraph)
 # ---------------------------------------------------------------------------

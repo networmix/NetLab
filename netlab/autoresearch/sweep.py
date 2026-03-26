@@ -8,7 +8,6 @@ to a single results.jsonl file.
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 import time
 from collections import defaultdict
@@ -33,6 +32,7 @@ from netlab.autoresearch.structural_analysis import (
     ConfigResult,
     run_structural_analysis,
 )
+from netlab.runtime import require_executable
 
 # ---------------------------------------------------------------------------
 # Result entry — one line per simulation, flat fields, loads into pandas
@@ -102,10 +102,7 @@ class SweepConfig:
 
 
 def _find_ngraph() -> str:
-    ngraph = shutil.which("ngraph")
-    if ngraph is None:
-        raise RuntimeError("ngraph binary not found on PATH")
-    return ngraph
+    return require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
 
 
 def _dedup_configs(configs: list[ConfigResult]) -> list[ConfigResult]:

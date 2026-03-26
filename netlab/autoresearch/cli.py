@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import shutil
 import sys
 import textwrap
@@ -18,6 +19,10 @@ from pathlib import Path
 import yaml
 
 from netlab.autoresearch.backend import (
+    DEFAULT_CLAUDE_MODEL,
+    DEFAULT_CODEX_MODEL,
+    DEFAULT_OPENAI_MODEL,
+    SUPPORTED_BACKENDS,
     ClaudeCLIBackend,
     CodexCLIBackend,
     LLMBackend,
@@ -96,31 +101,68 @@ def _build_default_template(base_scenario_path: Path) -> str:
 def _build_backend(args: argparse.Namespace) -> LLMBackend:
     """Construct an LLM backend from CLI arguments."""
     backend_name: str = args.backend
+    backend_bin = getattr(args, "backend_bin", None)
 
     if backend_name == "mock":
         return _build_mock_backend(args)
     elif backend_name == "claude-cli":
-        return ClaudeCLIBackend()
+        model = _resolve_model_arg(
+            args,
+            generic_attr="model",
+            specific_attr="claude_model",
+            env_var="CLAUDE_MODEL",
+            default=DEFAULT_CLAUDE_MODEL,
+        )
+        return ClaudeCLIBackend(model=model, command=backend_bin)
     elif backend_name == "codex-cli":
-        return CodexCLIBackend()
+        model = _resolve_model_arg(
+            args,
+            generic_attr="model",
+            specific_attr="codex_model",
+            env_var="CODEX_MODEL",
+            default=DEFAULT_CODEX_MODEL,
+        )
+        return CodexCLIBackend(model=model, command=backend_bin)
     elif backend_name == "openai":
-        import os
-
         base_url = getattr(args, "openai_base_url", None) or os.environ.get(
             "OPENAI_BASE_URL", "https://api.openai.com"
         )
-        model = getattr(args, "openai_model", None) or os.environ.get(
-            "OPENAI_MODEL", "gpt-4"
+        model = _resolve_model_arg(
+            args,
+            generic_attr="model",
+            specific_attr="openai_model",
+            env_var="OPENAI_MODEL",
+            default=DEFAULT_OPENAI_MODEL,
         )
         api_key = os.environ.get("OPENAI_API_KEY", "")
         return OpenAICompatibleBackend(base_url=base_url, model=model, api_key=api_key)
     else:
         print(
             f"Unknown backend: {backend_name!r}. "
-            "Use 'mock', 'claude-cli', 'codex-cli', or 'openai'.",
+            f"Use {', '.join(repr(name) for name in SUPPORTED_BACKENDS)}.",
             file=sys.stderr,
         )
         sys.exit(1)
+
+
+def _resolve_model_arg(
+    args: argparse.Namespace,
+    *,
+    generic_attr: str,
+    specific_attr: str,
+    env_var: str,
+    default: str,
+) -> str:
+    """Resolve model from generic CLI flag, backend-specific flag, env, then default."""
+    generic_value = getattr(args, generic_attr, None)
+    if generic_value:
+        return generic_value
+
+    specific_value = getattr(args, specific_attr, None)
+    if specific_value:
+        return specific_value
+
+    return os.environ.get(env_var, default)
 
 
 def _build_mock_backend(args: argparse.Namespace) -> MockBackend:
@@ -292,6 +334,7 @@ def autoresearch_run(args: argparse.Namespace) -> None:
     config = RunConfig(
         project_dir=project_dir,
         backend=backend,
+        ngraph_bin=getattr(args, "ngraph_bin", None),
         max_experiments=args.max_experiments,
         timeout_s=args.timeout,
         seed=args.seed,

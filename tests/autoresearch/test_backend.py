@@ -6,6 +6,7 @@ import json
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -146,7 +147,7 @@ class TestClaudeCLIBackend:
 
         assert result == "response text"
         args = mock_run.call_args[0][0]
-        assert "claude" in args
+        assert Path(args[0]).name == "claude"
         assert "-p" in args
         # Prompt text follows -p
         p_idx = args.index("-p")
@@ -185,6 +186,15 @@ class TestClaudeCLIBackend:
             with pytest.raises(RuntimeError, match="claude CLI failed"):
                 backend.generate("bad prompt")
 
+    def test_missing_executable_raises_clear_error(self):
+        backend = ClaudeCLIBackend(command="/missing/claude")
+
+        with patch("netlab.autoresearch.backend.subprocess.run") as mock_run:
+            mock_run.side_effect = FileNotFoundError("missing")
+
+            with pytest.raises(RuntimeError, match="Claude CLI executable not found"):
+                backend.generate("prompt")
+
     def test_is_llm_backend_subclass(self):
         assert issubclass(ClaudeCLIBackend, LLMBackend)
 
@@ -215,7 +225,7 @@ class TestCodexCLIBackend:
 
         assert result == "response text"
         args = mock_run.call_args[0][0]
-        assert "codex" in args
+        assert Path(args[0]).name == "codex"
         assert "exec" in args
         assert "--ephemeral" in args
         assert "--sandbox" in args
@@ -271,6 +281,18 @@ class TestCodexCLIBackend:
         """Default model is empty (uses codex default)."""
         backend = CodexCLIBackend()
         assert backend.model == ""
+
+    def test_missing_executable_raises_clear_error(self):
+        backend = CodexCLIBackend(command="/missing/codex")
+
+        with (
+            patch("netlab.autoresearch.backend.subprocess.run") as mock_run,
+            patch("netlab.autoresearch.backend.Path.unlink"),
+        ):
+            mock_run.side_effect = FileNotFoundError("missing")
+
+            with pytest.raises(RuntimeError, match="Codex CLI executable not found"):
+                backend.generate("prompt")
 
 
 # ---------------------------------------------------------------------------
