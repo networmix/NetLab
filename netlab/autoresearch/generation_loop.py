@@ -166,16 +166,38 @@ scenario YAML. After each attempt, you will receive the ngraph inspect
 output showing what was actually built. Compare it against the original
 intent and fix any mismatches.
 
-ngraph YAML format:
-- nodes: named hierarchy (e.g., abc1/rsw, bb/abc1/pl1)
-- links: source, target, capacity, cost, optional risk_groups and attrs
-- risk_groups: named groups with attrs for failure domain modeling
-- demands: regex patterns for source/target, volume, mode, flow_policy
-- failures: named policies with modes and rules (scope: node/link/risk_group)
-- workflow: ordered steps (MaximumSupportedDemand, TrafficMatrixPlacement, etc.)
+CRITICAL: The top-level keys must be: seed, network, risk_groups, demands,
+failures, workflow. Nodes and links go INSIDE the network key.
+
+Minimal working example:
+
+seed: 42
+network:
+  nodes:
+    A: {}
+    B: {}
+  links:
+    - source: A
+      target: B
+      capacity: 100
+      cost: 1
+demands:
+  tm:
+    - source: ^A$
+      target: ^B$
+      volume: 10
+      mode: combine
+      flow_policy: SHORTEST_PATHS_ECMP
+workflow:
+  - type: MaximumSupportedDemand
+    name: msd_baseline
+    demand_set: tm
+    resolution: 0.1
 
 All links are bidirectional by default (ngraph adds reverse automatically).
 Use `risk_groups: [name]` on link definitions to assign to failure domains.
+Failure policies use `scope: node|link|risk_group` with `mode: choice` and
+`match.conditions` to select targets.
 """
 
 _GENERATION_PROMPT_TEMPLATE = """\
