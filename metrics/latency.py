@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from .common import canonical_dc, get_tm_baseline_and_failures
+
 
 @dataclass
 class LatencyResult:
@@ -38,41 +40,15 @@ class LatencyResult:
         }
 
 
-def _canonical_dc(endpoint: str) -> str:
-    """
-    Normalize endpoint identifiers to a canonical DC-level path 'metroX/dcY'.
-    Examples:
-      - 'metro1/dc1'           → 'metro1/dc1'
-      - 'metro1/dc1/dc/dc'     → 'metro1/dc1'
-      - 'metro1/dc1/rack/node' → 'metro1/dc1'
-    """
-    if not endpoint:
-        return endpoint
-    parts = endpoint.split("/")
-    if len(parts) >= 2:
-        return f"{parts[0]}/{parts[1]}"
-    return endpoint
+def _baseline_cost_per_pair_tm(baseline: dict) -> Dict[Tuple[str, str], float]:
+    """Build per-pair baseline costs from tm_placement baseline iteration.
 
-
-def _baseline_cost_per_pair_tm(results: dict) -> Dict[Tuple[str, str], float]:
-    """
-    Build per-pair baseline costs strictly from tm_placement baseline.
-    The baseline iteration must be present (validated upstream) and appear first.
     For each pair, choose the minimum cost with non-zero volume from cost_distribution.
     """
     per_pair: Dict[Tuple[str, str], float] = {}
-    tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
-    tm_data = tm_step.get("data", {}) or {}
-    fr = tm_data.get("flow_results", []) or []
-    if not isinstance(fr, list) or not fr:
-        return per_pair
-    base = fr[0] if str(fr[0].get("failure_id", "")) == "baseline" else None
-    if not base:
-        # Upstream validation should prevent this; return empty to be safe
-        return per_pair
-    for rec in base.get("flows", []) or []:
-        s = _canonical_dc(rec.get("source", ""))
-        d = _canonical_dc(rec.get("destination", ""))
+    for rec in baseline.get("flows", []) or []:
+        s = canonical_dc(rec.get("source", ""))
+        d = canonical_dc(rec.get("destination", ""))
         if not s or not d or s == d:
             continue
         cdist = rec.get("cost_distribution", {}) or {}
@@ -87,28 +63,10 @@ def _baseline_cost_per_pair_tm(results: dict) -> Dict[Tuple[str, str], float]:
 
 
 def compute_latency_stretch(results: dict) -> LatencyResult:
-    # Validate baseline metadata and ordering for tm_placement
-    tm_meta = results.get("steps", {}).get("tm_placement", {}).get("metadata", {}) or {}
-    if bool(tm_meta.get("baseline")) is not True:
-        raise ValueError(
-            "tm_placement.metadata.baseline must be true and baseline must be included"
-        )
-    tm_data = results.get("steps", {}).get("tm_placement", {}).get("data", {}) or {}
-    fr_chk = tm_data.get("flow_results", []) or []
-    if not isinstance(fr_chk, list) or not fr_chk:
-        raise ValueError("tm_placement.data.flow_results missing or empty")
-    if str(fr_chk[0].get("failure_id", "")) != "baseline":
-        raise ValueError(
-            "tm_placement baseline must be first (flow_results[0].failure_id == 'baseline')"
-        )
+    baseline, fr = get_tm_baseline_and_failures(results)
 
-    base_cost = _baseline_cost_per_pair_tm(results)
+    base_cost = _baseline_cost_per_pair_tm(baseline)
     if not base_cost:
-        return LatencyResult(baseline={}, failures={}, derived={})
-
-    tm = results.get("steps", {}).get("tm_placement", {}).get("data", {}) or {}
-    fr = tm.get("flow_results", []) or []
-    if not isinstance(fr, list) or not fr:
         return LatencyResult(baseline={}, failures={}, derived={})
 
     def _iter_metrics(it: dict) -> Dict[str, float]:
@@ -117,8 +75,8 @@ def compute_latency_stretch(results: dict) -> LatencyResult:
         wts: list[float] = []
         best_wts: float = 0.0
         for rec in flows:
-            s = _canonical_dc(rec.get("source", ""))
-            d = _canonical_dc(rec.get("destination", ""))
+            s = canonical_dc(rec.get("source", ""))
+            d = canonical_dc(rec.get("destination", ""))
             if not s or not d or s == d:
                 continue
             denom = base_cost.get((s, d), None)
@@ -183,14 +141,13 @@ def compute_latency_stretch(results: dict) -> LatencyResult:
             "WES": wes,
         }
 
-    base_it = fr[0]
-    baseline = _iter_metrics(base_it)
+    baseline_metrics = _iter_metrics(baseline)
 
     failure_metrics: Dict[str, list[float]] = {
         k: []
         for k in ("p50", "p95", "p99", "SLO_1_2", "SLO_1_5", "best_path_share", "WES")
     }
-    for it in fr[1:]:
+    for it in fr:
         m = _iter_metrics(it)
         if not m:
             continue
@@ -208,7 +165,11 @@ def compute_latency_stretch(results: dict) -> LatencyResult:
 
     derived = {}
     for tail in ("p95", "p99"):
-        b = float(baseline.get(tail, float("nan"))) if baseline else float("nan")
+        b = (
+            float(baseline_metrics.get(tail, float("nan")))
+            if baseline_metrics
+            else float("nan")
+        )
         f = float(failures.get(tail, float("nan"))) if failures else float("nan")
         derived[f"TD{tail[1:]}"] = (
             float(f / b)
@@ -216,14 +177,18 @@ def compute_latency_stretch(results: dict) -> LatencyResult:
             else float("nan")
         )
     for thr in ("SLO_1_2", "SLO_1_5"):
-        b = float(baseline.get(thr, float("nan"))) if baseline else float("nan")
+        b = (
+            float(baseline_metrics.get(thr, float("nan")))
+            if baseline_metrics
+            else float("nan")
+        )
         f = float(failures.get(thr, float("nan"))) if failures else float("nan")
         derived[f"{thr}_drop"] = (
             float(b - f) if (np.isfinite(b) and np.isfinite(f)) else float("nan")
         )
     b_bs = (
-        float(baseline.get("best_path_share", float("nan")))
-        if baseline
+        float(baseline_metrics.get("best_path_share", float("nan")))
+        if baseline_metrics
         else float("nan")
     )
     f_bs = (
@@ -236,7 +201,11 @@ def compute_latency_stretch(results: dict) -> LatencyResult:
         if (np.isfinite(b_bs) and np.isfinite(f_bs))
         else float("nan")
     )
-    b_wes = float(baseline.get("WES", float("nan"))) if baseline else float("nan")
+    b_wes = (
+        float(baseline_metrics.get("WES", float("nan")))
+        if baseline_metrics
+        else float("nan")
+    )
     f_wes = float(failures.get("WES", float("nan"))) if failures else float("nan")
     derived["WES_delta"] = (
         float(f_wes - b_wes)
@@ -245,7 +214,7 @@ def compute_latency_stretch(results: dict) -> LatencyResult:
     )
 
     return LatencyResult(
-        baseline=baseline,
+        baseline=baseline_metrics,
         failures=failures,
         derived=derived,
         per_iteration={k: list(vs) for k, vs in failure_metrics.items()}

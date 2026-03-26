@@ -1,0 +1,233 @@
+# Mini DC-BB verification scenario
+#
+# 10 nodes, 2 planes, dual long-haul paths with asymmetric capacity and cost.
+# Designed for hand-verifiable metric computation.
+#
+# Topology:
+#
+#   abc1/rsw ─── fadu/0 ─── bb/abc1/pl1 ═══ bb/xyz1/pl1 ─── xsw/0 ─── xyz1/rsw
+#            └── fadu/1 ─── bb/abc1/pl2 ═══ bb/xyz1/pl2 ─── xsw/1 ──┘
+#
+#   Each ═══ represents two parallel cross-site links:
+#     path_a: cap=100, cost=100  (100 km direct fiber)
+#     path_b: cap=50,  cost=200  (200 km diverse fiber)
+#
+# Cost model: 1 unit = 1 km fiber ≈ 5 μs propagation delay
+#   internal (rsw↔fadu, xsw↔rsw): 1 km, cost=1
+#   dc-bb (fadu↔bb, bb↔xsw):      5 km, cost=5
+#   cross-site path_a:            100 km, cost=100
+#   cross-site path_b:            200 km, cost=200
+#
+# End-to-end path costs (abc1/rsw → xyz1/rsw):
+#   via path_a: 1 + 5 + 100 + 5 + 1 = 112  (560 μs)
+#   via path_b: 1 + 5 + 200 + 5 + 1 = 212  (1060 μs)
+#
+# Flow policy: TE_WCMP_UNLIM — fills shortest paths first, then
+# overflows to next-shortest. This lets both paths carry traffic.
+#
+# Per-plane capacity: path_a(100) + path_b(50) = 150
+# Total cross-site capacity: 2 × 150 = 300
+# Demand: 100 Gbps per direction
+# Alpha_star = 300 / 100 = 3.0
+#
+# At alpha=3, demand = 300 per direction.
+# TE fills path_a first (cost 112): 2 planes × 100 = 200
+# Remaining 100 overflows to path_b (cost 212): 2 planes × 50 = 100
+# Baseline cost_distribution: {112: 200, 212: 100}
+#
+# === FAILURE SCENARIOS (at alpha=3, demand=300/direction) ===
+#
+# fm_lh_path: lose one LH path risk group (2 choices: path_a or path_b)
+#
+#   Lose path_a (all path_a links on both planes removed):
+#     Remaining: 2 × path_b = 100. Placed: 100. Ratio: 100/300 = 1/3
+#     cost_distribution: {212: 100}
+#
+#   Lose path_b (all path_b links on both planes removed):
+#     Remaining: 2 × path_a = 200. Placed: 200. Ratio: 200/300 = 2/3
+#     cost_distribution: {112: 200}
+#
+#   With seed=42 and 10 iterations, both patterns should appear.
+#   Each is deterministic → occurrence_count sums to 10.
+#
+# fm_1x_bb: lose one random BB node (4 choices, equally likely)
+#
+#   Lose any BB node (e.g., bb/abc1/pl1):
+#     That plane loses BOTH cross-site paths (path_a and path_b share
+#     the node). Remaining: plane 2 only = path_a(100) + path_b(50) = 150.
+#     TE fills path_a first: 100 at cost 112, then path_b: 50 at cost 212.
+#     Placed: 150. Ratio: 150/300 = 1/2
+#     cost_distribution: {112: 100, 212: 50}
+#
+#   All 4 BB nodes produce the same ratio (symmetric topology) but
+#   different failure_states → 4 unique patterns, same placed/ratio.
+#   20 iterations → occurrence_counts sum to 20.
+
+seed: 42
+
+network:
+  nodes:
+    abc1/rsw:
+      attrs: {role: rsw, site: abc1}
+    abc1/fadu/0:
+      attrs: {role: fadu, site: abc1, mesh_group: 0}
+    abc1/fadu/1:
+      attrs: {role: fadu, site: abc1, mesh_group: 1}
+    bb/abc1/pl1:
+      attrs: {role: bb, site: abc1, plane: 1}
+    bb/abc1/pl2:
+      attrs: {role: bb, site: abc1, plane: 2}
+    bb/xyz1/pl1:
+      attrs: {role: bb, site: xyz1, plane: 1}
+    bb/xyz1/pl2:
+      attrs: {role: bb, site: xyz1, plane: 2}
+    xyz1/xsw/0:
+      attrs: {role: xsw, site: xyz1, mesh_group: 0}
+    xyz1/xsw/1:
+      attrs: {role: xsw, site: xyz1, mesh_group: 1}
+    xyz1/rsw:
+      attrs: {role: rsw, site: xyz1}
+
+  links:
+    # Internal: abc1 rsw <-> fadu (high cap, not bottleneck)
+    - source: abc1/rsw
+      target: abc1/fadu/0
+      capacity: 500.0
+      cost: 1
+    - source: abc1/rsw
+      target: abc1/fadu/1
+      capacity: 500.0
+      cost: 1
+
+    # DC-BB: abc1 fadu <-> bb (mesh group matched)
+    - source: abc1/fadu/0
+      target: bb/abc1/pl1
+      capacity: 500.0
+      cost: 5
+    - source: abc1/fadu/1
+      target: bb/abc1/pl2
+      capacity: 500.0
+      cost: 5
+
+    # Cross-site path_a: 100 km, cap 100
+    - source: bb/abc1/pl1
+      target: bb/xyz1/pl1
+      capacity: 100.0
+      cost: 100
+      risk_groups: [path_a]
+    - source: bb/abc1/pl2
+      target: bb/xyz1/pl2
+      capacity: 100.0
+      cost: 100
+      risk_groups: [path_a]
+
+    # Cross-site path_b: 200 km, cap 50
+    - source: bb/abc1/pl1
+      target: bb/xyz1/pl1
+      capacity: 50.0
+      cost: 200
+      risk_groups: [path_b]
+    - source: bb/abc1/pl2
+      target: bb/xyz1/pl2
+      capacity: 50.0
+      cost: 200
+      risk_groups: [path_b]
+
+    # DC-BB: bb <-> xyz1 xsw (mesh group matched)
+    - source: bb/xyz1/pl1
+      target: xyz1/xsw/0
+      capacity: 500.0
+      cost: 5
+    - source: bb/xyz1/pl2
+      target: xyz1/xsw/1
+      capacity: 500.0
+      cost: 5
+
+    # Internal: xyz1 xsw <-> rsw (high cap, not bottleneck)
+    - source: xyz1/xsw/0
+      target: xyz1/rsw
+      capacity: 500.0
+      cost: 1
+    - source: xyz1/xsw/1
+      target: xyz1/rsw
+      capacity: 500.0
+      cost: 1
+
+risk_groups:
+  - name: path_a
+    attrs: {type: long_haul_path, distance_km: 100}
+  - name: path_b
+    attrs: {type: long_haul_path, distance_km: 200}
+
+demands:
+  baseline_traffic_matrix:
+    - source: ^abc1/rsw$
+      target: ^xyz1/rsw$
+      volume: 100.0
+      mode: combine
+      flow_policy: TE_WCMP_UNLIM
+    - source: ^xyz1/rsw$
+      target: ^abc1/rsw$
+      volume: 100.0
+      mode: combine
+      flow_policy: TE_WCMP_UNLIM
+
+failures:
+  fm_lh_path:
+    modes:
+      - weight: 1.0
+        rules:
+          - scope: risk_group
+            mode: choice
+            count: 1
+            match:
+              conditions:
+                - attr: type
+                  op: "=="
+                  value: long_haul_path
+  fm_1x_bb:
+    modes:
+      - weight: 1.0
+        rules:
+          - scope: node
+            mode: choice
+            count: 1
+            match:
+              conditions:
+                - attr: role
+                  op: "=="
+                  value: bb
+
+workflow:
+  - type: MaximumSupportedDemand
+    name: msd_baseline
+    demand_set: baseline_traffic_matrix
+    acceptance_rule: hard
+    alpha_start: 1.0
+    growth_factor: 2.0
+    resolution: 0.01
+    placement_rounds: auto
+
+  - type: TrafficMatrixPlacement
+    name: tm_lh_path
+    demand_set: baseline_traffic_matrix
+    failure_policy: fm_lh_path
+    iterations: 10
+    parallelism: 1
+    placement_rounds: auto
+    seed: 42
+    include_flow_details: true
+    alpha_from_step: msd_baseline
+    alpha_from_field: data.alpha_star
+
+  - type: TrafficMatrixPlacement
+    name: tm_1x_bb
+    demand_set: baseline_traffic_matrix
+    failure_policy: fm_1x_bb
+    iterations: 20
+    parallelism: 1
+    placement_rounds: auto
+    seed: 42
+    include_flow_details: true
+    alpha_from_step: msd_baseline
+    alpha_from_field: data.alpha_star

@@ -75,22 +75,23 @@ def _make_results_payload() -> dict:
                 }
             },
             "tm_placement": {
-                "metadata": {"baseline": True},
+                "metadata": {"iterations": 2, "unique_patterns": 2},
                 "data": {
+                    "baseline": {"failure_id": "baseline", "flows": base_tm},
                     "flow_results": [
-                        {"failure_id": "baseline", "flows": base_tm},
                         {"failure_id": "f1", "flows": tm_i1},
                         {"failure_id": "f2", "flows": tm_i2},
-                    ]
+                    ],
                 },
             },
             "node_to_node_capacity_matrix": {
+                "metadata": {"iterations": 1, "unique_patterns": 1},
                 "data": {
+                    "baseline": {"failure_id": "baseline", "flows": mf_i0},
                     "flow_results": [
-                        {"failure_id": "baseline", "flows": mf_i0},
                         {"failure_id": "f1", "flows": mf_i1},
-                    ]
-                }
+                    ],
+                },
             },
         },
     }

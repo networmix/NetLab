@@ -37,19 +37,19 @@ def _fixture() -> dict:
         "steps": {
             "tm_placement": {
                 "data": {
+                    "baseline": {"failure_id": "baseline", "flows": base_tm},
                     "flow_results": [
-                        {"failure_id": "baseline", "flows": base_tm},
                         {"failure_id": "f1", "flows": tm_i1},
                         {"failure_id": "f2", "flows": tm_i2},
-                    ]
+                    ],
                 }
             },
             "node_to_node_capacity_matrix": {
                 "data": {
+                    "baseline": {"failure_id": "baseline", "flows": mf_i1},
                     "flow_results": [
-                        {"failure_id": "baseline", "flows": mf_i1},
                         {"failure_id": "f1", "flows": mf_i2},
-                    ]
+                    ],
                 }
             },
         }
@@ -66,16 +66,16 @@ def test_compute_pair_matrices_correctness() -> None:
     assert list(mf_abs.index) == expected_cols
     assert list(mf_norm.index) == expected_cols
 
-    # For tm_abs at p50 including baseline [100,80,60] and [50,40,50] with 'lower'
-    assert np.isclose(tm_abs.loc["m1/d1→m1/d2", "p50.0"], 80.0)
-    assert np.isclose(tm_abs.loc["m1/d1→m2/d3", "p50.0"], 50.0)
+    # For tm_abs at p50 over failures only [80,60] and [40,50] with 'lower'
+    assert np.isclose(tm_abs.loc["m1/d1→m1/d2", "p50.0"], 60.0)
+    assert np.isclose(tm_abs.loc["m1/d1→m2/d3", "p50.0"], 40.0)
     # Normalized by baseline demand (100, 50), clipped to 1.0
-    assert np.isclose(tm_norm.loc["m1/d1→m1/d2", "p50.0"], 0.8)
-    assert np.isclose(tm_norm.loc["m1/d1→m2/d3", "p50.0"], 1.0)
+    assert np.isclose(tm_norm.loc["m1/d1→m1/d2", "p50.0"], 0.6)
+    assert np.isclose(tm_norm.loc["m1/d1→m2/d3", "p50.0"], 0.8)
 
-    # MaxFlow percentiles
+    # MaxFlow percentiles (single failure iteration)
     assert np.isclose(mf_abs.loc["m1/d1→m1/d2", "p50.0"], 50.0)
-    assert np.isclose(mf_abs.loc["m1/d1→m2/d3", "p50.0"], 45.0)
-    # Normalized by baseline demand
+    assert np.isclose(mf_abs.loc["m1/d1→m2/d3", "p50.0"], 55.0)
+    # Normalized by baseline demand (clipped to 1.0)
     assert np.isclose(mf_norm.loc["m1/d1→m1/d2", "p50.0"], 0.5)
-    assert np.isclose(mf_norm.loc["m1/d1→m2/d3", "p50.0"], 0.9)
+    assert np.isclose(mf_norm.loc["m1/d1→m2/d3", "p50.0"], 1.0)

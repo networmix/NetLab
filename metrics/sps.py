@@ -6,6 +6,8 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
+from .common import expand_flow_results
+
 
 @dataclass
 class SpsResult:
@@ -32,14 +34,11 @@ class SpsResult:
 
 
 def _extract_baseline_demands_tm(results: dict) -> Dict[str, float]:
-    """Per-pair baseline demand from tm_placement baseline (first iteration). Key is 's→d'."""
+    """Per-pair baseline demand from tm_placement baseline. Key is 's→d'."""
     tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
     data = tm_step.get("data", {}) or {}
-    fr = data.get("flow_results", []) or []
-    if not isinstance(fr, list) or not fr:
-        return {}
-    base = fr[0]
-    if str(base.get("failure_id", "")) != "baseline":
+    base = data.get("baseline")
+    if not isinstance(base, dict):
         return {}
     out: Dict[str, float] = {}
     for rec in base.get("flows", []) or []:
@@ -65,11 +64,11 @@ def _per_iteration_pair_caps(results: dict) -> pd.DataFrame:
     """
     mf_step = results.get("steps", {}).get("node_to_node_capacity_matrix", {}) or {}
     data = mf_step.get("data", {}) or {}
-    fr = data.get("flow_results", []) or []
+    fr = expand_flow_results(data.get("flow_results", []) or [])
     pairs: Dict[str, Dict[str, float]] = {}
     ids: List[str] = []
-    for it in fr:
-        fid = str(it.get("failure_id", f"it{len(ids)}"))
+    for idx, it in enumerate(fr):
+        fid = f"it{idx}"
         ids.append(fid)
         col: Dict[str, float] = {}
         for rec in it.get("flows", []) or []:

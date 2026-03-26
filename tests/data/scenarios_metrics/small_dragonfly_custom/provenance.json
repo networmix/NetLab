@@ -1,6 +1,8 @@
 {
-  "generated_at": "2025-08-24T18:44:58.993511+00:00",
-  "python": "3.13.1 (main, Dec  9 2024, 01:22:22) [Clang 16.0.0 (clang-1600.0.26.4)]",
-  "platform": "macOS-15.6-arm64-arm-64bit-Mach-O",
-  "git_commit": "1b103ef5f866ef7a1d2d2c7e4b5e5e28dacc28b4"
+  "generated_at": "2026-03-25T11:25:53.285730+00:00",
+  "python": "3.11.14 (main, Dec 17 2025, 21:09:14) [Clang 21.1.4 ]",
+  "platform": "macOS-26.4-arm64-arm-64bit",
+  "scenarios_root": "tests/data/scenarios",
+  "output_root": "tests/data/scenarios_metrics",
+  "git_commit": "ea43e336e7e3c62332bc5cfabb58cdbdc91619cc"
 }

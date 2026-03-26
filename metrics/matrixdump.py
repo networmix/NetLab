@@ -5,54 +5,22 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from .common import baseline_demand_map, canonical_dc, expand_flow_results
+
 Pair = Tuple[str, str]
-
-
-def _canonical_dc(endpoint: str) -> str:
-    if not endpoint:
-        return endpoint
-    parts = endpoint.split("/")
-    if len(parts) >= 2:
-        return f"{parts[0]}/{parts[1]}"
-    return endpoint
-
-
-def _baseline_demand_map_from_tm(results: dict) -> Dict[Pair, float]:
-    tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
-    data = tm_step.get("data", {}) or {}
-    fr = data.get("flow_results", []) or []
-    if not isinstance(fr, list) or not fr:
-        return {}
-    base = fr[0]
-    if str(base.get("failure_id", "")) != "baseline":
-        return {}
-    out: Dict[Pair, float] = {}
-    for rec in base.get("flows", []) or []:
-        s = _canonical_dc(rec.get("source", ""))
-        d = _canonical_dc(rec.get("destination", ""))
-        if not s or not d or s == d:
-            continue
-        try:
-            dem = float(rec.get("demand", 0.0))
-        except Exception:
-            dem = 0.0
-        if dem <= 0.0:
-            continue
-        out[(s, d)] = dem
-    return out
 
 
 def _collect_per_iteration_matrix(results: dict, step_name: str) -> pd.DataFrame:
     step = results.get("steps", {}).get(step_name, {}) or {}
     data = step.get("data", {}) or {}
-    fr = data.get("flow_results", []) or []
+    fr = expand_flow_results(data.get("flow_results", []) or [])
     by_iter: Dict[str, Dict[str, float]] = {}
-    for it in fr:
-        fid = str(it.get("failure_id", f"it{len(by_iter)}"))
+    for idx, it in enumerate(fr):
+        fid = f"it{idx}"
         row: Dict[str, float] = {}
         for rec in it.get("flows", []) or []:
-            s = _canonical_dc(rec.get("source", ""))
-            d = _canonical_dc(rec.get("destination", ""))
+            s = canonical_dc(rec.get("source", ""))
+            d = canonical_dc(rec.get("destination", ""))
             if not s or not d or s == d:
                 continue
             try:
@@ -64,7 +32,7 @@ def _collect_per_iteration_matrix(results: dict, step_name: str) -> pd.DataFrame
     if not by_iter:
         return pd.DataFrame()
     df = pd.DataFrame.from_dict(by_iter, orient="index").fillna(0.0)
-    df.index.name = "failure_id"
+    df.index.name = "iteration"
     return df
 
 
@@ -95,7 +63,7 @@ def compute_pair_matrices(
     If include_maxflow is False or data missing, mf_* will be None.
     """
     probs = [0.50, 0.90, 0.99, 0.999, 0.9999]
-    denom = _baseline_demand_map_from_tm(results)
+    denom = baseline_demand_map(results)
 
     tm_mat = _collect_per_iteration_matrix(results, "tm_placement")
     tm_abs = _percentiles_per_pair(tm_mat, probs)

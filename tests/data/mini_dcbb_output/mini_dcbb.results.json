@@ -1,0 +1,677 @@
+{
+  "workflow": {
+    "msd_baseline": {
+      "step_type": "MaximumSupportedDemand",
+      "step_name": "msd_baseline",
+      "execution_order": 0,
+      "scenario_seed": 42,
+      "step_seed": 2022406077,
+      "seed_source": "scenario-derived",
+      "active_seed": 2022406077
+    },
+    "tm_lh_path": {
+      "step_type": "TrafficMatrixPlacement",
+      "step_name": "tm_lh_path",
+      "execution_order": 1,
+      "scenario_seed": 42,
+      "step_seed": 42,
+      "seed_source": "explicit-step",
+      "active_seed": 42
+    },
+    "tm_1x_bb": {
+      "step_type": "TrafficMatrixPlacement",
+      "step_name": "tm_1x_bb",
+      "execution_order": 2,
+      "scenario_seed": 42,
+      "step_seed": 42,
+      "seed_source": "explicit-step",
+      "active_seed": 42
+    }
+  },
+  "steps": {
+    "msd_baseline": {
+      "metadata": {
+        "duration_sec": 0.0008020401000976562
+      },
+      "data": {
+        "alpha_star": 3.0,
+        "context": {
+          "acceptance_rule": "hard",
+          "alpha_start": 1.0,
+          "growth_factor": 2.0,
+          "alpha_min": 1e-06,
+          "alpha_max": 1000000000.0,
+          "resolution": 0.01,
+          "max_bracket_iters": 32,
+          "max_bisect_iters": 32,
+          "demand_set": "baseline_traffic_matrix",
+          "placement_rounds": "auto"
+        },
+        "base_demands": [
+          {
+            "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+            "source": "^abc1/rsw$",
+            "target": "^xyz1/rsw$",
+            "volume": 100.0,
+            "mode": "combine",
+            "priority": 0,
+            "flow_policy": "TE_WCMP_UNLIM"
+          },
+          {
+            "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+            "source": "^xyz1/rsw$",
+            "target": "^abc1/rsw$",
+            "volume": 100.0,
+            "mode": "combine",
+            "priority": 0,
+            "flow_policy": "TE_WCMP_UNLIM"
+          }
+        ],
+        "probes": [
+          {
+            "alpha": 1.0,
+            "feasible": true,
+            "placement_ratio": 1.0
+          },
+          {
+            "alpha": 2.0,
+            "feasible": true,
+            "placement_ratio": 1.0
+          },
+          {
+            "alpha": 4.0,
+            "feasible": false,
+            "placement_ratio": 0.75
+          },
+          {
+            "alpha": 3.0,
+            "feasible": true,
+            "placement_ratio": 1.0
+          },
+          {
+            "alpha": 3.5,
+            "feasible": false,
+            "placement_ratio": 0.8571428571428571
+          },
+          {
+            "alpha": 3.25,
+            "feasible": false,
+            "placement_ratio": 0.9230769230769231
+          },
+          {
+            "alpha": 3.125,
+            "feasible": false,
+            "placement_ratio": 0.96
+          },
+          {
+            "alpha": 3.0625,
+            "feasible": false,
+            "placement_ratio": 0.9795918367346939
+          },
+          {
+            "alpha": 3.03125,
+            "feasible": false,
+            "placement_ratio": 0.9896907216494846
+          },
+          {
+            "alpha": 3.015625,
+            "feasible": false,
+            "placement_ratio": 0.9948186528497409
+          },
+          {
+            "alpha": 3.0078125,
+            "feasible": false,
+            "placement_ratio": 0.9974025974025974
+          }
+        ]
+      }
+    },
+    "tm_lh_path": {
+      "metadata": {
+        "iterations": 10,
+        "parallelism": 1,
+        "analysis_function": "demand_placement_analysis",
+        "policy_name": "fm_lh_path",
+        "execution_time": 0.00033736228942871094,
+        "unique_patterns": 2,
+        "duration_sec": 0.0007271766662597656
+      },
+      "data": {
+        "baseline": {
+          "failure_id": "",
+          "failure_state": {
+            "excluded_nodes": [],
+            "excluded_links": []
+          },
+          "failure_trace": null,
+          "occurrence_count": 1,
+          "flows": [
+            {
+              "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "priority": 0,
+              "demand": 300.0,
+              "placed": 300.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "112": 200.0,
+                "212": 100.0
+              },
+              "data": {}
+            },
+            {
+              "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "priority": 0,
+              "demand": 300.0,
+              "placed": 300.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "112": 200.0,
+                "212": 100.0
+              },
+              "data": {}
+            }
+          ],
+          "summary": {
+            "total_demand": 600.0,
+            "total_placed": 600.0,
+            "overall_ratio": 1.0,
+            "dropped_flows": 0,
+            "num_flows": 2
+          },
+          "data": {}
+        },
+        "flow_results": [
+          {
+            "failure_id": "4a0abc7ae1cd7e46",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "bb/abc1/pl2|bb/xyz1/pl2|EHOHqMgfQiqyUJWGTuJh5A",
+                "bb/abc1/pl1|bb/xyz1/pl1|-L-xtjX7R92VSac1ziYrwQ"
+              ]
+            },
+            "failure_trace": null,
+            "occurrence_count": 5,
+            "flows": [
+              {
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 100.0,
+                "dropped": 200.0,
+                "cost_distribution": {
+                  "212": 100.0
+                },
+                "data": {}
+              },
+              {
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 100.0,
+                "dropped": 200.0,
+                "cost_distribution": {
+                  "212": 100.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 600.0,
+              "total_placed": 200.0,
+              "overall_ratio": 0.3333333333333333,
+              "dropped_flows": 2,
+              "num_flows": 2
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "eca6a62f4b17e87c",
+            "failure_state": {
+              "excluded_nodes": [],
+              "excluded_links": [
+                "bb/abc1/pl2|bb/xyz1/pl2|Eh8E5pYySU2rUENZhhSsxw",
+                "bb/abc1/pl1|bb/xyz1/pl1|tyrL1xo_QNaFtdiK1BBMcg"
+              ]
+            },
+            "failure_trace": null,
+            "occurrence_count": 5,
+            "flows": [
+              {
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 200.0,
+                "dropped": 100.0,
+                "cost_distribution": {
+                  "112": 200.0
+                },
+                "data": {}
+              },
+              {
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 200.0,
+                "dropped": 100.0,
+                "cost_distribution": {
+                  "112": 200.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 600.0,
+              "total_placed": 400.0,
+              "overall_ratio": 0.6666666666666666,
+              "dropped_flows": 2,
+              "num_flows": 2
+            },
+            "data": {}
+          }
+        ],
+        "context": {
+          "demand_set": "baseline_traffic_matrix",
+          "placement_rounds": "auto",
+          "include_flow_details": true,
+          "include_used_edges": false,
+          "base_demands": [
+            {
+              "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "source": "^abc1/rsw$",
+              "target": "^xyz1/rsw$",
+              "volume": 100.0,
+              "mode": "combine",
+              "priority": 0,
+              "flow_policy": "TE_WCMP_UNLIM",
+              "group_mode": "flatten"
+            },
+            {
+              "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "source": "^xyz1/rsw$",
+              "target": "^abc1/rsw$",
+              "volume": 100.0,
+              "mode": "combine",
+              "priority": 0,
+              "flow_policy": "TE_WCMP_UNLIM",
+              "group_mode": "flatten"
+            }
+          ],
+          "alpha": 3.0,
+          "alpha_source": "msd_baseline"
+        }
+      }
+    },
+    "tm_1x_bb": {
+      "metadata": {
+        "iterations": 20,
+        "parallelism": 1,
+        "analysis_function": "demand_placement_analysis",
+        "policy_name": "fm_1x_bb",
+        "execution_time": 0.00048828125,
+        "unique_patterns": 4,
+        "duration_sec": 0.0008680820465087891
+      },
+      "data": {
+        "baseline": {
+          "failure_id": "",
+          "failure_state": {
+            "excluded_nodes": [],
+            "excluded_links": []
+          },
+          "failure_trace": null,
+          "occurrence_count": 1,
+          "flows": [
+            {
+              "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "priority": 0,
+              "demand": 300.0,
+              "placed": 300.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "112": 200.0,
+                "212": 100.0
+              },
+              "data": {}
+            },
+            {
+              "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "priority": 0,
+              "demand": 300.0,
+              "placed": 300.0,
+              "dropped": 0.0,
+              "cost_distribution": {
+                "112": 200.0,
+                "212": 100.0
+              },
+              "data": {}
+            }
+          ],
+          "summary": {
+            "total_demand": 600.0,
+            "total_placed": 600.0,
+            "overall_ratio": 1.0,
+            "dropped_flows": 0,
+            "num_flows": 2
+          },
+          "data": {}
+        },
+        "flow_results": [
+          {
+            "failure_id": "02f2c516d7bfd658",
+            "failure_state": {
+              "excluded_nodes": [
+                "bb/abc1/pl1"
+              ],
+              "excluded_links": []
+            },
+            "failure_trace": null,
+            "occurrence_count": 5,
+            "flows": [
+              {
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              },
+              {
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 600.0,
+              "total_placed": 300.0,
+              "overall_ratio": 0.5,
+              "dropped_flows": 2,
+              "num_flows": 2
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "e066dd7e22a05626",
+            "failure_state": {
+              "excluded_nodes": [
+                "bb/abc1/pl2"
+              ],
+              "excluded_links": []
+            },
+            "failure_trace": null,
+            "occurrence_count": 9,
+            "flows": [
+              {
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              },
+              {
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 600.0,
+              "total_placed": 300.0,
+              "overall_ratio": 0.5,
+              "dropped_flows": 2,
+              "num_flows": 2
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "6449813a572d6e32",
+            "failure_state": {
+              "excluded_nodes": [
+                "bb/xyz1/pl2"
+              ],
+              "excluded_links": []
+            },
+            "failure_trace": null,
+            "occurrence_count": 5,
+            "flows": [
+              {
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              },
+              {
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 600.0,
+              "total_placed": 300.0,
+              "overall_ratio": 0.5,
+              "dropped_flows": 2,
+              "num_flows": 2
+            },
+            "data": {}
+          },
+          {
+            "failure_id": "ceb1019515d77a4e",
+            "failure_state": {
+              "excluded_nodes": [
+                "bb/xyz1/pl1"
+              ],
+              "excluded_links": []
+            },
+            "failure_trace": null,
+            "occurrence_count": 1,
+            "flows": [
+              {
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              },
+              {
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "priority": 0,
+                "demand": 300.0,
+                "placed": 150.0,
+                "dropped": 150.0,
+                "cost_distribution": {
+                  "112": 100.0,
+                  "212": 50.0
+                },
+                "data": {}
+              }
+            ],
+            "summary": {
+              "total_demand": 600.0,
+              "total_placed": 300.0,
+              "overall_ratio": 0.5,
+              "dropped_flows": 2,
+              "num_flows": 2
+            },
+            "data": {}
+          }
+        ],
+        "context": {
+          "demand_set": "baseline_traffic_matrix",
+          "placement_rounds": "auto",
+          "include_flow_details": true,
+          "include_used_edges": false,
+          "base_demands": [
+            {
+              "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "source": "^abc1/rsw$",
+              "target": "^xyz1/rsw$",
+              "volume": 100.0,
+              "mode": "combine",
+              "priority": 0,
+              "flow_policy": "TE_WCMP_UNLIM",
+              "group_mode": "flatten"
+            },
+            {
+              "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "source": "^xyz1/rsw$",
+              "target": "^abc1/rsw$",
+              "volume": 100.0,
+              "mode": "combine",
+              "priority": 0,
+              "flow_policy": "TE_WCMP_UNLIM",
+              "group_mode": "flatten"
+            }
+          ],
+          "alpha": 3.0,
+          "alpha_source": "msd_baseline"
+        }
+      }
+    }
+  },
+  "scenario": {
+    "seed": 42,
+    "failures": {
+      "fm_lh_path": {
+        "attrs": {},
+        "expand_groups": false,
+        "expand_children": false,
+        "modes": [
+          {
+            "weight": 1.0,
+            "rules": [
+              {
+                "scope": "risk_group",
+                "logic": "or",
+                "mode": "choice",
+                "probability": 1.0,
+                "count": 1,
+                "path": null,
+                "conditions": [
+                  {
+                    "attr": "type",
+                    "op": "==",
+                    "value": "long_haul_path"
+                  }
+                ]
+              }
+            ],
+            "attrs": {}
+          }
+        ]
+      },
+      "fm_1x_bb": {
+        "attrs": {},
+        "expand_groups": false,
+        "expand_children": false,
+        "modes": [
+          {
+            "weight": 1.0,
+            "rules": [
+              {
+                "scope": "node",
+                "logic": "or",
+                "mode": "choice",
+                "probability": 1.0,
+                "count": 1,
+                "path": null,
+                "conditions": [
+                  {
+                    "attr": "role",
+                    "op": "==",
+                    "value": "bb"
+                  }
+                ]
+              }
+            ],
+            "attrs": {}
+          }
+        ]
+      }
+    },
+    "demands": {
+      "baseline_traffic_matrix": [
+        {
+          "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+          "source": "^abc1/rsw$",
+          "target": "^xyz1/rsw$",
+          "volume": 100.0,
+          "priority": 0,
+          "mode": "combine",
+          "group_mode": "flatten",
+          "flow_policy": 3,
+          "attrs": {}
+        },
+        {
+          "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+          "source": "^xyz1/rsw$",
+          "target": "^abc1/rsw$",
+          "volume": 100.0,
+          "priority": 0,
+          "mode": "combine",
+          "group_mode": "flatten",
+          "flow_policy": 3,
+          "attrs": {}
+        }
+      ]
+    }
+  }
+}

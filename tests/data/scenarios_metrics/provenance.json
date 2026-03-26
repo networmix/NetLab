@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-03-25T11:25:53.375927+00:00",
+  "python": "3.11.14 (main, Dec 17 2025, 21:09:14) [Clang 21.1.4 ]",
+  "platform": "macOS-26.4-arm64-arm-64bit",
+  "command": "metrics",
+  "source_root": "tests/data/scenarios",
+  "output_root": "tests/data/scenarios_metrics",
+  "source_files": {
+    "tests/data/scenarios/small_baseline/small_baseline__seed11/small_baseline__seed11_scenario.results.json": {
+      "path": "tests/data/scenarios/small_baseline/small_baseline__seed11/small_baseline__seed11_scenario.results.json",
+      "sha256": "0cab90907a457251ef63a7dfce2ff1466180840fb38b409801b8c20ffbac6517",
+      "size_bytes": 4618479
+    },
+    "tests/data/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.results.json": {
+      "path": "tests/data/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.results.json",
+      "sha256": "2d284dd268d7a8d456aa9b037e348e40fbd70ba1eaa4ff67110c9690a3df85dc",
+      "size_bytes": 4618471
+    },
+    "tests/data/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.results.json": {
+      "path": "tests/data/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.results.json",
+      "sha256": "100f6f853a712fd4f54655b57c784e4d20965300e105631e54ccc9054e1b2d97",
+      "size_bytes": 4848642
+    },
+    "tests/data/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.results.json": {
+      "path": "tests/data/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.results.json",
+      "sha256": "f6fb4f74d52999ea7dabb320972a39aa489eae57ecfd059e41edb9579321666c",
+      "size_bytes": 4848570
+    },
+    "tests/data/scenarios/small_dragonfly/small_dragonfly__seed11/small_dragonfly__seed11_scenario.results.json": {
+      "path": "tests/data/scenarios/small_dragonfly/small_dragonfly__seed11/small_dragonfly__seed11_scenario.results.json",
+      "sha256": "4ae442ee3ed1774e0073c3352cf778dff1588603ab2aacf99826237439c9ff93",
+      "size_bytes": 5025835
+    },
+    "tests/data/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json": {
+      "path": "tests/data/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json",
+      "sha256": "8dcccc09a458de583baf5e39dd39d5eb70910648b0a490e457094eb0c46fd07e",
+      "size_bytes": 5025740
+    },
+    "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.results.json": {
+      "path": "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.results.json",
+      "sha256": "d3aaa1eef5ce8e6c0327522ee48d375bf8de77635e53f71439791a0b53a5b5b4",
+      "size_bytes": 4840562
+    },
+    "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed12/small_dragonfly_custom__seed12_scenario.results.json": {
+      "path": "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed12/small_dragonfly_custom__seed12_scenario.results.json",
+      "sha256": "db6245f9b6e684e941410cb78297b7ad8666895fcdca6cfa71678d24edc07485",
+      "size_bytes": 4840458
+    }
+  },
+  "scenarios_analyzed": [
+    "small_baseline",
+    "small_clos",
+    "small_dragonfly",
+    "small_dragonfly_custom"
+  ],
+  "seeds_analyzed": {
+    "small_baseline": [
+      11,
+      12
+    ],
+    "small_clos": [
+      11,
+      12
+    ],
+    "small_dragonfly": [
+      11,
+      12
+    ],
+    "small_dragonfly_custom": [
+      11,
+      12
+    ]
+  },
+  "git_commit": "ea43e336e7e3c62332bc5cfabb58cdbdc91619cc"
+}

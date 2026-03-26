@@ -49,13 +49,13 @@ def _latency_results() -> dict:
     return {
         "steps": {
             "tm_placement": {
-                "metadata": {"baseline": True},
+                "metadata": {"iterations": 3, "unique_patterns": 2},
                 "data": {
+                    "baseline": {"failure_id": "baseline", "flows": base_flows},
                     "flow_results": [
-                        {"failure_id": "baseline", "flows": base_flows},
                         {"failure_id": "f1", "flows": f1_flows},
                         {"failure_id": "f2", "flows": f2_flows},
-                    ]
+                    ],
                 },
             }
         }
@@ -119,10 +119,61 @@ def test_compute_latency_stretch_correctness() -> None:
     assert np.isclose(out.derived["WES_delta"], out.failures["WES"] - 0.0)
 
 
-def test_latency_requires_baseline_first() -> None:
+def test_latency_requires_baseline_key() -> None:
     res = _latency_results()
-    # Reorder to break the baseline-first rule
-    fr = res["steps"]["tm_placement"]["data"]["flow_results"]
-    fr[0], fr[1] = fr[1], fr[0]
-    with pytest.raises(ValueError, match="baseline must be first"):
+    # Remove the baseline key to trigger the validation error
+    del res["steps"]["tm_placement"]["data"]["baseline"]
+    with pytest.raises(ValueError, match="baseline dict required"):
         compute_latency_stretch(res)
+
+
+def test_latency_occurrence_count_weighting() -> None:
+    """Verify latency stretch weights by occurrence_count.
+
+    Setup:
+    - Baseline: pair (m1/d1, m2/d2) with cost 10, volume 5.
+    - Failure f1 (count=8): stretch 2.0 (cost 20, volume 5)
+    - Failure f2 (count=2): stretch 1.0 (cost 10, volume 5)
+
+    Without weighting: median of [2.0, 1.0] = 1.5
+    With weighting: median of [2.0]*8 + [1.0]*2 = 2.0 (8th value in sorted 10)
+    """
+    base_flows = [
+        {
+            "source": "m1/d1/r",
+            "destination": "m2/d2/r",
+            "cost_distribution": {"10": 5.0},
+        },
+    ]
+    f1_flows = [
+        {
+            "source": "m1/d1/r",
+            "destination": "m2/d2/r",
+            "cost_distribution": {"20": 5.0},
+        },
+    ]
+    f2_flows = [
+        {
+            "source": "m1/d1/r",
+            "destination": "m2/d2/r",
+            "cost_distribution": {"10": 5.0},
+        },
+    ]
+    res = {
+        "steps": {
+            "tm_placement": {
+                "metadata": {"iterations": 10, "unique_patterns": 2},
+                "data": {
+                    "baseline": {"failure_id": "baseline", "flows": base_flows},
+                    "flow_results": [
+                        {"failure_id": "f1", "occurrence_count": 8, "flows": f1_flows},
+                        {"failure_id": "f2", "occurrence_count": 2, "flows": f2_flows},
+                    ],
+                },
+            }
+        }
+    }
+    out = compute_latency_stretch(res)
+    # With 8 copies of stretch=2.0 and 2 copies of stretch=1.0,
+    # median p50 should be 2.0 (not 1.5 as with equal weights)
+    assert np.isclose(out.failures["p50"], 2.0)
