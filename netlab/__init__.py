@@ -5,7 +5,7 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("netlab")
 except PackageNotFoundError:
-    __version__ = "0.0.0.dev"  # fallback for editable installs before first pip install
+    __version__ = "0.0.0.dev"  # Package metadata is unavailable before installation.
 
 # Expose submodules declared in __all__
 from . import (

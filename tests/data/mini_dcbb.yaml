@@ -48,7 +48,7 @@
 #     cost_distribution: {112: 200}
 #
 #   With seed=42 and 10 iterations, both patterns should appear.
-#   Each is deterministic → occurrence_count sums to 10.
+#   Pattern occurrence counts sum to 10.
 #
 # fm_1x_bb: lose one random BB node (4 choices, equally likely)
 #
@@ -202,11 +202,9 @@ workflow:
   - type: MaximumSupportedDemand
     name: msd_baseline
     demand_set: baseline_traffic_matrix
-    acceptance_rule: hard
     alpha_start: 1.0
     growth_factor: 2.0
     resolution: 0.01
-    placement_rounds: auto
 
   - type: TrafficMatrixPlacement
     name: tm_lh_path
@@ -214,7 +212,6 @@ workflow:
     failure_policy: fm_lh_path
     iterations: 10
     parallelism: 1
-    placement_rounds: auto
     seed: 42
     include_flow_details: true
     alpha_from_step: msd_baseline
@@ -226,7 +223,6 @@ workflow:
     failure_policy: fm_1x_bb
     iterations: 20
     parallelism: 1
-    placement_rounds: auto
     seed: 42
     include_flow_details: true
     alpha_from_step: msd_baseline

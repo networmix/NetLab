@@ -370,7 +370,8 @@ class TestResumeBest:
     @pytest.mark.timeout(120)
     def test_re_derives_best_from_log(self, tmp_path: Path) -> None:
         """Log has scores [0.5, 0.9, 0.3], stale best_hypothesis.yml says 0.5.
-        Runner re-derives best as 0.9 and uses it as the comparison threshold."""
+        Runner re-derives best as 0.9 and uses it as the comparison threshold.
+        """
         proj = make_project(tmp_path)
         results_dir = proj / "results"
 
@@ -406,7 +407,7 @@ class TestResumeBest:
         with open(proj / "best_hypothesis.yml", "w") as f:
             yaml.dump(stale_best, f)
 
-        # Run 1 more experiment that scores 0.8 (below actual best of 0.9)
+        # Run one experiment; its measured alpha is compared with the best logged score.
         responses = [_mock_response(6.0)]
         backend = MockBackend(responses)
         config = RunConfig(
@@ -497,7 +498,6 @@ class TestCrashStderrCaptured:
               - type: MaximumSupportedDemand
                 name: msd_baseline
                 demand_set: baseline_traffic_matrix
-                acceptance_rule: hard
                 alpha_start: 1.0
                 growth_factor: 2.0
                 alpha_min: 0.001
@@ -505,7 +505,6 @@ class TestCrashStderrCaptured:
                 resolution: 0.05
                 max_bracket_iters: 16
                 max_bisect_iters: 32
-                placement_rounds: 2
             demands:
               baseline_traffic_matrix:
                 - source: ^N1$

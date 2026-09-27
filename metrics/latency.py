@@ -22,8 +22,7 @@ class LatencyResult:
         failures: Per-tail medians across failure iterations (same keys as baseline).
         derived: Seed-level derived metrics (e.g., TD99, SLO drops, best_path_drop, WES_delta).
         per_iteration: Optional per-iteration tails for failures (keys as above), each a list
-            with one value per failure iteration in original order. Useful for pooled
-            cross-seed aggregations and uncertainty bands.
+            with one value per expanded failure sample, grouped by pattern.
     """
 
     baseline: Dict[str, float]

@@ -1,7 +1,4 @@
-"""Tests for objective function module.
-
-Covers every row in the Step 3 acceptance criteria table.
-"""
+"""Tests for objective function module."""
 
 from __future__ import annotations
 
@@ -212,7 +209,8 @@ class TestConstraintFail:
 class TestMultipleConstraints:
     def test_one_pass_one_fail(self, obj_multi_constraint: ObjectiveFunction) -> None:
         """alpha_star >= 1.0 passes, total_cost <= 50.0 fails -> infeasible,
-        violated_constraints lists the failing one by name."""
+        violated_constraints lists the failing one by name.
+        """
         results = _make_results(alpha_star=1.5, bac_auc=0.85, total_cost=100.0)
         result = obj_multi_constraint.evaluate(results)
 

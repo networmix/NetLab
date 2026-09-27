@@ -1,12 +1,5 @@
-# Test 9: Full scale - 4 DC rows × 9 nodes = 36 DC per site
-#
-# Matches actual full_mesh topology
-#
-# DC-BB: 36 × 16 = 576 links × 400 = 230,400 per site
-# BB-BB: 4 planes × 4×4 mesh = 64 links × 800 = 51,200 per direction
-# Demand: 500,000 per direction = 1,000,000 total
-#
-# Expected Alpha*: 102,400 / 1,000,000 = 0.1024 (if BB is bottleneck)
+# Four DC rows of nine nodes and four BB planes of four nodes per site.
+# Cross-site mesh: 4 planes x 16 links x 800 Gbps = 51,200 Gbps per direction.
 
 blueprints:
   DC_Row:

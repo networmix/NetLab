@@ -1,14 +1,7 @@
-"""Inner Loop 1: Scenario generation and validation.
+"""Generate freeform NetGraph YAML with LLM feedback.
 
-Translates a connectivity idea into a validated ngraph scenario YAML
-through an iterative LLM + inspect loop. Each iteration is cheap (~40ms)
-because it only builds and inspects the graph — no simulation.
-
-Two generation modes:
-  - Parameterized: LLM specifies config parameters, scenario_generator
-    produces YAML. The loop validates the generator output.
-  - Freeform: LLM writes raw YAML for novel topology ideas. The loop
-    validates via ngraph inspect and structural invariant checks.
+Each candidate is inspected and simulated. Errors are returned to the LLM
+for another attempt, up to the configured limit.
 """
 
 from __future__ import annotations
@@ -53,11 +46,7 @@ class InspectResult:
 
 @dataclass
 class GenerationResult:
-    """Output of the generation loop.
-
-    On success, contains both the validated scenario and the simulation
-    results (since the simulation is run as part of validation).
-    """
+    """Generated scenario and simulation results, or details of the failed attempt."""
 
     success: bool
     scenario_yaml: str = ""
@@ -70,11 +59,7 @@ class GenerationResult:
 
 
 def inspect_scenario(scenario_path: Path, ngraph_bin: str) -> InspectResult:
-    """Run ngraph inspect on a scenario file and parse the output.
-
-    Uses the ngraph CLI for validation (catches DSL errors, expansion
-    issues, and schema violations that the Python API might miss).
-    """
+    """Run ``ngraph inspect`` and parse counts, risk groups, and errors."""
     try:
         proc = subprocess.run(
             [ngraph_bin, "inspect", str(scenario_path)],
@@ -177,8 +162,7 @@ intent and fix any mismatches.
 Return ONLY valid YAML. No markdown fences, no explanation.
 """
 
-# Loaded at module import from the skills directory if available,
-# otherwise falls back to a built-in minimal reference.
+# Cache the DSL reference after the first generation request.
 _DSL_REFERENCE: str | None = None
 
 
@@ -208,7 +192,7 @@ def _load_dsl_reference() -> str:
             _DSL_REFERENCE = skill_path.read_text()
             return _DSL_REFERENCE
 
-    # Fallback: built-in minimal reference
+    # Built-in minimal reference
     _DSL_REFERENCE = """\
 CRITICAL RULES:
 - Top-level keys: seed, network, risk_groups, demands, failures, workflow
@@ -239,7 +223,6 @@ TrafficMatrixPlacement workflow step (all fields required):
     failure_policy: policy_name
     iterations: 10
     parallelism: 1
-    placement_rounds: auto
     seed: 42
     include_flow_details: true
     alpha_from_step: msd_baseline
@@ -290,20 +273,17 @@ def run_generation_loop(
     max_iterations: int = 20,
     work_dir: Path | None = None,
 ) -> GenerationResult:
-    """Run the scenario generation loop.
-
-    Iterates: LLM generates YAML → ngraph inspect → compare → revise
-    until the scenario passes validation or the budget is exhausted.
+    """Generate, inspect, and simulate candidates until one succeeds.
 
     Args:
-        idea: Natural language description of the connectivity idea.
-        backend: LLM backend for generation.
-        ngraph_bin: Path to ngraph binary. Auto-detected if None.
+        idea: Description of the topology and experiment to generate.
+        backend: LLM backend for generation and revisions.
+        ngraph_bin: NetGraph executable; resolved automatically if omitted.
         max_iterations: Maximum generation attempts.
-        work_dir: Directory for temporary files. Uses tempdir if None.
+        work_dir: Output directory; a temporary directory is used if omitted.
 
     Returns:
-        GenerationResult with the validated scenario or error details.
+        Scenario and simulation results on success, or error details.
     """
     if ngraph_bin is None:
         try:
@@ -381,10 +361,7 @@ def run_generation_loop(
                     last_inspect.errors = viability_errors
                     continue
 
-                # Run simulation as definitive validation.
-                # For LLM-generated scenarios (10-20 nodes), this takes <1s.
-                # Catches issues inspect misses: unresolved demand patterns,
-                # invalid failure policies, workflow reference errors.
+                # Exercise demands, failure policies, and workflow references.
                 sim_result = _run_simulation(scenario_path, ngraph_bin, work_dir)
                 if not sim_result.success:
                     last_inspect = InspectResult(
@@ -428,11 +405,7 @@ class _SimResult:
 
 
 def _run_simulation(scenario_path: Path, ngraph_bin: str, work_dir: Path) -> _SimResult:
-    """Run ngraph on the scenario as a validation step.
-
-    Returns the results if successful, or an error message if not.
-    Timeout is short (60s) since LLM-generated scenarios are small.
-    """
+    """Simulate a candidate with a 60-second timeout and load its results."""
     import json
 
     results_dir = work_dir / "results"

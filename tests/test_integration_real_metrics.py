@@ -66,13 +66,7 @@ def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
     run_metrics(root=dst_scen, no_plots=True, enable_maxflow=False)
 
     out_root = tmp_path / "scenarios_metrics"
-    # Allow either scenarios_metrics_ or scenarios_metrics
-    ref_base = data_root
-    ref_root = (
-        ref_base / "scenarios_metrics_"
-        if (ref_base / "scenarios_metrics_").exists()
-        else ref_base / "scenarios_metrics"
-    )
+    ref_root = data_root / "scenarios_metrics"
 
     # Compare project-level CSVs (values should match exactly)
     _assert_project_csv_equal(out_root / "project.csv", ref_root / "project.csv")
@@ -108,12 +102,7 @@ def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
 
 def test_summary_tables_match_reference() -> None:
     data_root = Path(__file__).resolve().parent / "data"
-    ref_base = data_root
-    ref_root = (
-        ref_base / "scenarios_metrics_"
-        if (ref_base / "scenarios_metrics_").exists()
-        else ref_base / "scenarios_metrics"
-    )
+    ref_root = data_root / "scenarios_metrics"
 
     # Build tables from the reference metrics dir and compare to the saved CSVs
     df_proj = build_project_summary_table(ref_root).sort_index()
@@ -123,7 +112,7 @@ def test_summary_tables_match_reference() -> None:
     assert list(df_proj.index) == list(df_proj_ref.index)
     for col in df_proj_ref.columns:
         if col not in df_proj.columns:
-            # Allow extra columns in CSV (future extensions), but ensure core columns are present
+            # Require all reference columns in the computed table.
             continue
         s1 = df_proj[col]
         s2 = df_proj_ref[col]
@@ -198,12 +187,7 @@ def test_all_scenario_metrics_match_reference(tmp_path: Path) -> None:
     run_metrics(root=dst_scen, no_plots=True, enable_maxflow=False)
 
     out_root = tmp_path / "scenarios_metrics"
-    ref_base = data_root
-    ref_root = (
-        ref_base / "scenarios_metrics_"
-        if (ref_base / "scenarios_metrics_").exists()
-        else ref_base / "scenarios_metrics"
-    )
+    ref_root = data_root / "scenarios_metrics"
 
     # For each scenario dir in reference, compare expected per-scenario files and per-seed files
     for scen_dir in sorted(

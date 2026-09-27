@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from metrics.bac import compute_bac, plot_bac
 from metrics.plot_bac_delta_vs_baseline import (
@@ -15,7 +17,7 @@ from metrics.plot_cross_seed_bac import (
     plot_cross_seed_bac,
 )
 from metrics.plot_cross_seed_iterops import (
-    _load_iterops_median_per_iter,
+    _load_iterops,
     plot_cross_seed_iterops,
 )
 from metrics.plot_cross_seed_latency import (
@@ -32,12 +34,7 @@ def _data_root() -> Path:
 
 
 def _metrics_root() -> Path:
-    base = _data_root()
-    for name in ("scenarios_metrics_", "scenarios_metrics"):
-        p = base / name
-        if p.exists():
-            return p
-    return base / "scenarios_metrics_"
+    return _data_root() / "scenarios_metrics"
 
 
 def test_cross_seed_bac_core_curves_match_pooled_grid() -> None:
@@ -82,7 +79,7 @@ def test_bac_delta_vs_baseline_core_matches_reference() -> None:
     )
     base_grid = np.asarray(base_js["pooled_grid"]["x_pct"], dtype=float)
     base_av = np.asarray(base_js["pooled_grid"]["availability"], dtype=float)
-    # Ensure helper and reference are identical (sanity)
+    # Compare the helper output with the saved reference.
     assert np.allclose(base_x, base_grid)
     assert np.allclose(base_a, base_av)
 
@@ -111,24 +108,40 @@ def test_bac_delta_vs_baseline_core_matches_reference() -> None:
         assert np.allclose(delta, delta_ref, rtol=1e-12, atol=1e-12)
 
 
-def test_iterops_medians_match_project_csv() -> None:
+def test_iterops_loads_each_seed() -> None:
     root = _metrics_root()
-    for scen_dir in sorted(
-        [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("_")]
-    ):
-        series = _load_iterops_median_per_iter(scen_dir)
-        # iterops CSV columns are now NaN (ngraph does not emit per-iteration
-        # operation counters), so the helper returns all-NaN or None
-        if series is None:
-            continue
-        # All old counters should be NaN (they read from non-existent fields)
-        for col in (
-            "spf_calls_total_per_iter",
-            "flows_created_total_per_iter",
-            "reopt_calls_total_per_iter",
-        ):
-            val = float(series.get(col, float("nan")))
-            assert np.isnan(val), f"Expected NaN for {col}, got {val}"
+    data = _load_iterops(root, only=["small_baseline", "small_clos"])
+    assert data["scenario"].value_counts().to_dict() == {
+        "small_baseline": 2,
+        "small_clos": 2,
+    }
+    for scenario, samples in data.groupby("scenario"):
+        expected = pd.read_csv(root / str(scenario) / "iterops_summary.csv")
+        for column in ("iters_fail", "unique_patterns", "tm_duration_per_iter_sec"):
+            np.testing.assert_allclose(samples[column], expected[column])
+
+
+def test_iterops_plot_shows_seed_median_and_iqr(tmp_path: Path, monkeypatch) -> None:
+    scenario = tmp_path / "scenario"
+    scenario.mkdir()
+    pd.DataFrame(
+        {
+            "iters_fail": [10, 20, 90],
+            "unique_patterns": [1, 2, 9],
+            "tm_duration_per_iter_sec": [0.1, 0.2, 0.9],
+        }
+    ).to_csv(scenario / "iterops_summary.csv", index=False)
+    monkeypatch.setattr(plt, "show", lambda: None)
+    plot_cross_seed_iterops(tmp_path)
+    figure = plt.gcf()
+    try:
+        for axis, scale in zip(figure.axes, [10, 1, 0.1], strict=True):
+            np.testing.assert_allclose(axis.lines[0].get_ydata(), [2 * scale])
+            np.testing.assert_allclose(
+                axis.lines[1].get_ydata(), [1.5 * scale, 5.5 * scale]
+            )
+    finally:
+        plt.close(figure)
 
 
 def test_cross_seed_latency_core_shapes() -> None:
@@ -190,6 +203,7 @@ def test_plot_bac_overlay_saves(tmp_path: Path) -> None:
                 "metadata": {"iterations": 2, "unique_patterns": 1},
                 "data": {
                     "baseline": {
+                        "occurrence_count": 1,
                         "failure_id": "baseline",
                         "flows": [
                             {
@@ -202,6 +216,7 @@ def test_plot_bac_overlay_saves(tmp_path: Path) -> None:
                     },
                     "flow_results": [
                         {
+                            "occurrence_count": 1,
                             "failure_id": "f1",
                             "flows": [
                                 {
@@ -226,6 +241,7 @@ def test_plot_bac_overlay_saves(tmp_path: Path) -> None:
                 "metadata": {"iterations": 2, "unique_patterns": 1},
                 "data": {
                     "baseline": {
+                        "occurrence_count": 1,
                         "failure_id": "baseline",
                         "flows": [
                             {
@@ -238,6 +254,7 @@ def test_plot_bac_overlay_saves(tmp_path: Path) -> None:
                     },
                     "flow_results": [
                         {
+                            "occurrence_count": 1,
                             "failure_id": "f1",
                             "flows": [
                                 {

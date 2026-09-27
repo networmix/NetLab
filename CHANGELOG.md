@@ -5,49 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-27
+
+### Added
+
+- **Workspaces**: Superset setup, teardown, and run commands with isolated environments.
+- **Integration**: Local-source test gate and fixture regeneration tooling.
+
+### Changed
+
+- **Dependencies**: Require NetGraph 0.23.1 or newer.
+- **Fixtures**: Regenerate scenarios, results, and metrics with current NetGraph and TopoGen.
+- **Docs**: Clarify commands, metric definitions, and scenario descriptions.
+
+### Fixed
+
+- **BAC**: Preserve distinct destinations for flows sharing a source.
+- **Plots**: Compute iteration medians and interquartile ranges from per-seed data.
+- **CLI**: Use current NetGraph commands and return failures from build and run steps.
+
+### Removed
+
+- **BREAKING**: Alternate MSD demand keys; records require `source`, `target`, and `volume`.
+
 ## [0.3.0] - 2026-03-26
 
 ### Fixed
 
-- All metric modules now expand deduplicated flow_results by `occurrence_count` before statistical computation
-- Removed dead `iteration_metrics` extraction from iterops (field never existed in ngraph)
+- Weight metrics by failure-pattern `occurrence_count`.
+- Remove unused iteration metric extraction.
 
 ### Added
 
-- Per-direction BAC (`per_flow` field on `BacResult`) for directional asymmetry analysis
-- Shared utilities in `metrics/common.py`: `expand_flow_results`, `canonical_dc`, `baseline_demand_map`
-- Mini DC-BB verification scenario with hand-calculated metric assertions
-- DC-BB autoresearch framework: scenario generator, structural analysis, parametric sweep, generation loop
-- CLI subcommands: `netlab autoresearch structural-analysis`, `sweep`, `cross-sweep`
+- Per-direction BAC and shared metric helpers.
+- DC-BB autoresearch and CLI commands.
+- Hand-calculated DC-BB verification fixtures.
 
 ### Changed
 
-- Scenario generator produces per-mode TMP workflow steps (`tm_lh_path`, `tm_combined`, etc.) instead of single `tm_placement`
+- Generate separate placement steps for each failure mode.
 
 ## [0.2.2] - 2026-03-15
 
 ### Changed
 
-- Relicensed from AGPL-3.0 to MIT
+- Relicense from AGPL-3.0 to MIT.
 
 ## [0.2.1] - 2026-02-02
 
 ### Added
 
-- `experiments/dc-bb-interconnect/` - DC-backbone interconnect analysis experiment with multiple topology scenarios
-- `netlab.__version__` - Runtime version access via `importlib.metadata`
+- DC-BB interconnect experiments.
+- Runtime version reporting through `netlab.__version__`.
 
 ### Fixed
 
-- Replaced incomplete LICENSE file with full AGPL-3.0 text
+- Complete the AGPL license text.
 
 ## [0.2.0] - 2025-12-06
 
 ### Changed
 
-- **BREAKING**: Minimum Python version raised to 3.11
-- **Dependencies**: Updated ngraph to >=0.12.0
+- **BREAKING**: Require Python 3.11 or newer.
+- Require ngraph 0.12.0 or newer.
 
 ## [0.1.0] - Previous Release
 
-Initial release of NetLab metrics and analysis tools.
+### Added
+
+- Initial release of NetLab metrics and analysis tools.

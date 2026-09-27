@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-# SciPy is required for rigorous t-tests and confidence intervals
+# SciPy supplies t-distribution probabilities and confidence intervals.
 from scipy import stats as scipy_stats  # type: ignore
 
 from .aggregate import write_csv_atomic
@@ -80,7 +80,7 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
       - bac_summary.json with keys:
           {"per_seed": ..., "tail": {p50,p90,p99,p999,p9999,auc_norm,
                                        bw_p90_pct,bw_p95_pct,bw_p99_pct,bw_p999_pct,bw_p9999_pct}}
-      - latency_summary.csv (per-seed rows with columns p50..p9999)
+      - latency_summary.csv (baseline, failure, and derived metrics per seed)
       - costpower_summary.csv (per-seed rows with capex/power and normalizations)
     """
     rows: List[Dict[str, Any]] = []
@@ -112,10 +112,10 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         node_count = float("nan")
         link_count = float("nan")
         seeds_count = 0
-        # Iteration-ops medians across seeds (per-iteration averages)
-        spf_per_iter = float("nan")
-        flows_created_per_iter = float("nan")
-        reopt_calls_per_iter = float("nan")
+        # Iteration counts and pattern-count medians across seeds
+        iters_fail = float("nan")
+        iters_total = float("nan")
+        unique_patterns = float("nan")
         # tm_placement timing (seconds): total and per-iteration median across seeds
         tm_duration_total_sec = float("nan")
         tm_duration_per_iter_sec = float("nan")
@@ -199,7 +199,7 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         if iop.exists():
             df_io = pd.read_csv(iop)
 
-            # Per-iteration averages stored as *_per_iter
+            # Counts and timing recorded for each seed
             def _med_col(name: str, _df_io: pd.DataFrame = df_io) -> float:
                 if name not in _df_io.columns:
                     return float("nan")
@@ -207,9 +207,9 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
                 vals = np.asarray(series.values, dtype=float)
                 return float(np.nanmedian(vals))
 
-            spf_per_iter = _med_col("spf_calls_total_per_iter")
-            flows_created_per_iter = _med_col("flows_created_total_per_iter")
-            reopt_calls_per_iter = _med_col("reopt_calls_total_per_iter")
+            iters_fail = _med_col("iters_fail")
+            iters_total = _med_col("iters_total")
+            unique_patterns = _med_col("unique_patterns")
             tm_duration_total_sec = _med_col("tm_duration_total_sec")
             tm_duration_per_iter_sec = _med_col("tm_duration_per_iter_sec")
             # seeds counted from rows (keep max with other sources)
@@ -262,10 +262,10 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
             "lat_SLO_1_2_drop": lat_SLO_1_2_drop,
             "lat_best_path_drop": lat_best_path_drop,
             "lat_WES_delta": lat_WES_delta,
-            # Iteration operations (median per-iteration across seeds)
-            "spf_calls_per_iter": spf_per_iter,
-            "flows_created_per_iter": flows_created_per_iter,
-            "reopt_calls_per_iter": reopt_calls_per_iter,
+            # Iteration counts (median across seeds)
+            "iters_fail": iters_fail,
+            "iters_total": iters_total,
+            "unique_patterns": unique_patterns,
             # tm_placement timing (seconds)
             "tm_duration_total_sec": tm_duration_total_sec,
             "tm_duration_per_iter_sec": tm_duration_per_iter_sec,
@@ -300,10 +300,10 @@ def build_project_summary_table(analysis_root: Path) -> pd.DataFrame:
         "lat_SLO_1_2_drop",
         "lat_best_path_drop",
         "lat_WES_delta",
-        # Iteration operation intensity (median per-iteration across seeds)
-        "spf_calls_per_iter",
-        "flows_created_per_iter",
-        "reopt_calls_per_iter",
+        # Iteration counts (median across seeds)
+        "iters_fail",
+        "iters_total",
+        "unique_patterns",
         # tm_placement timing
         "tm_duration_total_sec",
         "tm_duration_per_iter_sec",
@@ -348,9 +348,9 @@ def print_pretty_table(
             "lat_SLO_1_2_drop": "SLO≤1.2 drop",
             "lat_best_path_drop": "best-path drop",
             "lat_WES_delta": "WES Δ",
-            "spf_calls_per_iter": "SPF/iter",
-            "flows_created_per_iter": "flows created/iter",
-            "reopt_calls_per_iter": "reopt/iter",
+            "iters_fail": "failure iterations",
+            "iters_total": "total iterations",
+            "unique_patterns": "unique patterns",
             "USD_per_Gbit_offered": "USD/Gbps offered",
             "Watt_per_Gbit_offered": "W/Gbps offered",
             "USD_per_Gbit_p999": "USD/Gbps p99.9",
@@ -369,7 +369,7 @@ def print_pretty_table(
             "\n[dim]- Ratios: higher is better (BW@p, BAC AUC); lower is better (lat_fail_p99, cost/power).\n- Drops/deltas: closer to 0 is better (SLO drop, best-path drop, WES Δ).[/dim]"
         )
     else:
-        # Fallback: manual fixed-width table without wrapping
+        # Plain-text table without wrapping
         if title:
             print(title)
         # Short display labels for readability
@@ -390,9 +390,9 @@ def print_pretty_table(
             "lat_SLO_1_2_drop": "SLO≤1.2 drop",
             "lat_best_path_drop": "best-path drop",
             "lat_WES_delta": "WES Δ",
-            "spf_calls_per_iter": "SPF/iter",
-            "flows_created_per_iter": "flows created/iter",
-            "reopt_calls_per_iter": "reopt/iter",
+            "iters_fail": "failure iterations",
+            "iters_total": "total iterations",
+            "unique_patterns": "unique patterns",
             "USD_per_Gbit_offered": "USD/Gbps offered",
             "Watt_per_Gbit_offered": "W/Gbps offered",
             "USD_per_Gbit_p999": "USD/Gbps p99.9",
@@ -447,7 +447,7 @@ def summarize_and_print(
         print("(no scenarios summarized)")
         return None
     print_pretty_table(df, title=title)
-    # Also print baseline-normalized view for thesis-friendly comparisons
+    # Print comparisons relative to the selected baseline.
     base_df = build_baseline_normalized_table(analysis_root)
     if not base_df.empty:
         print_pretty_table(
@@ -460,7 +460,6 @@ def summarize_and_print(
         )
         # Normalized insights (all + filtered)
         _print_normalized_insights(analysis_root)
-    # Normalized insights are preferred; project-level absolute insights suppressed for simplicity
     if write_project_csv:
         return save_project_csv_incremental(df)
     return None
@@ -1049,7 +1048,7 @@ def _paired_t_with_ci(
             p = float(2.0 * scipy_stats.t.sf(abs(t_stat), df=df))
             tcrit = float(scipy_stats.t.ppf(1.0 - alpha / 2.0, df=df))
         else:
-            # Normal approximation as a fallback
+            # Normal approximation
             p = float(
                 2.0 * (1.0 - 0.5 * (1.0 + math.erf(abs(t_stat) / math.sqrt(2.0))))
             )
@@ -1456,7 +1455,7 @@ def _print_project_insights(analysis_root: Path, alpha: float = 0.05) -> None:
             )
         console.print(table)
     else:
-        # Plain text, neat tabular output without wrapping
+        # Keep the plain-text table on one line per scenario.
         def _label(m: str) -> str:
             return {
                 "alpha_star": "alpha*",

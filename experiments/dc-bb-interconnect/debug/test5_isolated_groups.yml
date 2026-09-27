@@ -1,17 +1,5 @@
-# Test 5: Isolated groups like one_to_one topology
-#
-# DC-1 connects only to BB-1
-# DC-2 connects only to BB-2
-# DC-3 connects only to BB-3
-# DC-4 connects only to BB-4
-#
-# BB-BB bottleneck: 4 links × 100 = 400 total
-# But groups are isolated!
-#
-# Demand: 1000 from all DC-A to all DC-B
-# Only 1/4 pairs are reachable (same group)
-#
-# Expected Alpha*: ?
+# Four isolated DC-to-DC paths through corresponding BB nodes.
+# Combine-mode demand can use the reachable source/destination pairs.
 
 blueprints:
   DC:

@@ -1,9 +1,4 @@
-"""
-Graph Visualizer Module
-
-Provides a base class for graph visualization with reusable rendering primitives
-and configurable styling.
-"""
+"""Render network graphs as SVG or PNG with configurable layouts and styles."""
 
 from __future__ import annotations
 
@@ -155,9 +150,7 @@ class GraphVisualizer(ABC):
             )
 
         graph_data = steps[build_graph_step]["data"]["graph"]
-        # Handle both 'edges' and 'links' keys for compatibility
-        edges_key = "edges" if "edges" in graph_data else "links"
-        graph = nx.node_link_graph(graph_data, edges=edges_key)
+        graph = nx.node_link_graph(graph_data, edges="edges")
 
         return cls(graph, style)
 

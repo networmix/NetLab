@@ -1,14 +1,5 @@
-# Test 8: One DC row (9 nodes) per site
-#
-# 9 DC nodes per site
-# 4 BB nodes per site
-# Full mesh DC-BB
-#
-# DC-BB: 9 × 4 = 36 links × 400 = 14,400 per site
-# BB-BB: 4 links × 800 = 3,200 per direction = 6,400 bidi
-# Demand: 10,000 per direction = 20,000 total
-#
-# Expected Alpha* ≈ 6,400 / 20,000 = 0.32
+# Nine DC and four BB nodes per site, with full-mesh local attachments.
+# Four 800 Gbps cross-site links provide 3,200 Gbps per direction.
 
 blueprints:
   DC_Row:

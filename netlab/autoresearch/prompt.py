@@ -24,7 +24,7 @@ class ParseError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Memory protocol -- duck-typed so we don't depend on the not-yet-built F-8.
+# Interfaces for the research state included in prompts.
 # ---------------------------------------------------------------------------
 
 
@@ -129,7 +129,7 @@ def render_memory_section(memory: ResearchMemoryLike) -> str:
     sections.append("")
 
     if insights:
-        sections.append("### Verified Insights")
+        sections.append("### Recorded Insights")
         for ins in insights:
             conf = ins.confidence
             ef = len(ins.evidence_for)

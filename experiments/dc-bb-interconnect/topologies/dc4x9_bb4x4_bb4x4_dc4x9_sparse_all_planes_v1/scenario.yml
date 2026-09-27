@@ -11,12 +11,6 @@
 #   DC nodes 5,6 → BB Plane 3 (full mesh)
 #   DC nodes 7,8 → BB Plane 4 (full mesh)
 #   DC node 9 → unconnected (spare)
-#
-# Trade-offs:
-#   + Each DC row reaches all 4 planes (resilient)
-#   + Even BB distribution (8 links per BB)
-#   - DC node 9 is unconnected in each row
-#   - DC-BB link failure has higher impact (81% min ratio)
 
 blueprints:
   DC_Row:

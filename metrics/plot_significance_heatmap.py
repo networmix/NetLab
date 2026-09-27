@@ -18,7 +18,7 @@ def plot_significance_heatmap(
       scenario, <metric>__mean, <metric>__n, <metric>__p for multiple metrics.
 
     Effect size is mean-1.0 for ratio metrics (suffix _r__mean) and mean-0.0 for delta metrics (suffix _d__mean).
-    Cells are annotated (dot overlay) where p < 0.05.
+    Cells are marked where p < 0.05, using __p_adj when present, otherwise __p.
     """
     csv = analysis_root / "normalized_insights.csv"
     if not csv.exists():

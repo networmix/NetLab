@@ -3,7 +3,7 @@
 demands:
   inter_site:
     # Site A DC to Site B DC (bidirectional)
-    # 10Tbps total inter-site demand
+    # 10 Tbps in each direction
     - source: "^SiteA/DC-.*"
       target: "^SiteB/DC-.*"
       volume: 10000

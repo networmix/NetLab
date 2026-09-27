@@ -1,7 +1,4 @@
-"""Tests for hypothesis management module.
-
-Covers every row in the Step 1 acceptance criteria table.
-"""
+"""Tests for hypothesis management module."""
 
 from __future__ import annotations
 

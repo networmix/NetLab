@@ -1,31 +1,31 @@
-"""Cross-seed BAC delta vs baseline (publishable figure).
+"""Plot pooled bandwidth availability relative to a baseline scenario.
 
-This module computes pooled BAC availability curves per scenario from seed-level
-bac.json outputs, then plots the availability delta relative to a chosen
-baseline over a configurable delivered-bandwidth range (default: 80–100%).
-
-Inputs:
-  analysis_root/
-    <scenario>/seed<SEED>/bac.json  (as written by `netlab metrics`)
-
-Outputs:
-  PNG figure saved to the requested path (or analysis_root by default).
-
-Notes:
-  - Normalization follows the project convention: delivered/offered, capped at 1.
-  - Pooled empirical approach: combine normalized samples across seeds, then
-    availability = 1 − CDF.
-  - The x-axis is percent of offered (0..100); we restrict to [grid_min, grid_max].
+Read ``<scenario>/seed*/bac.json``, normalize delivery by baseline bandwidth,
+and compare availability over the selected percentage range.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Literal, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+LegendLocation = Literal[
+    "best",
+    "upper right",
+    "upper left",
+    "lower left",
+    "lower right",
+    "right",
+    "center left",
+    "center right",
+    "lower center",
+    "upper center",
+    "center",
+]
 
 
 def _list_scenario_dirs(analysis_root: Path) -> list[Path]:
@@ -77,7 +77,7 @@ def plot_bac_delta_vs_baseline(
     only: Optional[Iterable[str]] = None,
     grid_min: float = 80.0,
     grid_max: float = 100.0,
-    legend_loc: str = "upper left",
+    legend_loc: LegendLocation = "upper left",
     save_to: Optional[Path] = None,
 ) -> Optional[Path]:
     """Plot BAC Δ-availability vs baseline over [grid_min, grid_max].

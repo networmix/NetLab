@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import pytest
+
 from metrics.common import baseline_demand_map, canonical_dc, expand_flow_results
 
 
-def test_expand_flow_results_default_count() -> None:
-    fr = [{"failure_id": "f1", "flows": []}]
-    expanded = expand_flow_results(fr)
-    assert len(expanded) == 1
-    assert expanded[0] is fr[0]
+@pytest.mark.parametrize("count", [None, 0, -1, True, "1", 1.5])
+def test_expand_flow_results_requires_positive_integer_count(count) -> None:
+    iteration = {"failure_id": "f1", "flows": []}
+    if count is not None:
+        iteration["occurrence_count"] = count
+    with pytest.raises(ValueError, match="occurrence_count must be a positive integer"):
+        expand_flow_results([iteration])
 
 
 def test_expand_flow_results_with_counts() -> None:

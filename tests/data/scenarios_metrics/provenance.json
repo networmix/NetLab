@@ -1,50 +1,50 @@
 {
-  "generated_at": "2026-03-25T11:25:53.375927+00:00",
-  "python": "3.11.14 (main, Dec 17 2025, 21:09:14) [Clang 21.1.4 ]",
-  "platform": "macOS-26.4-arm64-arm-64bit",
+  "generated_at": "2026-09-27T14:12:56.701897+00:00",
+  "python": "3.14.5 (main, May 10 2026, 10:21:34) [Clang 21.0.0 (clang-2100.0.123.102)]",
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
   "command": "metrics",
-  "source_root": "tests/data/scenarios",
-  "output_root": "tests/data/scenarios_metrics",
+  "source_root": "build/fixture-regeneration/run-dmpvfzkl/scenarios",
+  "output_root": "build/fixture-regeneration/run-dmpvfzkl/scenarios_metrics",
   "source_files": {
-    "tests/data/scenarios/small_baseline/small_baseline__seed11/small_baseline__seed11_scenario.results.json": {
-      "path": "tests/data/scenarios/small_baseline/small_baseline__seed11/small_baseline__seed11_scenario.results.json",
-      "sha256": "0cab90907a457251ef63a7dfce2ff1466180840fb38b409801b8c20ffbac6517",
-      "size_bytes": 4618479
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_baseline/small_baseline__seed11/small_baseline__seed11_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_baseline/small_baseline__seed11/small_baseline__seed11_scenario.results.json",
+      "sha256": "f92f5a62be0fef1e05a7f673d144e55b7026d6c5409b707e8200a16c4b8bd6a6",
+      "size_bytes": 144207
     },
-    "tests/data/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.results.json": {
-      "path": "tests/data/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.results.json",
-      "sha256": "2d284dd268d7a8d456aa9b037e348e40fbd70ba1eaa4ff67110c9690a3df85dc",
-      "size_bytes": 4618471
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.results.json",
+      "sha256": "d4d866ceecb0983a73a579ba7b3cf6c8032d82301dd0b254eba57e17681d11d3",
+      "size_bytes": 141397
     },
-    "tests/data/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.results.json": {
-      "path": "tests/data/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.results.json",
-      "sha256": "100f6f853a712fd4f54655b57c784e4d20965300e105631e54ccc9054e1b2d97",
-      "size_bytes": 4848642
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.results.json",
+      "sha256": "909fcf85bc1417b516a860e7978d6f3effe3761830dc9a14d50bd37ceb6361a2",
+      "size_bytes": 2284480
     },
-    "tests/data/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.results.json": {
-      "path": "tests/data/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.results.json",
-      "sha256": "f6fb4f74d52999ea7dabb320972a39aa489eae57ecfd059e41edb9579321666c",
-      "size_bytes": 4848570
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_clos/small_clos__seed12/small_clos__seed12_scenario.results.json",
+      "sha256": "b0f5a3b6bca7ef53cc8780cb382c09d074ca821d00070dc58122d4851ebba0ba",
+      "size_bytes": 2021842
     },
-    "tests/data/scenarios/small_dragonfly/small_dragonfly__seed11/small_dragonfly__seed11_scenario.results.json": {
-      "path": "tests/data/scenarios/small_dragonfly/small_dragonfly__seed11/small_dragonfly__seed11_scenario.results.json",
-      "sha256": "4ae442ee3ed1774e0073c3352cf778dff1588603ab2aacf99826237439c9ff93",
-      "size_bytes": 5025835
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly/small_dragonfly__seed11/small_dragonfly__seed11_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly/small_dragonfly__seed11/small_dragonfly__seed11_scenario.results.json",
+      "sha256": "47c43713d3df391bbb4225a657c262ddd52f5450984959edfa3655cd01202d7e",
+      "size_bytes": 2495066
     },
-    "tests/data/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json": {
-      "path": "tests/data/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json",
-      "sha256": "8dcccc09a458de583baf5e39dd39d5eb70910648b0a490e457094eb0c46fd07e",
-      "size_bytes": 5025740
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly/small_dragonfly__seed12/small_dragonfly__seed12_scenario.results.json",
+      "sha256": "4ace0dbc43d246dfc5031cb2914b88fa6d5626579426df12c6739acf34dc9db9",
+      "size_bytes": 2169666
     },
-    "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.results.json": {
-      "path": "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.results.json",
-      "sha256": "d3aaa1eef5ce8e6c0327522ee48d375bf8de77635e53f71439791a0b53a5b5b4",
-      "size_bytes": 4840562
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.results.json",
+      "sha256": "327cd285446e0ba666b6afea55ec3798fd900b275128a714f2fec15f34e625e6",
+      "size_bytes": 2199730
     },
-    "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed12/small_dragonfly_custom__seed12_scenario.results.json": {
-      "path": "tests/data/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed12/small_dragonfly_custom__seed12_scenario.results.json",
-      "sha256": "db6245f9b6e684e941410cb78297b7ad8666895fcdca6cfa71678d24edc07485",
-      "size_bytes": 4840458
+    "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed12/small_dragonfly_custom__seed12_scenario.results.json": {
+      "path": "build/fixture-regeneration/run-dmpvfzkl/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed12/small_dragonfly_custom__seed12_scenario.results.json",
+      "sha256": "7a96df6d74a6a3ee08558efbcbf77c79893cdc71e34df06c873bd00c23e14856",
+      "size_bytes": 1959476
     }
   },
   "scenarios_analyzed": [
@@ -71,5 +71,5 @@
       12
     ]
   },
-  "git_commit": "ea43e336e7e3c62332bc5cfabb58cdbdc91619cc"
+  "git_commit": "31692d79a8fa3a7c9fc9d10f395a4147dac88235"
 }

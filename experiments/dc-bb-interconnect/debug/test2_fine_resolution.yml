@@ -1,6 +1,5 @@
-# Test 2: Same chain with finer MSD resolution
-#
-# Expected: Alpha* = 0.1 exactly
+# The simple chain with finer MSD search resolution.
+# The capacity upper bound on alpha is 100 / 1,000 = 0.1.
 
 network:
   nodes:

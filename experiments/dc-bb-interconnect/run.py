@@ -6,7 +6,7 @@ Single entry point for running and analyzing DC-BB topology experiments.
 Usage:
     ./run.py                           # Run all, default seeds
     ./run.py '*dc16x36*'               # Run topologies matching pattern
-    ./run.py '*bb16x4*' '*bb32x4*'     # Multiple patterns
+    ./run.py '*bb16x4*' '*bb4x4*'     # Multiple patterns
     ./run.py dc16x36_bb16x4_bb16x4_dc16x36_one_to_one  # Exact name
     ./run.py --seeds 42:50             # Seed range (42-49)
     ./run.py --list                    # List available topologies

@@ -5,6 +5,14 @@ from __future__ import annotations
 from typing import Dict, List, Tuple
 
 
+def flow_occurrence_count(iteration: dict) -> int:
+    """Read the required positive integer weight of a flow result."""
+    count = iteration.get("occurrence_count")
+    if type(count) is not int or count < 1:
+        raise ValueError("flow result occurrence_count must be a positive integer")
+    return count
+
+
 def expand_flow_results(flow_results: list[dict]) -> list[dict]:
     """Expand deduplicated flow_results by occurrence_count.
 
@@ -13,14 +21,11 @@ def expand_flow_results(flow_results: list[dict]) -> list[dict]:
     iterations produced that exact pattern. This function repeats each
     entry accordingly so that downstream statistical operations weight
     each iteration equally.
-
-    Entries without ``occurrence_count`` default to 1 (backward compatible).
     """
     expanded: list[dict] = []
     for it in flow_results:
-        count = max(1, int(it.get("occurrence_count", 1)))
-        for _ in range(count):
-            expanded.append(it)
+        count = flow_occurrence_count(it)
+        expanded.extend([it] * count)
     return expanded
 
 

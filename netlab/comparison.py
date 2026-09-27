@@ -1,9 +1,4 @@
-"""
-Comparison Table Module
-
-Provides utilities for building and printing comparison tables across
-multiple scenarios/topologies.
-"""
+"""Build and print comparison tables across scenarios."""
 
 from __future__ import annotations
 

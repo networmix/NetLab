@@ -71,25 +71,33 @@ def _make_results_payload() -> dict:
             "msd_baseline": {
                 "data": {
                     "alpha_star": 1.1,
-                    "base_demands": [{"demand": 100.0}, {"demand": 50.0}],
+                    "base_demands": [{"volume": 100.0}, {"volume": 50.0}],
                 }
             },
             "tm_placement": {
                 "metadata": {"iterations": 2, "unique_patterns": 2},
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": base_tm},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": base_tm,
+                    },
                     "flow_results": [
-                        {"failure_id": "f1", "flows": tm_i1},
-                        {"failure_id": "f2", "flows": tm_i2},
+                        {"occurrence_count": 1, "failure_id": "f1", "flows": tm_i1},
+                        {"occurrence_count": 1, "failure_id": "f2", "flows": tm_i2},
                     ],
                 },
             },
             "node_to_node_capacity_matrix": {
                 "metadata": {"iterations": 1, "unique_patterns": 1},
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": mf_i0},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": mf_i0,
+                    },
                     "flow_results": [
-                        {"failure_id": "f1", "flows": mf_i1},
+                        {"occurrence_count": 1, "failure_id": "f1", "flows": mf_i1},
                     ],
                 },
             },

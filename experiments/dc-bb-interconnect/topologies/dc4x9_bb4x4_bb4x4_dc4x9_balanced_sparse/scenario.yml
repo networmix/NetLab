@@ -1,4 +1,4 @@
-# Balanced Sparse: Latin square assignment for minimum links with even distribution
+# Balanced Sparse: Latin square assignment with one BB connection per plane
 #
 # Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
@@ -10,13 +10,7 @@
 #   DC-2,6 → R2@P1, R3@P2, R4@P3, R1@P4
 #   DC-3,7 → R3@P1, R4@P2, R1@P3, R2@P4
 #   DC-4,8 → R4@P1, R1@P2, R2@P3, R3@P4
-#   DC-9 → unconnected (enables perfect even distribution)
-#
-# Trade-offs:
-#   + Minimum links while achieving 100% Alpha* and 75% plane resilience
-#   + Perfectly even BB distribution (8 links each)
-#   - DC node 9 unconnected (8/9 DC nodes used)
-#   - Lower DC-BB link resilience (81%) due to sparse connectivity
+#   DC-9 → unconnected
 
 blueprints:
   DC_Row:

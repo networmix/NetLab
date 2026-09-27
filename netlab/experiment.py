@@ -1,9 +1,4 @@
-"""
-Experiment Runner Module
-
-Provides a base class for running ngraph experiments with scenario merging,
-caching, and provenance tracking.
-"""
+"""Run NetGraph experiments with scenario merging, cached results, and provenance."""
 
 from __future__ import annotations
 
@@ -23,19 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExperimentRunner(ABC):
-    """
-    Base class for running ngraph experiments.
-
-    Provides:
-    - Scenario discovery
-    - Scenario merging (via ScenarioMerger)
-    - Running ngraph with caching
-    - Provenance tracking
-
-    Subclasses must implement:
-    - get_merger(): Configure and return a ScenarioMerger
-    - Optionally override other methods for custom behavior
-    """
+    """Base experiment runner. Subclasses configure merge sources in ``get_merger``."""
 
     def __init__(
         self,

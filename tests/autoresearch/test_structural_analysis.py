@@ -1,4 +1,4 @@
-"""Tests for Phase 1 structural analysis."""
+"""Tests for structural connection-retention analysis."""
 
 from __future__ import annotations
 
@@ -143,7 +143,7 @@ class TestAnalyzeSide:
         assert best.fingerprint.best_retention == pytest.approx(0.75)
 
     def test_abc1_g64_all_infeasible(self):
-        """G=64 on ABC1: infeasible due to device_index_across_pg = 100% loss."""
+        """G=64 on ABC1: every layout violates the connection-retention rules."""
         result = analyze_side(
             side="abc1",
             dc_rows=16,

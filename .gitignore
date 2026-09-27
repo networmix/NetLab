@@ -50,6 +50,11 @@ tests/*no_publish*
 # -----------------------------------------------------------------------------
 # Virtual environments
 .env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
 .venv
 env/
 venv/
@@ -66,6 +71,9 @@ __pypackages__/
 
 # Type checkers & linters
 .ruff_cache/
+
+# Superset per-machine lifecycle overrides
+.superset/config.local.json
 
 # -----------------------------------------------------------------------------
 # IDEs & Editors

@@ -177,7 +177,7 @@ def _build_mock_backend(args: argparse.Namespace) -> MockBackend:
     template_path = project_dir / "hypothesis_template.yml"
 
     if not template_path.exists():
-        # Fallback: return responses with a generic param
+        # Use a generic parameter when the project has no template.
         n = getattr(args, "max_experiments", 10)
         responses = [
             textwrap.dedent(f"""\

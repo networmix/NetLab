@@ -10,12 +10,6 @@
 #   DC nodes 2,6   → BB Plane 2 (full mesh)
 #   DC nodes 3,7   → BB Plane 3 (full mesh)
 #   DC nodes 4,8   → BB Plane 4 (full mesh)
-#
-# WARNING: UNEVEN DISTRIBUTION causes 25% Alpha* loss
-#   - Plane 1 receives 12 DC connections (3 nodes × 4 rows)
-#   - Planes 2-4 receive only 8 DC connections each (2 nodes × 4 rows)
-#   - This creates a bottleneck limiting Alpha* to 75% of maximum
-#   - The "78% plane resilience" is misleading due to lower baseline
 
 blueprints:
   DC_Row:

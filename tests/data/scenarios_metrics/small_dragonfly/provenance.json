@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-03-25T11:25:53.057280+00:00",
-  "python": "3.11.14 (main, Dec 17 2025, 21:09:14) [Clang 21.1.4 ]",
-  "platform": "macOS-26.4-arm64-arm-64bit",
-  "scenarios_root": "tests/data/scenarios",
-  "output_root": "tests/data/scenarios_metrics",
-  "git_commit": "ea43e336e7e3c62332bc5cfabb58cdbdc91619cc"
+  "generated_at": "2026-09-27T14:12:56.361526+00:00",
+  "python": "3.14.5 (main, May 10 2026, 10:21:34) [Clang 21.0.0 (clang-2100.0.123.102)]",
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "scenarios_root": "build/fixture-regeneration/run-dmpvfzkl/scenarios",
+  "output_root": "build/fixture-regeneration/run-dmpvfzkl/scenarios_metrics",
+  "git_commit": "31692d79a8fa3a7c9fc9d10f395a4147dac88235"
 }

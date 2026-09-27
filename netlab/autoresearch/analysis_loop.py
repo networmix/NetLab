@@ -1,11 +1,4 @@
-"""Inner Loop 2: Results analysis and interpretation.
-
-The metrics pipeline extracts verified numbers. The LLM interprets them.
-Clear separation: facts are machine-generated, explanations are LLM-generated.
-
-Flow:
-  results JSON → metrics_report (verified numbers) → LLM interprets → findings
-"""
+"""Compute simulation metrics and request an LLM interpretation and next experiment."""
 
 from __future__ import annotations
 
@@ -19,7 +12,7 @@ from .metrics_report import build_metrics_report
 class AnalysisResult:
     """Output of the analysis loop."""
 
-    metrics_report: str  # machine-generated, verified
+    metrics_report: str
     interpretation: str  # LLM-generated explanation
     next_hypothesis: str  # LLM-generated suggestion for next experiment
     iterations_used: int = 0
@@ -35,15 +28,12 @@ class AnalysisResult:
 _ANALYSIS_SYSTEM_PROMPT = """\
 You are a network reliability engineer analyzing simulation results.
 
-You will receive a METRICS REPORT containing verified numbers from the
-simulation. These numbers are machine-computed and correct — do not
-question or re-derive them.
+Use the supplied metrics report to explain the topology's behavior under
+failure. Distinguish measured results from proposed explanations. Flag
+missing or inconsistent evidence, and do not invent measurements.
 
-Your job: explain WHY the results look the way they do. Connect the
-numbers to the topology structure. Identify what matters and what doesn't.
-
-Be direct. No filler. Every sentence should convey an insight about the
-topology's behavior under failure.
+Keep the analysis concise. Support claims about topology and failure modes
+with the scenario description and reported metrics.
 """
 
 _ANALYSIS_PROMPT = """\
@@ -88,25 +78,16 @@ def run_analysis_loop(
     backend: LLMBackend,
     max_iterations: int = 3,
 ) -> AnalysisResult:
-    """Analyze simulation results using verified metrics + LLM interpretation.
-
-    1. Compute metrics programmatically (trustworthy)
-    2. Ask LLM to interpret the metrics (where it adds value)
-    3. Ask LLM to propose the next hypothesis (closes the outer loop)
+    """Build a metrics report, interpret it, and propose the next experiment.
 
     Args:
-        results: ngraph simulation results dict.
-        hypothesis: The hypothesis being tested.
+        results: NetGraph simulation results.
+        hypothesis: Description of the experiment being analyzed.
         backend: LLM backend for interpretation.
-        max_iterations: Max retries if LLM produces empty response.
-
-    Returns:
-        AnalysisResult with verified metrics, interpretation, and next hypothesis.
+        max_iterations: Maximum attempts to obtain a nonempty interpretation.
     """
-    # Step 1: compute verified metrics (no LLM involved)
     metrics_report = build_metrics_report(results)
 
-    # Step 2: ask LLM to interpret
     interpretation = ""
     for _attempt in range(max_iterations):
         prompt = _ANALYSIS_PROMPT.format(
@@ -127,8 +108,7 @@ def run_analysis_loop(
             complete=False,
         )
 
-    # Step 3: ask LLM to propose next hypothesis
-    # Use a brief metrics summary (first 20 lines) to avoid token bloat
+    # Limit the next-experiment prompt to a short metrics excerpt.
     metrics_lines = metrics_report.splitlines()
     metrics_summary = "\n".join(metrics_lines[:20])
 

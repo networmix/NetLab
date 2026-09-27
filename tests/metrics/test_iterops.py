@@ -16,7 +16,11 @@ def _iterops_fixture() -> dict:
                     "unique_patterns": 2,
                 },
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": []},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": [],
+                    },
                     "flow_results": [
                         {"failure_id": "f1", "occurrence_count": 3, "flows": []},
                         {"failure_id": "f2", "occurrence_count": 2, "flows": []},
@@ -43,26 +47,11 @@ def test_compute_iter_ops_timing() -> None:
     assert np.isclose(ops.per_iter_duration_sec, 10.0 / 6.0)
 
 
-def test_compute_iter_ops_no_occurrence_count() -> None:
-    """Without occurrence_count, each pattern counts as 1."""
-    res = {
-        "steps": {
-            "tm_placement": {
-                "metadata": {"duration_sec": 5.0},
-                "data": {
-                    "baseline": {"failure_id": "baseline", "flows": []},
-                    "flow_results": [
-                        {"failure_id": "f1", "flows": []},
-                        {"failure_id": "f2", "flows": []},
-                    ],
-                },
-            }
-        }
-    }
-    ops = compute_iter_ops(res)
-    assert ops.failures_count == 2
-    assert ops.unique_patterns == 2
-    assert ops.total_iterations_count == 3
+def test_compute_iter_ops_requires_occurrence_count() -> None:
+    res = _iterops_fixture()
+    del res["steps"]["tm_placement"]["data"]["flow_results"][0]["occurrence_count"]
+    with pytest.raises(ValueError, match="occurrence_count must be a positive integer"):
+        compute_iter_ops(res)
 
 
 def test_compute_iter_ops_requires_baseline() -> None:

@@ -1,13 +1,7 @@
-"""DC-BB scenario generation using ngraph DSL patterns.
+"""Generate DC-BB scenarios with NetGraph expansion and mesh patterns.
 
-Generates DSL-idiomatic YAML that ngraph expands correctly:
-- Internal Clos links via expand + mesh patterns (~6 definitions for 35K links)
-- DC-BB mesh group links via expand + mesh per group
-- Risk groups assigned via link_rules post-creation
-- Post-expansion validation against expected counts
-
-Preserves from original: mesh group algorithm, config/validation,
-risk group definitions, failure policy, demands, workflow.
+The configuration defines device grids, mesh groups, failure policies, and
+workflow settings. Expected expanded counts are available for validation.
 """
 
 from __future__ import annotations
@@ -66,7 +60,7 @@ class DcBbScenarioConfig:
 
 
 # ---------------------------------------------------------------------------
-# Mesh group algorithm (preserved, proven by 27 tests)
+# Mesh group assignments
 # ---------------------------------------------------------------------------
 
 
@@ -130,7 +124,7 @@ def _compute_mesh_groups(
 
 
 # ---------------------------------------------------------------------------
-# G-value and layout utilities (preserved)
+# G-value and layout utilities
 # ---------------------------------------------------------------------------
 
 
@@ -209,7 +203,7 @@ def validate_layout(
 
 
 # ---------------------------------------------------------------------------
-# Config validation (preserved)
+# Config validation
 # ---------------------------------------------------------------------------
 
 
@@ -388,10 +382,7 @@ def _build_nodes(config: DcBbScenarioConfig) -> dict[str, dict]:
 
 
 def _build_internal_links(config: DcBbScenarioConfig) -> list[dict]:
-    """Build internal Clos links using DSL expand + mesh.
-
-    6 link definitions expand to 35,360 links.
-    """
+    """Build internal Clos links with expansion and mesh patterns."""
     links: list[dict] = []
     abc1_scale = config.abc1_buildings
     xyz1_scale = config.xyz1_megapods
@@ -602,12 +593,12 @@ def _build_link_rules(config: DcBbScenarioConfig) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Risk groups (preserved)
+# Risk groups
 # ---------------------------------------------------------------------------
 
 
 def _build_risk_groups(config: DcBbScenarioConfig) -> list[dict]:
-    """Build all risk group definitions (274 total)."""
+    """Define long-haul path, plane, plane-group, and device-index risk groups."""
     groups: list[dict] = []
 
     groups.append({"name": "path_a", "attrs": {"type": "long_haul_path"}})
@@ -647,18 +638,8 @@ def _build_risk_groups(config: DcBbScenarioConfig) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Failure policy (preserved)
+# Failure policy
 # ---------------------------------------------------------------------------
-
-
-def _fix_failure_rules(failure_policy: dict) -> dict:
-    """Nest conditions inside match blocks for ngraph compatibility."""
-    for _policy_name, policy_def in failure_policy.items():
-        for mode in policy_def.get("modes", []):
-            for rule in mode.get("rules", []):
-                if "conditions" in rule and "match" not in rule:
-                    rule["match"] = {"conditions": rule.pop("conditions")}
-    return failure_policy
 
 
 # Condition shorthands
@@ -673,7 +654,7 @@ _XSITE = [{"attr": "link_type", "op": "==", "value": "bb_cross_site"}]
 # Failure modes: (name, rule_dict)
 # Three categories:
 #   1. Correlated (risk-group-based) — shared infrastructure events
-#   2. Deterministic fixed-count — exact N devices/groups, stress tests
+#   2. Fixed-count — choose N devices/groups per iteration
 #   3. Availability-based — independent per-entity probability
 _FAILURE_MODES = [
     # --- Correlated single failures ---
@@ -683,7 +664,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 1,
-            "conditions": _RG("long_haul_path"),
+            "match": {"conditions": _RG("long_haul_path")},
         },
     ),
     (
@@ -692,7 +673,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 1,
-            "conditions": _RG("plane_group"),
+            "match": {"conditions": _RG("plane_group")},
         },
     ),
     (
@@ -701,7 +682,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 1,
-            "conditions": _RG("plane_site"),
+            "match": {"conditions": _RG("plane_site")},
         },
     ),
     (
@@ -710,7 +691,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 1,
-            "conditions": _RG("device_index_across_planes"),
+            "match": {"conditions": _RG("device_index_across_planes")},
         },
     ),
     # --- Correlated scaled failures (stress test) ---
@@ -720,7 +701,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 2,
-            "conditions": _RG("plane_site"),
+            "match": {"conditions": _RG("plane_site")},
         },
     ),
     (
@@ -729,7 +710,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 4,
-            "conditions": _RG("plane_site"),
+            "match": {"conditions": _RG("plane_site")},
         },
     ),
     (
@@ -738,7 +719,7 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 2,
-            "conditions": _RG("plane_group"),
+            "match": {"conditions": _RG("plane_group")},
         },
     ),
     (
@@ -747,34 +728,71 @@ _FAILURE_MODES = [
             "scope": "risk_group",
             "mode": "choice",
             "count": 2,
-            "conditions": _RG("device_index_across_planes"),
+            "match": {"conditions": _RG("device_index_across_planes")},
         },
     ),
-    # --- Deterministic fixed-count BB device failures ---
-    ("1x_bb", {"scope": "node", "mode": "choice", "count": 1, "conditions": _BB}),
-    ("2x_bb", {"scope": "node", "mode": "choice", "count": 2, "conditions": _BB}),
-    ("4x_bb", {"scope": "node", "mode": "choice", "count": 4, "conditions": _BB}),
-    ("8x_bb", {"scope": "node", "mode": "choice", "count": 8, "conditions": _BB}),
+    # --- Fixed-count BB device failures ---
+    (
+        "1x_bb",
+        {"scope": "node", "mode": "choice", "count": 1, "match": {"conditions": _BB}},
+    ),
+    (
+        "2x_bb",
+        {"scope": "node", "mode": "choice", "count": 2, "match": {"conditions": _BB}},
+    ),
+    (
+        "4x_bb",
+        {"scope": "node", "mode": "choice", "count": 4, "match": {"conditions": _BB}},
+    ),
+    (
+        "8x_bb",
+        {"scope": "node", "mode": "choice", "count": 8, "match": {"conditions": _BB}},
+    ),
     # --- Availability-based (independent per-entity) ---
     (
         "bb_avail_2pct",
-        {"scope": "node", "mode": "random", "probability": 0.02, "conditions": _BB},
+        {
+            "scope": "node",
+            "mode": "random",
+            "probability": 0.02,
+            "match": {"conditions": _BB},
+        },
     ),
     (
         "bb_avail_5pct",
-        {"scope": "node", "mode": "random", "probability": 0.05, "conditions": _BB},
+        {
+            "scope": "node",
+            "mode": "random",
+            "probability": 0.05,
+            "match": {"conditions": _BB},
+        },
     ),
     (
         "bb_avail_10pct",
-        {"scope": "node", "mode": "random", "probability": 0.10, "conditions": _BB},
+        {
+            "scope": "node",
+            "mode": "random",
+            "probability": 0.10,
+            "match": {"conditions": _BB},
+        },
     ),
     (
         "dcbb_avail",
-        {"scope": "link", "mode": "random", "probability": 0.01, "conditions": _DCBB},
+        {
+            "scope": "link",
+            "mode": "random",
+            "probability": 0.01,
+            "match": {"conditions": _DCBB},
+        },
     ),
     (
         "xsite_avail",
-        {"scope": "link", "mode": "random", "probability": 0.01, "conditions": _XSITE},
+        {
+            "scope": "link",
+            "mode": "random",
+            "probability": 0.01,
+            "match": {"conditions": _XSITE},
+        },
     ),
 ]
 
@@ -834,18 +852,12 @@ def _build_demands(config: DcBbScenarioConfig) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Workflow (preserved)
+# Workflow
 # ---------------------------------------------------------------------------
 
 
 def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
-    """Build MSD + per-mode TMP steps + combined TMP.
-
-    Creates 9 workflow steps:
-      1. msd_baseline — find alpha_star
-      2-8. tm_{mode} — BAC under each failure mode independently
-      9. tm_combined — BAC under all modes with equal weight
-    """
+    """Build MSD, one placement step per failure mode, and a combined placement step."""
     steps: list[dict] = [
         {
             "type": "MaximumSupportedDemand",
@@ -896,19 +908,9 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
 
 
 def generate_scenario(config: DcBbScenarioConfig) -> dict:
-    """Generate a complete ngraph scenario dict.
+    """Validate the configuration and generate a NetGraph scenario dictionary.
 
-    Uses DSL-idiomatic patterns: expand + mesh for links,
-    link_rules for risk group assignment.
-
-    Args:
-        config: Validated scenario configuration.
-
-    Returns:
-        Complete scenario dict ready for yaml.dump + ngraph run.
-
-    Raises:
-        ValueError: If config fails validation.
+    Raises ValueError if the configuration is inconsistent.
     """
     errors = validate_config(config)
     if errors:
@@ -927,7 +929,7 @@ def generate_scenario(config: DcBbScenarioConfig) -> dict:
         },
         "risk_groups": _build_risk_groups(config),
         "demands": _build_demands(config),
-        "failures": _fix_failure_rules(_build_failure_policy(config)),
+        "failures": _build_failure_policy(config),
         "workflow": _build_workflow(config),
     }
 

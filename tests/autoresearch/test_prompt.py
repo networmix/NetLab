@@ -1,7 +1,4 @@
-"""Tests for netlab.autoresearch.prompt module.
-
-Covers all acceptance criteria from the plan (Step 5).
-"""
+"""Tests for netlab.autoresearch.prompt module."""
 
 from __future__ import annotations
 
@@ -22,7 +19,7 @@ from netlab.autoresearch.prompt import (
 )
 
 # ---------------------------------------------------------------------------
-# Stubs / mocks for ResearchMemory (F-8 not yet implemented)
+# Research-memory test doubles
 # ---------------------------------------------------------------------------
 
 
@@ -81,7 +78,7 @@ def _make_entry(
 
 
 # ---------------------------------------------------------------------------
-# Acceptance criteria tests
+# Prompt construction
 # ---------------------------------------------------------------------------
 
 
@@ -177,8 +174,8 @@ class TestMemorySectionPresent:
 
         section = render_memory_section(memory)
 
-        # Contains Verified Insights with both insights as bullets
-        assert "Verified Insights" in section
+        # Contains Recorded Insights with both insights as bullets
+        assert "Recorded Insights" in section
         assert "Higher capacity improves throughput" in section
         assert "ECMP outperforms UCMP on square meshes" in section
 
@@ -322,7 +319,7 @@ class TestParseFailure:
 class TestCharBudget:
     """Char budget: build_hypothesis_prompt includes history as-is.
 
-    The windowed_history method (tested in F-2) handles truncation.
+    The windowed_history method handles truncation.
     This test verifies that build_hypothesis_prompt passes the history
     string through unchanged.
     """
@@ -464,7 +461,7 @@ class TestEdgeCases:
         assert "Your Current Strategy" in section
         assert "Focus on exploration" in section
         # Should not have empty insight/dead_end headers
-        assert "Verified Insights" not in section
+        assert "Recorded Insights" not in section
         assert "Known Dead Ends" not in section
 
     def test_memory_section_with_only_insights(self):
@@ -485,6 +482,6 @@ class TestEdgeCases:
             ],
         )
         section = render_memory_section(memory)
-        assert "Verified Insights" in section
+        assert "Recorded Insights" in section
         assert "[strong]" in section
         assert "5 for, 1 against" in section

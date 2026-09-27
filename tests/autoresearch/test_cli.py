@@ -310,20 +310,10 @@ class TestBackendFactory:
 
 
 class TestArgparseWiring:
-    def _parse(self, argv: list[str]) -> argparse.Namespace:
-        """Parse argv through the netlab CLI argparser (without executing)."""
-
-        # We need the parser but not to call func. Rebuild it here by
-        # duplicating the main() setup. Instead, call parse_args on the
-        # module's main parser. We'll capture SystemExit for --help.
-        return None  # placeholder; tested below via separate approach
-
     def test_autoresearch_help(self, capsys: pytest.CaptureFixture) -> None:
         """netlab autoresearch --help lists init and run."""
         import netlab.cli as cli_mod
 
-        # We just need to verify the actual main() parser works.
-        # The simplest approach: import main and capture --help output.
         with pytest.raises(SystemExit) as exc_info:
             import sys
 

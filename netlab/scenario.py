@@ -1,10 +1,4 @@
-"""
-Scenario Merger Module
-
-Provides utilities for merging multiple YAML configuration files into a complete
-ngraph scenario. This enables modular experiment design where topology, policies,
-demands, and workflows can be defined in separate files.
-"""
+"""Merge topology, hardware, failure policies, demands, and workflows into a scenario."""
 
 from __future__ import annotations
 
@@ -43,13 +37,12 @@ class MergeSource:
 
 
 class ScenarioMerger:
-    """
-    Merges multiple YAML configuration files into a complete scenario.
+    """Merge YAML configuration sources into a NetGraph scenario.
 
-    Typical usage:
+    Example:
         merger = ScenarioMerger(experiment_root)
-        merger.add_source("policies", policies_dir, "failures", filter_fn=is_policy)
-        merger.add_source("demands", demands_dir, "demands", source_key="demands")
+        merger.add_source(policies_dir, "failures", filter_fn=is_failure_policy)
+        merger.add_source(demands_dir, "demands", source_key="demands")
         scenario = merger.merge(topology_dir / "scenario.yml", seed=42)
     """
 

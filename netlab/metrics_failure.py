@@ -1,9 +1,4 @@
-"""
-Failure Analysis Metrics Module
-
-Provides utilities for extracting and aggregating failure metrics from
-ngraph TrafficMatrixPlacement results.
-"""
+"""Extract and aggregate failure metrics from TrafficMatrixPlacement results."""
 
 from __future__ import annotations
 

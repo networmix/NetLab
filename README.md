@@ -1,212 +1,185 @@
 # NetLab
 
-Metrics and autonomous research tools for [NetGraph](https://github.com/networmix/NetGraph) network simulations.
-
-## What It Does
-
-NetLab has two capabilities:
-
-1. **Metrics pipeline** — computes verified reliability metrics (BAC, latency, alpha) from ngraph simulation results. Per-direction, occurrence-count-weighted, hand-verified against 252 assertions.
-
-2. **Autoresearch** — LLM-driven topology exploration. Describe a connectivity idea in natural language, and the system generates a valid ngraph scenario, runs the simulation, computes metrics, and produces a structural interpretation. The LLM also proposes the next experiment, closing the research loop.
+NetLab analyzes [NetGraph](https://github.com/networmix/NetGraph) network simulations
+and runs topology experiments. It computes bandwidth availability, latency stretch,
+capacity, and cost metrics. Its autoresearch tools use an LLM to propose scenarios
+and interpret simulation results.
 
 ## Installation
+
+Requires Python 3.11+, `ngraph >= 0.23.1`, and `netgraph-core >= 0.10.0` (via ngraph).
 
 ```bash
 pip install netlab
 ```
 
-From source:
+For development:
 
 ```bash
 git clone https://github.com/networmix/NetLab
 cd NetLab
 make dev
+source venv/bin/activate
 ```
+
+`make dev` installs the package, development dependencies, and pre-commit hooks.
 
 ## Metrics
 
-### CLI
-
 ```bash
-# Compute metrics for all scenarios in a directory
+# Analyze all scenarios in a directory
 netlab metrics path/to/scenarios/
 
-# Summary tables only, no plots
+# Compute metrics without plots
 netlab metrics path/to/scenarios/ --no-plots
 
-# Filter specific scenarios
+# Select scenarios
 netlab metrics path/to/scenarios/ --only small_clos,small_dragonfly
 ```
+
+The metrics CLI expects workflow steps named `msd_baseline`
+(`MaximumSupportedDemand`), `tm_placement` (`TrafficMatrixPlacement` with flow
+details), and `network_statistics` (`NetworkStats`). `--enable-maxflow` also
+requires `node_to_node_capacity_matrix` (`MaxFlow` with flow details).
+
+MSD demand records use `source`, `target`, and `volume`; flow records use `source`,
+`destination`, and `demand`. Each failure pattern requires a positive integer
+`occurrence_count`, which weights that pattern in the metrics.
+
+| Metric | Measures |
+|--------|----------|
+| BAC | Distribution of delivered bandwidth, normalized by baseline delivery; aggregate and per direction. |
+| Latency stretch | Path cost relative to the least-cost path carrying baseline traffic for that pair, weighted by delivered volume. |
+| Alpha (MSD) | Demand multiplier found by the configured capacity search. |
+| SPS | Demand-weighted pairwise max-flow capacity under failures; each pair is evaluated independently. |
+| Cost/power | Capital cost and power per unit of offered or reliable bandwidth. |
+| Iteration statistics | Failure iterations, distinct failure patterns, and execution time. |
+
+See [metrics.md](metrics.md) for formulas, aggregation rules, and output files.
 
 ### Python API
 
 ```python
+import json
+
 from metrics.bac import compute_bac
 from metrics.latency import compute_latency_stretch
 from metrics.msd import compute_alpha_star
 
-# Load ngraph results
-import json
 with open("scenario.results.json") as f:
     results = json.load(f)
 
-# Capacity
 alpha = compute_alpha_star(results)
-print(f"alpha_star: {alpha.alpha_star}")
-
-# Bandwidth availability (aggregate + per direction)
 bac = compute_bac(results, step_name="tm_placement")
+latency = compute_latency_stretch(results)
+
+print(f"alpha_star: {alpha.alpha_star}")
 print(f"BAC AUC: {bac.auc_normalized:.4f}")
-for label, pf in bac.per_flow.items():
-    print(f"  {label}: AUC={pf.auc_normalized:.4f}")
-
-# Latency stretch
-lat = compute_latency_stretch(results)
-print(f"baseline p99: {lat.baseline['p99']:.4f}")
-print(f"failure p99:  {lat.failures['p99']:.4f}")
+for direction, flow in bac.per_flow.items():
+    print(f"{direction}: AUC={flow.auc_normalized:.4f}")
+print(f"failure p99 stretch: {latency.failures.get('p99')}")
 ```
-
-### Metrics Reference
-
-| Metric | What it measures |
-|--------|-----------------|
-| **BAC** | Delivered bandwidth distribution across failure iterations. AUC, quantiles, availability at thresholds, BW at probability levels. Per-direction breakdown. |
-| **Latency** | Volume-weighted stretch (cost / baseline cost). p50, p95, p99 percentiles, SLO compliance, WES (weighted excess stretch). |
-| **Alpha (MSD)** | Maximum demand multiplier the topology supports before saturation. |
-| **SPS** | Fraction of source-destination demand satisfied under failures. |
-| **CostPower** | CapEx and power normalized by offered demand and reliable bandwidth. |
-| **IterOps** | Failure iteration counts, unique pattern counts, timing. |
-
-All metrics correctly handle ngraph's Monte Carlo deduplication (`occurrence_count` expansion).
 
 ## Autoresearch
 
-LLM-driven topology research with verified metrics. Three stages:
-
-```
-Hypothesis (natural language)
-    ↓
-[Generation Loop] LLM → ngraph YAML → inspect → validate → iterate
-    ↓
-[Simulation] ngraph run (expensive, once)
-    ↓
-[Analysis] Metrics pipeline (verified) → LLM interprets → proposes next hypothesis
-```
-
-### Quick Start
+The hypothesis API asks an LLM to write a scenario, checks it with `ngraph inspect`,
+and runs the simulation. Failed candidates are retried with error feedback.
+NetLab then computes metrics and asks the LLM to interpret them and suggest the
+next experiment.
 
 ```python
-from pathlib import Path
-from netlab.autoresearch.hypothesis_manager import HypothesisManager
-from netlab.autoresearch.backend import ClaudeCLIBackend
 import sys
+from pathlib import Path
+
+from netlab.autoresearch.backend import ClaudeCLIBackend
+from netlab.autoresearch.hypothesis_manager import HypothesisManager
 
 manager = HypothesisManager(
-    project_dir=Path("/tmp/my_research"),
+    project_dir=Path("research"),
     backend=ClaudeCLIBackend(model="sonnet"),
     ngraph_bin=str(Path(sys.executable).parent / "ngraph"),
 )
-
 cycle = manager.run_cycle("""
-2-site topology, 3 backbone planes, 100 Gbps cross-site per plane.
-Internal 500 Gbps. BB nodes with role: bb.
-Demands: 100 Gbps each direction, ECMP.
-Failure: single random BB node, 20 iterations.
+Two sites, three backbone planes, 100 Gbps cross-site per plane.
+Internal links: 500 Gbps. Backbone nodes have role: bb.
+Demands: 100 Gbps each direction using ECMP.
+Failures: one random backbone node per iteration, 20 iterations.
 """)
-
-print(cycle.analysis.metrics_report)      # verified numbers
-print(cycle.analysis.interpretation)       # LLM explanation
-print(cycle.analysis.next_hypothesis)      # what to test next
+print(cycle.status)
+if cycle.analysis is not None:
+    print(cycle.analysis.metrics_report)
+    print(cycle.analysis.interpretation)
+    print(cycle.analysis.next_hypothesis)
 ```
 
-### Multi-Cycle Research
+Cycle artifacts are saved under `research/cycles/`. Successful cycles include the
+scenario, simulation results, metrics report, and interpretation. Each cycle
+records its hypothesis and status. Status is
+`analyzed`, `analysis_incomplete`, `generation_failed`, or `skipped`.
+`cycle_log.jsonl` records the cycle summaries. LLM interpretations and suggested
+experiments should be assessed against the saved metrics and scenario.
 
-```python
-hypothesis = "your initial idea..."
-for i in range(5):
-    cycle = manager.run_cycle(hypothesis)
-    print(f"Cycle {cycle.cycle_id}: {cycle.status}")
-    hypothesis = cycle.analysis.next_hypothesis  # LLM proposes next
-```
-
-### What Gets Persisted
-
-```
-project_dir/
-  cycle_log.jsonl           # one-line summary per cycle
-  cycles/001/
-    hypothesis.yml          # what was tested
-    scenario.yml            # generated ngraph YAML
-    results/                # ngraph simulation output
-    metrics_report.md       # verified numbers (machine-generated)
-    interpretation.md       # structural explanation (LLM-generated)
-    next_hypothesis.md      # suggested next experiment (LLM-generated)
-    status.yml              # analyzed | failed | skipped
-```
-
-### Key Design Decision
-
-The LLM never extracts numbers from results. The metrics pipeline (same code that passed 252 hand-calculated assertions) computes all numbers programmatically. The LLM receives verified metrics and provides only interpretation — connecting numbers to topology structure.
-
-### CLI
+The CLI also supports parameterized projects and DC-BB sweeps:
 
 ```bash
-# Template-based runner (parameter sweep with LLM feedback)
 netlab autoresearch init --base-scenario scenario.yml --output project/
 netlab autoresearch run project/ --backend claude-cli --model sonnet
 
-# DC-BB structural analysis and parametric sweep
 netlab autoresearch structural-analysis
 netlab autoresearch sweep abc1 --output-dir results/
 netlab autoresearch cross-sweep --output-dir results/
 ```
 
-## Repository Structure
-
-```
-metrics/                    # Verified metrics pipeline
-  common.py                 # Shared: expand_flow_results, canonical_dc
-  bac.py                    # Bandwidth availability curve
-  latency.py                # Latency stretch analysis
-  msd.py                    # Maximum supported demand
-  sps.py                    # Structural pair survivability
-  iterops.py                # Iteration counts and timing
-  aggregate.py              # Cross-seed aggregation
-  costpower.py              # Cost and power normalization
-  matrixdump.py             # Per-pair placement matrices
-netlab/
-  cli.py                    # CLI entry point
-  metrics_cmd.py            # Metrics command orchestration
-  autoresearch/
-    generation_loop.py      # Inner Loop 1: idea → validated YAML
-    analysis_loop.py        # Inner Loop 2: metrics → interpretation
-    metrics_report.py       # Programmatic metrics → markdown
-    hypothesis_manager.py   # Outer loop: hypothesis cycles + persistence
-    backend.py              # LLM backends (Claude CLI, Codex CLI, OpenAI, mock)
-    scenario_generator.py   # DC-BB topology generator
-    sweep.py                # Parametric sweep runner
-tests/
-  data/mini_dcbb.yaml       # 10-node verification scenario
-  test_mini_dcbb_verification.py  # 252 hand-calculated assertions
-```
-
 ## Development
 
 ```bash
-make dev        # Setup environment
-make check      # Pre-commit + tests + lint
-make test       # Tests only
-make lint       # Linting only
-make qt         # Quick tests (skip slow)
+make check-ci   # Formatting, lint, type checks, and tests
+make check      # Apply pre-commit fixes, then run tests and lint
+make test       # Tests with coverage
+make lint       # Formatting, lint, and type checks
+make qt         # Tests excluding benchmarks, without coverage
 ```
 
-## Requirements
+### Superset workspaces
 
-- Python 3.11+
-- [ngraph](https://github.com/networmix/NetGraph) >= 0.21.0
-- [netgraph-core](https://github.com/networmix/NetGraph-Core) >= 0.7.0
+`.superset/config.json` creates a separate `venv` for each workspace, installs
+`.[dev]`, and checks dependencies and imports. Setup copies missing, untracked
+root-level `.env` and `.env.*` files from `$SUPERSET_ROOT_PATH`, preserving existing
+workspace files and tracked templates. Environment files and
+`.superset/config.local.json` are gitignored.
+
+The **Run** button executes `make check-ci`. NetLab has no dev server; setup starts
+no services, so teardown has nothing to stop and no ports need allocation.
+Setup can be rerun without installing shared Git hooks:
+
+```bash
+SUPERSET_ROOT_PATH=/path/to/NetLab bash .superset/workspace.sh setup
+bash .superset/workspace.sh check
+bash .superset/workspace.sh teardown
+```
+
+Merge the configuration into the root checkout's branch to use it for new
+workspaces and the project's Run button. Superset reads Run commands from the root
+project config. See the [lifecycle documentation](https://docs.superset.sh/setup-teardown-scripts).
+
+### Test local NetGraph sources
+
+```bash
+bash dev/check_ngraph_integration.sh ~/ws/NetGraph ~/ws/NetGraph-Core ~/ws/TopoGen
+```
+
+The script builds a Core wheel and installs the selected NetGraph and TopoGen
+sources in a temporary environment. It runs lint, type checks, and all tests,
+including five CLI → TopoGen → NetGraph → metrics pipelines. The pipelines use
+cached synthetic geography; they do not download Census data.
+
+Commits, source fingerprints, dependencies, wheel hashes, and test results are
+saved under `build/ngraph-integration/`. The gate fails if a source checkout changes
+during testing, and removes its temporary environment on exit. Normal workspace
+setup uses the dependencies declared in `pyproject.toml`.
+
+See [tests/data/README.md](tests/data/README.md) for fixture regeneration.
 
 ## License
 
-[MIT License](LICENSE)
+[MIT](LICENSE)

@@ -1,6 +1,5 @@
-# Test 10: Same as test9 but with COARSE resolution (0.05)
-#
-# This should reproduce the 0.09375 issue
+# Four-row, four-plane topology with MSD resolution 0.05.
+# Use with test9_full_scale.yml to compare search resolution.
 
 blueprints:
   DC_Row:

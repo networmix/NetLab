@@ -19,7 +19,7 @@ def _sps_fixture() -> dict:
     it1_caps = [
         {"source": "A", "destination": "B", "placed": 50.0},
         {"source": "A", "destination": "C", "placed": 50.0},
-    ]  # SPS = (min(0.5,1)*100 + min(1,1)*50) / 150 = (50 + 50)/150 = 2/6 ≈ 0.6667
+    ]  # SPS = (min(0.5,1)*100 + min(1,1)*50) / 150 = (50 + 50)/150 = 2/3 ≈ 0.6667
     it2_caps = [
         {"source": "A", "destination": "B", "placed": 0.0},
         {"source": "A", "destination": "C", "placed": 25.0},
@@ -29,16 +29,24 @@ def _sps_fixture() -> dict:
             "tm_placement": {
                 "metadata": {"iterations": 1, "unique_patterns": 1},
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": base_tm},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": base_tm,
+                    },
                     "flow_results": [],
                 },
             },
             "node_to_node_capacity_matrix": {
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": it0_caps},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": it0_caps,
+                    },
                     "flow_results": [
-                        {"failure_id": "f1", "flows": it1_caps},
-                        {"failure_id": "f2", "flows": it2_caps},
+                        {"occurrence_count": 1, "failure_id": "f1", "flows": it1_caps},
+                        {"occurrence_count": 1, "failure_id": "f2", "flows": it2_caps},
                     ],
                 }
             },

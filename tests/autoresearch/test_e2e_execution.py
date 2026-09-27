@@ -1,6 +1,6 @@
 """End-to-end execution test: generate scenario, write YAML, run ngraph.
 
-Step E-9: Generates a DC-BB scenario with reduced parameters for CI speed,
+Generates a DC-BB scenario with reduced parameters for CI speed,
 writes it to YAML, runs ``ngraph inspect`` and ``ngraph run``, and verifies
 the results contain the expected workflow steps and metrics.
 """
@@ -9,19 +9,12 @@ from __future__ import annotations
 
 import json
 import subprocess
-from pathlib import Path
+import sys
 
 import pytest
 import yaml
 
 from netlab.autoresearch.scenario_generator import DcBbScenarioConfig, generate_scenario
-
-NGRAPH_BIN = Path(__file__).resolve().parent.parent.parent / "venv" / "bin" / "ngraph"
-
-pytestmark = pytest.mark.skipif(
-    not NGRAPH_BIN.is_file(),
-    reason=f"ngraph binary not found at {NGRAPH_BIN}",
-)
 
 
 @pytest.mark.slow
@@ -29,7 +22,8 @@ class TestE2EExecution:
     """Generate a DC-BB scenario, run ngraph, verify results."""
 
     @pytest.fixture(scope="class")
-    def scenario_output(self, tmp_path_factory):
+    @classmethod
+    def scenario_output(cls, tmp_path_factory):
         """Generate scenario, write YAML, run ngraph inspect + run.
 
         Returns (results_dict, results_path, run_stdout, run_stderr).
@@ -47,9 +41,9 @@ class TestE2EExecution:
         with open(scenario_path, "w") as f:
             yaml.dump(scenario, f, default_flow_style=False, sort_keys=False)
 
-        # Verify ngraph inspect passes first (fast sanity check)
+        # Verify ngraph inspect passes first
         inspect_result = subprocess.run(
-            [str(NGRAPH_BIN), "inspect", str(scenario_path)],
+            [sys.executable, "-m", "ngraph", "inspect", str(scenario_path)],
             capture_output=True,
             text=True,
             timeout=120,
@@ -63,7 +57,15 @@ class TestE2EExecution:
         results_dir = tmp_path / "results"
         results_dir.mkdir()
         run_result = subprocess.run(
-            [str(NGRAPH_BIN), "run", str(scenario_path), "-o", str(results_dir)],
+            [
+                sys.executable,
+                "-m",
+                "ngraph",
+                "run",
+                str(scenario_path),
+                "-o",
+                str(results_dir),
+            ],
             capture_output=True,
             text=True,
             timeout=540,  # 9 minutes

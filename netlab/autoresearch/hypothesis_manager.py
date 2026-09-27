@@ -1,12 +1,4 @@
-"""Outer Loop: Hypothesis cycle with persistence.
-
-Orchestrates the full research cycle:
-  hypothesis → generate scenario → simulate → analyze → update knowledge
-
-Per-cycle artifacts are stored in directories. Cross-cycle state
-(cycle log, knowledge, dead ends) persists across sessions.
-Only this loop needs persistence — inner loops are stateless.
-"""
+"""Run hypothesis cycles and persist scenarios, metrics, interpretations, and knowledge."""
 
 from __future__ import annotations
 
@@ -34,7 +26,7 @@ class HypothesisCycle:
     cycle_id: int
     hypothesis: str
     hypothesis_hash: str
-    status: str  # "generated" | "simulated" | "analyzed" | "failed"
+    status: str
     generation: GenerationResult | None = None
     simulation_path: str | None = None
     analysis: AnalysisResult | None = None
@@ -67,22 +59,10 @@ def _hypothesis_hash(text: str) -> str:
 
 
 class HypothesisManager:
-    """Manages the outer research loop with persistent state.
+    """Manage research cycles in a project directory.
 
-    State layout::
-
-        project_dir/
-          cycles/
-            001/
-              hypothesis.yml
-              scenario.yml
-              findings.md
-              status.yml
-            002/
-              ...
-          cycle_log.jsonl
-          knowledge.md
-          dead_ends.jsonl
+    Cycle artifacts live under ``cycles/<id>/``. Cross-cycle state is stored in
+    ``cycle_log.jsonl``, ``knowledge.md``, and ``dead_ends.jsonl``.
     """
 
     def __init__(
@@ -141,7 +121,7 @@ class HypothesisManager:
         tmp.replace(self._knowledge_path)
 
     def _append_log(self, entry: CycleLogEntry) -> None:
-        """Append to cycle log (atomic)."""
+        """Append a cycle summary to the log."""
         line = json.dumps(asdict(entry)) + "\n"
         with self._log_path.open("a") as f:
             f.write(line)
@@ -160,21 +140,7 @@ class HypothesisManager:
             f.write(json.dumps(entry) + "\n")
 
     def run_cycle(self, hypothesis: str) -> HypothesisCycle:
-        """Run one complete research cycle for a hypothesis.
-
-        Steps:
-          1. Generate and validate scenario (Inner Loop 1)
-          2. Run ngraph simulation
-          3. Analyze results (Inner Loop 2)
-          4. Update knowledge
-
-        Args:
-            hypothesis: Natural language description of the connectivity
-                idea to test.
-
-        Returns:
-            HypothesisCycle with full results.
-        """
+        """Generate and simulate a hypothesis, analyze the results, and save the cycle."""
         t0 = time.time()
         cycle_id = self._next_cycle_id()
         h_hash = _hypothesis_hash(hypothesis)
@@ -244,14 +210,13 @@ class HypothesisManager:
             )
             return cycle
 
-        # Generation loop now includes simulation — results come with it.
-        # Persist scenario (generation loop may have used a temp directory).
+        # Persist the generated scenario in the cycle directory.
         scenario_path = cycle_dir / "scenario.yml"
         if gen_result.scenario_path and gen_result.scenario_path != scenario_path:
             shutil.copy2(gen_result.scenario_path, scenario_path)
 
         results_data = gen_result.results_data
-        assert results_data is not None  # guaranteed by generation loop success
+        assert results_data is not None
 
         # Step 2: Analyze
         analysis = run_analysis_loop(
@@ -260,7 +225,6 @@ class HypothesisManager:
             backend=self._backend,
         )
 
-        # Save metrics report (machine-generated, verified)
         (cycle_dir / "metrics_report.md").write_text(analysis.metrics_report)
 
         # Save LLM interpretation

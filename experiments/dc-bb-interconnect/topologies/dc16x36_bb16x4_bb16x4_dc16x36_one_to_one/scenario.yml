@@ -5,14 +5,8 @@
 #   BB: 16 planes x 4 nodes/plane = 64 nodes per site
 #   Total: 640 nodes per site, 1280 nodes total
 #
-# Pattern: DC row i connects to BB plane i (perfect 1:1 mapping)
+# Pattern: DC row i connects to BB plane i
 #   - Each DC row has path through exactly 1 plane
-#   - Simple and deterministic routing
-#
-# Trade-offs:
-#   - Simple topology
-#   - Each DC row isolated to single plane (no cross-plane paths)
-#   - Plane failure = complete loss of that DC row's inter-site connectivity
 
 blueprints:
   DC_Row:

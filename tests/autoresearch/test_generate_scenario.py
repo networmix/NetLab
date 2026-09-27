@@ -76,7 +76,8 @@ class TestGenerateScenarioStructure:
     """Verify generate_scenario produces a well-formed scenario dict."""
 
     @pytest.fixture(scope="class")
-    def scenario(self):
+    @classmethod
+    def scenario(cls):
         return generate_scenario(DcBbScenarioConfig())
 
     def test_top_level_keys(self, scenario):
@@ -157,7 +158,8 @@ class TestPostExpansionValidation:
     """Validate the expanded network matches expected counts."""
 
     @pytest.fixture(scope="class")
-    def expanded(self):
+    @classmethod
+    def expanded(cls):
         from ngraph.scenario import Scenario
 
         config = DcBbScenarioConfig(failure_iterations=0)
