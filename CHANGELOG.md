@@ -23,9 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING**: **Summaries**: Replace operation counters with `iters_fail`, `iters_total`, and `unique_patterns`.
 - **Scenarios**: Generated scenarios, shared templates, and the autoresearch prompt use current NetGraph keys.
 - **Autoresearch**: Prompts distinguish measurements from explanations and flag missing or inconsistent evidence.
+- **Autoresearch**: Load the NetGraph DSL reference from the `.claude/skills` submodule; run `git submodule update --init` to enable it.
 - **Fixtures**: Regenerate scenarios, results, and metrics; see `tests/data/README.md` for numerical changes.
 - **Docs**: Correct command examples, metric definitions, and scenario descriptions.
-- **Internal**: Consolidate metric and provenance helpers, run the TopoGen pipeline checks in the default test suite, and remove unused code and fixtures.
+- **Internal**: Consolidate metric and provenance helpers, run the TopoGen pipeline checks in the default test suite, and remove unused code, fixtures, and the PyPI publish workflow.
 
 ### Added
 

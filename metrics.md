@@ -77,6 +77,8 @@ Timing depends on the execution environment; compare runs under similar conditio
 
 Normalized comparisons pair matching seeds with the baseline. The text summary
 shows absolute metrics, normalized metrics, and comparison statistics.
+`netlab test <root> A B` runs paired t-tests between two scenarios on the per-seed
+metrics in `<root>_metrics`; `--alpha` sets the significance level.
 
 ## Figures
 

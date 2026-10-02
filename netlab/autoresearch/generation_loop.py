@@ -172,27 +172,21 @@ def _load_dsl_reference() -> str:
     if _DSL_REFERENCE is not None:
         return _DSL_REFERENCE
 
-    # Try loading from the skills directory
+    # The full reference ships in the .claude/skills submodule.
     from pathlib import Path
 
-    skill_paths = [
-        Path(__file__).parent.parent.parent.parent
+    skill_path = (
+        Path(__file__).resolve().parents[2]
+        / ".claude"
         / "skills"
         / "netgraph-dsl"
-        / "SKILL.md",
-        Path.home()
-        / "ws"
-        / "project_netgraph"
-        / "skills"
-        / "netgraph-dsl"
-        / "SKILL.md",
-    ]
-    for skill_path in skill_paths:
-        if skill_path.exists():
-            _DSL_REFERENCE = skill_path.read_text()
-            return _DSL_REFERENCE
+        / "SKILL.md"
+    )
+    if skill_path.is_file():
+        _DSL_REFERENCE = skill_path.read_text()
+        return _DSL_REFERENCE
 
-    # Built-in minimal reference
+    # Minimal reference used when the submodule is not checked out.
     _DSL_REFERENCE = """\
 CRITICAL RULES:
 - Top-level keys: seed, network, risk_groups, demands, failures, workflow

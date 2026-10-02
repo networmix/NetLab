@@ -31,6 +31,9 @@ python run.py dc4x9_bb4x4_bb4x4_dc4x9_one_to_one --dry-run
 # Analyze existing results and compare topologies
 python run.py --metrics
 python run.py --compare
+
+# Render the topology as SVG; --split stacks disconnected components
+python run.py dc4x9_bb4x4_bb4x4_dc4x9_one_to_one --visualize --split
 ```
 
 Add `--force` to rerun cached simulations. Results are written to

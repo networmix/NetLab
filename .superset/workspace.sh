@@ -30,6 +30,7 @@ if [[ "$mode" == setup ]]; then
         echo "Copied $filename from root checkout."
     done
     shopt -u nullglob
+    git submodule update --init
     if [[ ! -x venv/bin/python ]]; then
         make venv
     fi
