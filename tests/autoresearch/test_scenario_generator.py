@@ -16,7 +16,7 @@ from netlab.autoresearch.scenario_generator import (
 
 
 class TestGetViableGValues:
-    """Acceptance criteria: exact viable G sets for known configurations."""
+    """Viable group counts for known device counts and port limits."""
 
     def test_dc16x36_bb64x4(self):
         """dc16x36 + bb64x4 => viable G is exactly {16, 32, 64}.
@@ -330,7 +330,7 @@ class TestDcBbScenarioConfig:
         cfg = DcBbScenarioConfig(g_abc1=32, seed=123)
         assert cfg.g_abc1 == 32
         assert cfg.seed == 123
-        # Other defaults unchanged
+        # Remaining configuration defaults
         assert cfg.g_xyz1 == 64
 
 

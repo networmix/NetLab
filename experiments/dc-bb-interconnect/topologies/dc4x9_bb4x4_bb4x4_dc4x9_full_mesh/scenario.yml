@@ -7,13 +7,6 @@
 #
 # Pattern: Complete bipartite graph between DC and BB
 #   Each of 36 DC nodes connects to all 16 BB nodes
-#   Maximum path diversity and routing flexibility
-#
-# Trade-offs:
-#   + Best resilience to DC/BB node and link failures
-#   + Maximum routing flexibility
-#   - Uses maximum links (d_DC=16, at DC device limit)
-#   - Higher cabling complexity and cost
 
 blueprints:
   DC_Row:

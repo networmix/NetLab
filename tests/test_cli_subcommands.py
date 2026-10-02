@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _run_cli(argv: list[str]) -> int:
     import netlab.cli as cli
@@ -31,6 +33,31 @@ def test_cli_run_no_yamls_exits_early(tmp_path: Path, capsys) -> None:
     captured = capsys.readouterr()
     assert code != 0
     assert "No YAMLs under" in captured.err
+
+
+@pytest.mark.parametrize(
+    "inspect_status, run_status", [("❌", "⏭️ skipped"), ("✅", "❌")]
+)
+def test_cli_run_reports_ngraph_failure(
+    tmp_path, monkeypatch, capsys, inspect_status, run_status
+):
+    import netlab.cli as cli
+
+    master = tmp_path / "scenario.yml"
+    master.write_text("{}")
+    monkeypatch.setattr(cli, "_generate_masters", lambda **kwargs: [])
+    monkeypatch.setattr(cli, "_build_seed_scenario", lambda *args: (master, 0))
+    monkeypatch.setattr(
+        cli, "_inspect_run_one", lambda *args: (master, inspect_status, run_status)
+    )
+    output = tmp_path / "scenarios"
+    code = _run_cli(
+        ["run", str(master), "--seeds", "42", "--scenarios-dir", str(output)]
+    )
+    assert code != 0
+    assert "NetGraph failed" in capsys.readouterr().err
+    assert (output / "_run_summaries/scenario.tsv").is_file()
+    assert (output / "provenance.json").is_file()
 
 
 def test_cli_metrics_summary_smoke(capsys) -> None:

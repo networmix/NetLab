@@ -8,11 +8,6 @@
 # Pattern: Two DC rows mesh to one BB plane
 #   DC-1, DC-2 → BB-1 (full mesh)
 #   DC-3, DC-4 → BB-2 (full mesh)
-#
-# WARNING: 50% FAILURE MODE
-#   - Only 2 BB planes exist, each carries 50% of traffic
-#   - Single plane failure = 50% capacity loss
-#   - Alpha* is only 50% of maximum due to reduced inter-site capacity
 
 blueprints:
   DC_Row:

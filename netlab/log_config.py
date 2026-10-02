@@ -1,8 +1,4 @@
-"""Logging configuration for NetLab.
-
-This module provides a thin wrapper around Python's ``logging`` to keep
-NetLab's logging consistent across subpackages.
-"""
+"""Configure shared logging for NetLab packages."""
 
 from __future__ import annotations
 

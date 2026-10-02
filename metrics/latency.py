@@ -22,8 +22,7 @@ class LatencyResult:
         failures: Per-tail medians across failure iterations (same keys as baseline).
         derived: Seed-level derived metrics (e.g., TD99, SLO drops, best_path_drop, WES_delta).
         per_iteration: Optional per-iteration tails for failures (keys as above), each a list
-            with one value per failure iteration in original order. Useful for pooled
-            cross-seed aggregations and uncertainty bands.
+            with one value per expanded failure sample, grouped by pattern.
     """
 
     baseline: Dict[str, float]
@@ -62,8 +61,10 @@ def _baseline_cost_per_pair_tm(baseline: dict) -> Dict[Tuple[str, str], float]:
     return per_pair
 
 
-def compute_latency_stretch(results: dict) -> LatencyResult:
-    baseline, fr = get_tm_baseline_and_failures(results)
+def compute_latency_stretch(
+    results: dict, step_name: str = "tm_placement"
+) -> LatencyResult:
+    baseline, fr = get_tm_baseline_and_failures(results, step_name)
 
     base_cost = _baseline_cost_per_pair_tm(baseline)
     if not base_cost:

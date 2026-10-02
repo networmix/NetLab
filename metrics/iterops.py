@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from metrics.common import flow_occurrence_count
+
 
 @dataclass
 class IterOpsResult:
@@ -68,16 +70,14 @@ def compute_iter_ops(results: dict) -> IterOpsResult:
         raise ValueError("tm_placement.data.flow_results must be a list")
 
     # Recover true iteration count from occurrence_count
-    fail_count = sum(max(1, int(it.get("occurrence_count", 1))) for it in fr)
+    fail_count = sum(flow_occurrence_count(it) for it in fr)
     unique_patterns = len(fr)
     total_count = 1 + fail_count  # baseline + failures
 
-    # Timing: prefer metadata.duration_sec; fallback to execution_time
+    # NetGraph records workflow timing in metadata.duration_sec.
     total_duration = float("nan")
     try:
         dur = meta.get("duration_sec")
-        if dur is None:
-            dur = meta.get("execution_time")
         if dur is not None:
             total_duration = float(dur)
     except Exception:

@@ -78,11 +78,7 @@ class ExperimentLog:
         self._results_dir = self.project_dir / "results"
 
     def append(self, entry: LogEntry) -> None:
-        """Atomic append: write to .tmp file, then rename over the original.
-
-        We read existing content, append the new line, write to tmp, rename.
-        This ensures the file is never left in a partial-write state.
-        """
+        """Append an entry by writing a temporary file and replacing the log."""
         existing = b""
         if self._log_path.exists():
             existing = self._log_path.read_bytes()
@@ -108,10 +104,7 @@ class ExperimentLog:
             raise
 
     def load(self) -> list[LogEntry]:
-        """Read all entries. Discard corrupt trailing line with a warning.
-
-        Metadata lines (those with a ``_type`` field) are silently skipped.
-        """
+        """Read entries, skipping metadata and warning about invalid JSON lines."""
         if not self._log_path.exists():
             return []
 

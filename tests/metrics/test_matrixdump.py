@@ -37,18 +37,26 @@ def _fixture() -> dict:
         "steps": {
             "tm_placement": {
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": base_tm},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": base_tm,
+                    },
                     "flow_results": [
-                        {"failure_id": "f1", "flows": tm_i1},
-                        {"failure_id": "f2", "flows": tm_i2},
+                        {"occurrence_count": 1, "failure_id": "f1", "flows": tm_i1},
+                        {"occurrence_count": 1, "failure_id": "f2", "flows": tm_i2},
                     ],
                 }
             },
             "node_to_node_capacity_matrix": {
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": mf_i1},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": mf_i1,
+                    },
                     "flow_results": [
-                        {"failure_id": "f1", "flows": mf_i2},
+                        {"occurrence_count": 1, "failure_id": "f1", "flows": mf_i2},
                     ],
                 }
             },

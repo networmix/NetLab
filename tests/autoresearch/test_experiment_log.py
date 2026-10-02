@@ -1,4 +1,4 @@
-"""Tests for experiment_log module — covers every acceptance-criteria row."""
+"""Tests for experiment log persistence, recovery, and prompt history."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# Balanced Semi-Dense: Rotated pairs for good balance of links and resilience
+# Balanced Semi-Dense: Rotated pairs with two BB connections per plane
 #
 # Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
@@ -10,13 +10,7 @@
 #   DC-2,6 → BB 2,3 in all planes
 #   DC-3,7 → BB 3,4 in all planes
 #   DC-4,8 → BB 4,1 in all planes
-#   DC-9 → unconnected (enables perfect even distribution)
-#
-# Trade-offs:
-#   + Good balance of link count and resilience
-#   + 2 BB options per plane provides path redundancy
-#   + Perfectly even BB distribution (16 links each)
-#   - DC node 9 unconnected (8/9 DC nodes used)
+#   DC-9 → unconnected
 
 blueprints:
   DC_Row:

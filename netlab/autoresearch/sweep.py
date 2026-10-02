@@ -1,9 +1,4 @@
-"""Phase 2: Systematic simulation sweep over DC-BB configurations.
-
-Runs ngraph on (G, layout) combinations, extracts alpha_star and
-per-mode BAC metrics. All results written as flat JSONL entries
-to a single results.jsonl file.
-"""
+"""Simulate DC-BB group counts and layouts, saving capacity and BAC metrics to JSONL."""
 
 from __future__ import annotations
 
@@ -19,7 +14,7 @@ from typing import Optional
 import numpy as np
 import yaml
 
-from metrics.bac import compute_bac
+from metrics.bac import BacResult, compute_bac
 from metrics.common import expand_flow_results
 from netlab.autoresearch.scenario_generator import (
     FAILURE_MODE_NAMES,
@@ -41,11 +36,10 @@ from netlab.runtime import require_executable
 
 @dataclass
 class ResultEntry:
-    """One simulation result. Flat fields, no nesting.
+    """One simulation result.
 
-    BAC fields are dynamically named bac_{mode} for each mode in
-    FAILURE_MODE_NAMES. The dataclass uses a dict for storage,
-    but to_dict() flattens everything.
+    ``to_dict`` stores each mode under ``bac_<mode>`` with its BAC and failure
+    statistics.
     """
 
     g_abc1: int = 0
@@ -169,21 +163,6 @@ def _now_iso() -> str:
 # ---------------------------------------------------------------------------
 
 
-def _flow_label(flow_source: str) -> str:
-    """Extract directional label from flow source field.
-
-    Flow source format: '_src_<source_pattern>|<target_pattern>|<hash>'
-    Returns label like 'abc1>xyz1'.
-    """
-    demand_id = flow_source.removeprefix("_src_").removeprefix("_snk_")
-    parts = demand_id.split("|")
-    if len(parts) >= 2:
-        src_site = parts[0].lstrip("^").split("/")[0]
-        dst_site = parts[1].lstrip("^").split("/")[0]
-        return f"{src_site}>{dst_site}"
-    return demand_id[:20]
-
-
 def _node_site(node_path: str) -> str:
     """Extract site from node path. 'bb/abc1/...' -> 'abc1', 'abc1/fadu/...' -> 'abc1'."""
     parts = node_path.split("/")
@@ -247,52 +226,23 @@ def _extract_failure_stats(flow_results: list[dict]) -> dict:
     }
 
 
-def _extract_flow_bac(baseline: dict, flow_results: list[dict]) -> dict[str, dict]:
-    """Per-flow BAC: AUC + percentile distribution, keyed by directional label."""
-    baseline_flows = baseline.get("flows", [])
-    if not baseline_flows:
-        return {}
-
-    # Map flow source field -> (label, baseline_demand)
-    flow_map: dict[str, tuple[str, float]] = {}
-    for f in baseline_flows:
-        src = f.get("source", "")
-        if not src:
-            continue
-        flow_map[src] = (_flow_label(src), float(f.get("demand", 0)))
-
-    # Expand deduplicated patterns by occurrence_count
-    expanded = expand_flow_results(flow_results)
-
-    # Collect per-flow placement ratios: baseline (1.0) + each failure event
-    flow_ratios: dict[str, list[float]] = {src: [1.0] for src in flow_map}
-
-    for fr in expanded:
-        event_flows = {ef["source"]: ef for ef in fr.get("flows", [])}
-        for src, (_label, bl_demand) in flow_map.items():
-            if src in event_flows and bl_demand > 0:
-                ratio = min(event_flows[src]["placed"] / bl_demand, 1.0)
-            else:
-                ratio = 0.0
-            flow_ratios[src].append(ratio)
-
-    result: dict[str, dict] = {}
-    for src, ratios in flow_ratios.items():
-        label = flow_map[src][0]
-        arr = np.array(ratios)
-        result[label] = {
-            "auc": round(float(arr.mean()), 6),
-            "pct": [round(float(v), 6) for v in np.percentile(arr, range(1, 101))],
-        }
-    return result
+def _bac_summary(bac: BacResult) -> dict:
+    values = np.asarray(bac.series.values, dtype=float)
+    ratios = values / bac.offered if bac.offered > 0 else values
+    return {
+        "auc": round(bac.auc_normalized, 6),
+        "pct": [
+            round(float(value), 6) for value in np.percentile(ratios, range(1, 101))
+        ],
+    }
 
 
 def _extract_step_metrics(results_data: dict, step_name: str) -> dict:
-    """Extract comprehensive metrics from a single TM step.
+    """Extract BAC and failure-scope metrics from a placement step.
 
     Returns:
-        auc: aggregate BAC AUC (backward compatible)
-        pct: aggregate percentile distribution, p1-p100 (backward compatible)
+        auc: aggregate BAC AUC
+        pct: aggregate percentile distribution, p1-p100
         flow_bac: per-flow BAC {label: {auc, pct}}
         failure_stats: failure scope summary by site
     """
@@ -303,16 +253,10 @@ def _extract_step_metrics(results_data: dict, step_name: str) -> dict:
     if not baseline or not flow_results:
         return {}
 
-    # Aggregate BAC (via existing compute_bac)
     bac = compute_bac(results_data, step_name=step_name)
-    raw_vals = np.asarray(bac.series.values, dtype=float)
-    ratios = raw_vals / bac.offered if bac.offered > 0 else raw_vals
-    pcts = [round(float(v), 6) for v in np.percentile(ratios, range(1, 101))]
-
     return {
-        "auc": round(bac.auc_normalized, 6),
-        "pct": pcts,
-        "flow_bac": _extract_flow_bac(baseline, flow_results),
+        **_bac_summary(bac),
+        "flow_bac": {label: _bac_summary(flow) for label, flow in bac.per_flow.items()},
         "failure_stats": _extract_failure_stats(flow_results),
     }
 
@@ -430,9 +374,8 @@ def _execute_scenario(
             if step_name in steps:
                 bac_modes[mode] = _extract_step_metrics(results_data, step_name)
 
-        combined = "tm_combined" if "tm_combined" in steps else "tm_placement"
-        if combined in steps:
-            combined_metrics = _extract_step_metrics(results_data, combined)
+        if "tm_combined" in steps:
+            combined_metrics = _extract_step_metrics(results_data, "tm_combined")
             result["bac_combined"] = combined_metrics.get("auc", 0.0)
             bac_modes["combined"] = combined_metrics
         else:

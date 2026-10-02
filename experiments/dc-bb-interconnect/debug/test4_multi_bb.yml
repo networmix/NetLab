@@ -1,12 +1,5 @@
-# Test 4: Multiple BB nodes (like the actual topology)
-#
-# 4 DC nodes at each site, 4 BB nodes at each site
-# Each DC connects to all BB (full mesh)
-# Each BB connects to corresponding BB at other site (1:1)
-#
-# BB-BB bottleneck: 4 links × 100 = 400 total
-# Demand: 1000
-# Expected Alpha* = 400/1000 = 0.4
+# Four parallel backbone paths, each with capacity 100 Gbps.
+# Each DC node connects to every local BB node; demand is 1,000 Gbps.
 
 blueprints:
   DC:

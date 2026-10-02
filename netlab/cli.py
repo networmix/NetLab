@@ -1,16 +1,5 @@
 #!/usr/bin/env python3
-"""
-netlab CLI
-
-Subcommands:
-- run: Build TopoGen masters, seed per-scenario copies for provided seeds, run
-  ngraph inspect+run, and emit simple TSV summaries.
-- build: Build TopoGen masters only.
-
-Notes:
-- No 'report' step (ngraph report is not used/available).
-- TopoGen build logic is integrated here (ported from the old shell script).
-"""
+"""Build TopoGen scenarios, run NetGraph experiments, and analyze their results."""
 
 from __future__ import annotations
 
@@ -45,6 +34,20 @@ def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
 
+def _file_provenance(path: Path) -> Dict[str, object]:
+    record: Dict[str, object] = {"path": os.path.relpath(path, start=Path.cwd())}
+    try:
+        content = path.read_bytes()
+    except OSError as exc:
+        logging.warning("Failed to hash %s: %s", path, exc)
+        record["hash_error"] = str(exc)
+    else:
+        record.update(
+            sha256=hashlib.sha256(content).hexdigest(), size_bytes=len(content)
+        )
+    return record
+
+
 def _create_run_provenance(
     masters: List[Path],
     seeds: List[int],
@@ -58,7 +61,7 @@ def _create_run_provenance(
     topogen_invoke: Optional[List[str]] = None,
     ngraph_invoke: Optional[List[str]] = None,
 ) -> Dict[str, object]:
-    """Create comprehensive provenance information for a netlab run."""
+    """Record source files, seeds, and execution settings for a NetLab run."""
     cwd = Path.cwd()
     provenance = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -99,24 +102,9 @@ def _create_run_provenance(
         logging.warning("Failed to retrieve git commit: %s", e)
         provenance["git_commit_error"] = str(e)
 
-    # Add topogen config file information with hashes
-    for master_yaml in masters:
-        try:
-            config_content = master_yaml.read_bytes()
-            config_hash = hashlib.sha256(config_content).hexdigest()
-            rel_path = os.path.relpath(master_yaml, start=cwd)
-            provenance["topogen_configs"][master_yaml.name] = {
-                "path": rel_path,
-                "sha256": config_hash,
-                "size_bytes": len(config_content),
-            }
-        except Exception as e:
-            logging.warning("Failed to hash config %s: %s", master_yaml, e)
-            rel_path = os.path.relpath(master_yaml, start=cwd)
-            provenance["topogen_configs"][master_yaml.name] = {
-                "path": rel_path,
-                "hash_error": str(e),
-            }
+    provenance["topogen_configs"] = {
+        path.name: _file_provenance(path) for path in masters
+    }
 
     # Record seeds planned per master
     if masters and seeds:
@@ -172,10 +160,6 @@ def find_master_yaml_files(masters_path: Path) -> List[Path]:
             ]
         )
     die(f"Path not found: {masters_path}")
-
-
-# New approach: generate integrated graph once per master, then for each seed,
-# override TopoGen config output.scenario_seed and build a per-seed scenario.
 
 
 def _topogen_generate_only(
@@ -285,7 +269,7 @@ def _run_to_log(cmd: List[str], cwd: Path, log_path: Path) -> int:
             try:
                 fh.write(f"\n❌ netlab: failed to invoke: {' '.join(cmd)}\n{e}\n")
             except Exception as write_err:
-                # Fall back to stderr if log write fails
+                # Report invocation and log-write errors to stderr.
                 print(
                     f"❌ netlab: failed to invoke and log: {' '.join(cmd)}\n{e}\nlog error: {write_err}",
                     file=sys.stderr,
@@ -296,8 +280,7 @@ def _run_to_log(cmd: List[str], cwd: Path, log_path: Path) -> int:
 def _scenario_io_paths(scn_yaml: Path) -> Tuple[Path, str, Path]:
     scn_yaml_abs = scn_yaml.resolve()
     scn_dir = scn_yaml_abs.parent
-    scn_name = scn_yaml_abs.name
-    scn_stem = scn_name[: scn_name.rfind(".")]
+    scn_stem = scn_yaml_abs.stem
     results_json = scn_dir / f"{scn_stem}.results.json"
     return scn_dir, scn_stem, results_json
 
@@ -323,7 +306,7 @@ def _inspect_run_one(
         str(log_ins),
     )
     ec_ins = _run_to_log(
-        ngraph_invoke + ["inspect", "-o", str(scn_dir), str(scn_yaml_abs)],
+        ngraph_invoke + ["inspect", str(scn_yaml_abs)],
         scn_dir,
         log_ins,
     )
@@ -391,9 +374,6 @@ def _generate_masters(
                 print(f"✅ Integrated graph ready: {master_stem}")
     return build_errors
 
-    # NOTE: old _build_masters removed; generation is handled by _generate_masters,
-    # and per-seed builds are executed later per seed.
-
 
 def _cmd_build(args: argparse.Namespace) -> None:
     masters_dir: Path = args.configs
@@ -431,7 +411,7 @@ def _cmd_build(args: argparse.Namespace) -> None:
     if build_errors:
         die("One or more builds failed: " + "; ".join(build_errors))
 
-    # Create and save comprehensive provenance information for build
+    # Record build inputs and settings.
     build_provenance = _create_run_provenance(
         masters=masters,
         seeds=[],
@@ -501,7 +481,7 @@ def _cmd_run(args: argparse.Namespace) -> None:
         die("One or more builds failed: " + "; ".join(build_errors))
 
     # Build per-seed scenarios via TopoGen (config-level seed override)
-    master_contexts: List[Dict[str, object]] = []
+    master_contexts: List[Tuple[str, List[Path]]] = []
     for master_yaml in masters:
         master_stem = master_yaml.stem
         master_root = scenarios_dir / master_stem
@@ -532,7 +512,7 @@ def _cmd_run(args: argparse.Namespace) -> None:
                     die(f"TopoGen build failed for scenario: {seed_yaml}")
                 created.append(seed_yaml)
 
-        master_contexts.append({"stem": master_stem, "scenarios": created})
+        master_contexts.append((master_stem, created))
         print(f"📝 Per-seed scenarios built for {master_stem}: {len(created)}")
 
     # Run inspect+run per master
@@ -540,10 +520,9 @@ def _cmd_run(args: argparse.Namespace) -> None:
     ensure_dir(run_summaries_dir)
     ngraph_start_wall = time.time()
     ngraph_start = time.perf_counter()
+    run_errors: List[str] = []
 
-    for ctx in master_contexts:
-        stem = ctx["stem"]  # type: ignore[index]
-        scenarios: List[Path] = ctx["scenarios"]  # type: ignore[assignment]
+    for stem, scenarios in master_contexts:
         print(
             f"🧪 Running scenarios (inspect+run) for master: {stem} (jobs={max(1, args.run_jobs)})"
         )
@@ -566,6 +545,8 @@ def _cmd_run(args: argparse.Namespace) -> None:
                 futures2.append(fut)
             for fut in futures2:
                 scn_path, ins_status, run_status = fut.result()
+                if ins_status == "❌" or run_status == "❌":
+                    run_errors.append(str(scn_path))
                 with summary_tsv.open("a", encoding="utf-8") as fh:
                     fh.write(
                         f"{scn_path.parent}\t{scn_path.name}\t{ins_status}\t{run_status}\n"
@@ -585,7 +566,7 @@ def _cmd_run(args: argparse.Namespace) -> None:
     )
     print(f"⏱️ Overall ngraph run time: {ngraph_elapsed:.3f}s")
 
-    # Create and save comprehensive provenance information
+    # Record run inputs and settings.
     provenance = _create_run_provenance(
         masters=masters,
         seeds=seeds,
@@ -601,42 +582,24 @@ def _cmd_run(args: argparse.Namespace) -> None:
     )
     provenance["command"] = "run"
 
-    # List results JSON files with hashes (relative to scenarios_dir)
     results_files: Dict[str, Dict[str, object]] = {}
-    for ctx in master_contexts:
-        scenarios_list: List[Path] = ctx.get("scenarios", [])  # type: ignore[assignment]
-        for scn in scenarios_list:
-            try:
-                _, _, results_json = _scenario_io_paths(scn)
-                rel_path = os.path.relpath(results_json, start=Path.cwd())
-                try:
-                    content = results_json.read_bytes()
-                    results_files[rel_path] = {
-                        "path": rel_path,
-                        "sha256": hashlib.sha256(content).hexdigest(),
-                        "size_bytes": len(content),
-                    }
-                except Exception as e:
-                    results_files[rel_path] = {
-                        "path": rel_path,
-                        "hash_error": str(e),
-                    }
-            except Exception as outer:
-                # Associate error with unknown path (should be rare)
-                results_files.setdefault("<unknown>", {"errors": []})  # type: ignore[index]
-                try:
-                    # Append error detail
-                    errs = results_files["<unknown>"]["errors"]  # type: ignore[index]
-                    if isinstance(errs, list):
-                        errs.append(str(outer))
-                except Exception:
-                    results_files["<unknown>"] = {"errors": [str(outer)]}
+    for _stem, scenarios in master_contexts:
+        for scenario in scenarios:
+            _, _, results_path = _scenario_io_paths(scenario)
+            record = _file_provenance(results_path)
+            results_files[str(record["path"])] = record
     if results_files:
         provenance["results_files"] = results_files
 
     provenance_path = scenarios_dir / "provenance.json"
     write_json_atomic(provenance_path, provenance)
     print(f"📋 Run provenance saved to: {provenance_path}")
+    if run_errors:
+        die(
+            "NetGraph failed for: "
+            + "; ".join(run_errors)
+            + ". See the inspect/run logs beside each scenario."
+        )
 
 
 def main() -> None:
@@ -977,10 +940,10 @@ def main() -> None:
 
     ap_auto_run.set_defaults(func=_cmd_autoresearch_run)
 
-    # autoresearch structural-analysis (Phase 1)
+    # autoresearch structural-analysis
     ap_auto_sa = auto_sub.add_parser(
         "structural-analysis",
-        help="Phase 1: enumerate configs, compute failure fingerprints, classify feasibility",
+        help="Enumerate layouts and evaluate connection retention under failures",
     )
     ap_auto_sa.add_argument(
         "--output",
@@ -1004,7 +967,7 @@ def main() -> None:
 
     ap_auto_sa.set_defaults(func=_cmd_autoresearch_structural_analysis)
 
-    # autoresearch sweep (Phase 2)
+    # autoresearch sweep
     ap_auto_sweep = auto_sub.add_parser(
         "sweep",
         help="Sweep one DC side (fix other at default), extract alpha + per-mode BAC",

@@ -1,7 +1,6 @@
-"""Hand-verified metric computation against a mini DC-BB scenario.
+"""Run the mini DC-BB scenario and check its metrics against hand calculations.
 
-This test runs ngraph on a 10-node topology with known properties,
-then verifies every netlab metric against hand-calculated values.
+The 10-node topology has asymmetric parallel paths.
 
 Topology: 2 sites, 2 planes, dual LH paths (path_a: 100km/100cap,
 path_b: 200km/50cap). Flow policy: TE_WCMP_UNLIM.
@@ -12,6 +11,8 @@ See tests/data/mini_dcbb.yaml for full topology documentation.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -21,16 +22,19 @@ from metrics.bac import compute_bac
 from metrics.latency import compute_latency_stretch
 from metrics.msd import compute_alpha_star
 
-RESULTS_PATH = (
-    Path(__file__).parent / "data" / "mini_dcbb_output" / "mini_dcbb.results.json"
-)
-
 
 @pytest.fixture(scope="module")
-def results() -> dict:
-    if not RESULTS_PATH.exists():
-        pytest.skip("Run ngraph on tests/data/mini_dcbb.yaml first")
-    with RESULTS_PATH.open() as f:
+def results(tmp_path_factory) -> dict:
+    output = tmp_path_factory.mktemp("mini-dcbb")
+    scenario = Path(__file__).parent / "data" / "mini_dcbb.yaml"
+    run = subprocess.run(
+        [sys.executable, "-m", "ngraph", "run", str(scenario), "-o", str(output)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert run.returncode == 0, run.stdout + run.stderr
+    with (output / "mini_dcbb.results.json").open() as f:
         return json.load(f)
 
 

@@ -262,7 +262,6 @@ class OpenAICompatibleBackend(LLMBackend):
                     f"connection error after {self.max_retries + 1} attempts: {exc}"
                 ) from exc
 
-        # Should not reach here, but just in case
         raise RuntimeError(
             f"Unexpected retry exhaustion: {last_exc}"
         )  # pragma: no cover

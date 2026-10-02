@@ -104,7 +104,7 @@ class TestBuildDemands:
 
 
 class TestBuildWorkflow:
-    """Tests for _build_workflow (MSD + 7 per-mode TMP + 1 combined TMP)."""
+    """Tests for _build_workflow (MSD, per-mode placement, and combined placement)."""
 
     def test_workflow_step_count(self):
         from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES

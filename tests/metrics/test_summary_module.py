@@ -22,19 +22,14 @@ def _data_root() -> Path:
 
 
 def _metrics_root() -> Path:
-    base = _data_root()
-    for name in ("scenarios_metrics_", "scenarios_metrics"):
-        p = base / name
-        if p.exists():
-            return p
-    return base / "scenarios_metrics_"
+    return _data_root() / "scenarios_metrics"
 
 
 def test_build_project_summary_table_matches_csv() -> None:
     root = _metrics_root()
     df = build_project_summary_table(root).sort_index()
     ref = pd.read_csv(root / "project.csv").set_index("scenario").sort_index()
-    # Column set may evolve; require at least the expected ones present
+    # Require the columns represented by the reference.
     for col in ("seeds", "node_count", "link_count", "alpha_star", "bac_auc"):
         assert col in df.columns
     # Index equality and numeric similarity on overlapping columns
@@ -70,10 +65,10 @@ def test_print_pretty_table_does_not_crash(capsys) -> None:
     assert "project" in out or "scenario" in out or "metrics" in out
 
 
-def test_print_pretty_table_fallback_no_rich(monkeypatch, capsys) -> None:
+def test_print_pretty_table_without_rich(monkeypatch, capsys) -> None:
     import metrics.summary as summ
 
-    # Force fallback path by nulling Console/RichTable
+    # Exercise plain-text output without Rich.
     monkeypatch.setattr(summ, "Console", None)
     monkeypatch.setattr(summ, "RichTable", None)
     root = _data_root() / "scenarios_metrics"

@@ -1,33 +1,22 @@
-"""Programmatic metrics report from ngraph simulation results.
-
-Computes all metrics using the verified pipeline (BAC, latency, alpha,
-iterops) and formats them into a structured markdown document. This is
-the single source of truth for numbers — the LLM never extracts metrics
-from raw results JSON.
-"""
+"""Format capacity, bandwidth availability, and latency metrics as Markdown."""
 
 from __future__ import annotations
 
 
 def build_metrics_report(results: dict, step_names: list[str] | None = None) -> str:
-    """Build a structured metrics report from simulation results.
-
-    Uses the verified metrics pipeline (same code that passed 252
-    hand-calculated assertions on the mini DC-BB scenario).
+    """Build a Markdown report from simulation results.
 
     Args:
-        results: ngraph simulation results dict.
-        step_names: TMP step names to analyze. If None, auto-detects
-            all TrafficMatrixPlacement steps.
-
-    Returns:
-        Markdown-formatted metrics report with exact numbers.
+        results: NetGraph simulation results.
+        step_names: Placement steps to analyze. If omitted, select steps with
+            baseline and failure flow records.
     """
     from metrics.bac import compute_bac
+    from metrics.common import flow_occurrence_count
     from metrics.latency import compute_latency_stretch
     from metrics.msd import compute_alpha_star
 
-    lines: list[str] = ["# Metrics Report (machine-generated, verified)\n"]
+    lines: list[str] = ["# Metrics Report\n"]
 
     # Alpha / MSD
     try:
@@ -56,7 +45,7 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
         # Iteration counts
         fr = step_data.get("flow_results", [])
         n_patterns = len(fr)
-        n_iters = sum(f.get("occurrence_count", 1) for f in fr)
+        n_iters = sum(flow_occurrence_count(f) for f in fr)
         lines.append(f"- failure iterations: {n_iters}")
         lines.append(f"- unique patterns: {n_patterns}")
 
@@ -78,7 +67,7 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
             ]
             excl_str = ", ".join(excl[:3]) if excl else "none"
             lines.append(
-                f"  - [{f.get('occurrence_count', 1)}x] "
+                f"  - [{flow_occurrence_count(f)}x] "
                 f"ratio={s.get('overall_ratio', 0):.4f}, "
                 f"placed={s.get('total_placed')}, "
                 f"excluded: {excl_str}"
@@ -105,10 +94,8 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
         except (ValueError, KeyError):
             pass
 
-        # Latency (requires step to be named tm_placement for the latency module)
         try:
-            lat_data = {"steps": {"tm_placement": results["steps"][step_name]}}
-            lat = compute_latency_stretch(lat_data)
+            lat = compute_latency_stretch(results, step_name)
             if lat.baseline and lat.failures:
                 lines.append("")
                 lines.append("### Latency Stretch")
@@ -134,7 +121,7 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
 
 
 def _detect_tmp_steps(results: dict) -> list[str]:
-    """Find all TrafficMatrixPlacement steps in results."""
+    """Find steps containing baseline and failure flow records."""
     steps = results.get("steps", {})
     tmp_steps: list[str] = []
     for name, step in steps.items():

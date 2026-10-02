@@ -4,54 +4,57 @@ mc_hard:
   modes:
     - weight: 0.3
       rules:
-        - entity_scope: risk_group
-          rule_type: choice
+        - scope: risk_group
+          mode: choice
           count: 1
           weight_by: distance_km
     - weight: 0.35
       rules:
-        - entity_scope: link
-          rule_type: choice
+        - scope: link
+          mode: choice
           count: 8
-          conditions:
-            - attr: link_type
-              operator: ==
-              value: dc_to_pop
-            - attr: link_type
-              operator: ==
-              value: intra_metro
-            - attr: link_type
-              operator: ==
-              value: inter_metro_corridor
-          logic: or
+          match:
+            conditions:
+              - attr: link_type
+                op: ==
+                value: dc_to_pop
+              - attr: link_type
+                op: ==
+                value: intra_metro
+              - attr: link_type
+                op: ==
+                value: inter_metro_corridor
+            logic: or
           weight_by: target_capacity
     - weight: 0.25
       rules:
-        - entity_scope: node
-          rule_type: choice
+        - scope: node
+          mode: choice
           count: 3
-          conditions:
-            - attr: node_type
-              operator: "!="
-              value: dc_region
-          logic: and
+          match:
+            conditions:
+              - attr: node_type
+                op: "!="
+                value: dc_region
+            logic: and
           weight_by: attached_capacity_gbps
     - weight: 0.1
       rules:
-        - entity_scope: link
-          rule_type: choice
+        - scope: link
+          mode: choice
           count: 15
-          conditions:
-            - attr: link_type
-              operator: ==
-              value: leaf_spine
-            - attr: link_type
-              operator: ==
-              value: intra_group
-            - attr: link_type
-              operator: ==
-              value: inter_group
-            - attr: link_type
-              operator: ==
-              value: internal_mesh
-          logic: or
+          match:
+            conditions:
+              - attr: link_type
+                op: ==
+                value: leaf_spine
+              - attr: link_type
+                op: ==
+                value: intra_group
+              - attr: link_type
+                op: ==
+                value: inter_group
+              - attr: link_type
+                op: ==
+                value: internal_mesh
+            logic: or

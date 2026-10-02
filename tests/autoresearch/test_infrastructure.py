@@ -72,37 +72,17 @@ class TestSquareMeshResults:
         assert workflow["node_to_node_capacity_matrix"]["step_type"] == "MaxFlow"
 
 
-class TestAnalyzeOneSeedCompatibility:
-    """Document the compatibility status of analyze_one_seed with square_mesh results.
+class TestSeedAnalysis:
+    """Verify metrics computed from the square-mesh simulation."""
 
-    The current ngraph output format differs from what analyze_one_seed expects:
-    - base_demands: uses source/target/volume instead of source_path/sink_path/demand
-    - metadata: lacks 'baseline: true' flag
-    - flow_results: baseline is stored separately, not as flow_results[0] with
-      failure_id=="baseline"
-
-    These tests document the incompatibility rather than testing analyze_one_seed
-    directly, since the plan notes this is only required "if feasible".
-    """
-
-    def test_base_demands_format_differs(self, square_mesh_results: dict) -> None:
-        """Current ngraph uses source/target/volume, metrics_cmd expects source_path/sink_path/demand."""
+    def test_base_demand_fields(self, square_mesh_results: dict) -> None:
         msd_data = square_mesh_results["steps"]["msd_baseline"]["data"]
         base_demands = msd_data.get("base_demands", [])
         assert len(base_demands) > 0
         first = base_demands[0]
-        # Current format uses 'source'/'target'/'volume'
         assert "source" in first
         assert "target" in first
         assert "volume" in first
-        # analyze_one_seed expects 'source_path'/'sink_path'/'demand'
-        assert "source_path" not in first
-        assert "sink_path" not in first
-
-    def test_metadata_lacks_baseline_flag(self, square_mesh_results: dict) -> None:
-        """Current ngraph does not set metadata.baseline = true."""
-        tm_meta = square_mesh_results["steps"]["tm_placement"].get("metadata", {})
-        assert "baseline" not in tm_meta or tm_meta.get("baseline") is not True
 
     def test_compute_alpha_star_works(self, square_mesh_results: dict) -> None:
         """compute_alpha_star extracts alpha_star and base_total_demand."""
@@ -110,8 +90,19 @@ class TestAnalyzeOneSeedCompatibility:
 
         alpha = compute_alpha_star(square_mesh_results)
         assert alpha.alpha_star == 1.0
-        # base_total_demand reads 'volume' field (ngraph's key) with 'demand' as fallback
         assert alpha.base_total_demand == 12.0
+
+    def test_analyze_one_seed(self, square_mesh_results, tmp_path, monkeypatch):
+        from netlab.metrics_cmd import analyze_one_seed
+
+        monkeypatch.delenv("NGRAPH_ENABLE_MAXFLOW", raising=False)
+        alpha, bac, _, latency, _, _, _ = analyze_one_seed(
+            square_mesh_results, tmp_path, False
+        )
+        assert alpha.alpha_star == 1.0
+        assert bac.offered == 12.0
+        assert len(bac.series) == 1001
+        assert latency.baseline["p50"] == 1.0
 
 
 class TestSampleTemplate:

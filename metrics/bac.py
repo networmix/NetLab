@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -93,11 +94,7 @@ def _compute_bac_stats(
     Dict[float, float],  # bw_at_probability_abs
     Dict[float, float],  # bw_at_probability_pct
 ]:
-    """Compute all BAC statistics from a delivered-bandwidth series.
-
-    This is the single source of truth for BAC math. Used for both
-    aggregate and per-flow computation.
-    """
+    """Compute BAC statistics for an aggregate or directional bandwidth series."""
     q_abs = {
         p: float(series.quantile(p, interpolation="lower")) for p in _QUANTILE_PROBS
     }
@@ -134,19 +131,35 @@ def _compute_bac_stats(
     return q_abs, q_pct, avail, auc_norm, bw_abs, bw_pct
 
 
-def _flow_label(flow_source: str) -> str:
-    """Extract a readable directional label from a flow's source field.
+def _flow_label(flow_source: str, flow_destination: str) -> str:
+    """Build a directional label for pairwise or combine-mode endpoints.
 
     Flow source format: ``_src_<source_pattern>|<target_pattern>|<hash>``
     Returns label like ``abc1/rsw>xyz1/rsw``.
     """
-    demand_id = flow_source.removeprefix("_src_").removeprefix("_snk_")
+    demand_id = flow_source.removeprefix("_src_")
     parts = demand_id.split("|")
-    if len(parts) >= 2:
+    if (
+        flow_source.startswith("_src_")
+        and flow_destination == f"_snk_{demand_id}"
+        and len(parts) == 3
+    ):
         src_part = parts[0].strip("^$")
         dst_part = parts[1].strip("^$")
         return f"{src_part}>{dst_part}"
-    return demand_id[:30]
+    return f"{flow_source}>{flow_destination}"
+
+
+def _delivered_by_pair(iteration: dict) -> Dict[Tuple[str, str], float]:
+    """Sum delivered volume by direction, including multiple priority classes."""
+    pairs: Dict[Tuple[str, str], float] = {}
+    for rec in iteration.get("flows", []) or []:
+        src = rec.get("source", "")
+        dst = rec.get("destination", "")
+        if src and dst and src != dst:
+            pair = (src, dst)
+            pairs[pair] = pairs.get(pair, 0.0) + float(rec.get("placed", 0.0))
+    return pairs
 
 
 def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
@@ -181,35 +194,32 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
     q_abs, q_pct, avail, auc_norm, bw_abs, bw_pct = _compute_bac_stats(s, offered)
 
     # ── Per-flow series ──
-    # Build baseline per-flow map: source_field → (label, baseline_placed)
-    flow_map: Dict[str, Tuple[str, float]] = {}
-    for rec in baseline.get("flows", []) or []:
-        src = rec.get("source", "")
-        dst = rec.get("destination", "")
-        if not src or not dst or src == dst:
-            continue
-        placed = float(rec.get("placed", 0.0))
-        if placed <= 0:
-            continue
-        flow_map[src] = (_flow_label(src), placed)
+    # Aggregate priority classes by source/destination pair.
+    flow_map = {
+        pair: placed
+        for pair, placed in _delivered_by_pair(baseline).items()
+        if placed > 0
+    }
+    labels = {pair: _flow_label(*pair) for pair in flow_map}
+    label_counts = Counter(labels.values())
 
     per_flow: Dict[str, BacResult] = {}
     if len(flow_map) > 1:
         # Only compute per-flow when there are multiple flows to separate
-        flow_series: Dict[str, List[float]] = {
-            src: [bl_placed] for src, (_label, bl_placed) in flow_map.items()
+        flow_series: Dict[Tuple[str, str], List[float]] = {
+            pair: [bl_placed] for pair, bl_placed in flow_map.items()
         }
 
         for it in expanded:
-            it_flows = {f["source"]: f for f in it.get("flows", []) or []}
-            for src, (_label, _bl_placed) in flow_map.items():
-                if src in it_flows:
-                    flow_series[src].append(float(it_flows[src].get("placed", 0.0)))
-                else:
-                    flow_series[src].append(0.0)
+            it_flows = _delivered_by_pair(it)
+            for pair in flow_map:
+                flow_series[pair].append(it_flows.get(pair, 0.0))
 
-        for src, (label, bl_placed) in flow_map.items():
-            fs = pd.Series(flow_series[src], dtype=float)
+        for pair, bl_placed in flow_map.items():
+            label = labels[pair]
+            if label_counts[label] > 1:
+                label = f"{label} {pair!r}"
+            fs = pd.Series(flow_series[pair], dtype=float)
             fs.index.name = "iteration"
             fq_abs, fq_pct, favail, fauc, fbw_abs, fbw_pct = _compute_bac_stats(
                 fs, bl_placed

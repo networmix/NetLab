@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from metrics.msd import AlphaResult, compute_alpha_star
 
 
@@ -12,8 +14,8 @@ def test_alpha_from_msd_baseline_with_base_total() -> None:
                 "data": {
                     "alpha_star": 1.3,
                     "base_demands": [
-                        {"demand": 10.0},
-                        {"demand": 5.5},
+                        {"volume": 10.0},
+                        {"volume": 5.5},
                     ],
                 }
             }
@@ -25,28 +27,14 @@ def test_alpha_from_msd_baseline_with_base_total() -> None:
     assert math.isclose(out.base_total_demand, 15.5)
 
 
-def test_alpha_from_probes_when_no_msd_alpha() -> None:
-    # No alpha_star in msd_baseline, but have probes with feasible entries
-    res = {
-        "steps": {
-            "msd_baseline": {"data": {}},
-            "tm_placement": {
-                "metadata": {
-                    "probes": [
-                        {"alpha": 1.0, "feasible": True},
-                        {"alpha": 1.2, "feasible": True},
-                        {"alpha": 1.1, "feasible": False},
-                    ]
-                }
-            },
-        }
-    }
-    out = compute_alpha_star(res)
-    assert out.source == "probes"
-    assert math.isclose(out.alpha_star, 1.2)
+@pytest.mark.parametrize(
+    "data", [{}, {"alpha_star": 1.0}, {"alpha_star": 1.0, "base_demands": [{}]}]
+)
+def test_alpha_requires_current_msd_data(data: dict) -> None:
+    with pytest.raises(ValueError, match="requires alpha_star and base_demands"):
+        compute_alpha_star({"steps": {"msd_baseline": {"data": data}}})
 
 
-def test_alpha_unknown_without_signals() -> None:
-    out = compute_alpha_star({"steps": {}})
-    assert out.source == "unknown"
-    assert math.isnan(out.alpha_star)
+def test_alpha_requires_msd_baseline() -> None:
+    with pytest.raises(ValueError, match="requires alpha_star and base_demands"):
+        compute_alpha_star({"steps": {}})

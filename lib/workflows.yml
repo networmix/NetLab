@@ -1,10 +1,9 @@
 design_analysis_brief:
-  - step_type: NetworkStats
+  - type: NetworkStats
     name: network_statistics
-  - step_type: MaximumSupportedDemand
+  - type: MaximumSupportedDemand
     name: msd_baseline
-    matrix_name: baseline_traffic_matrix
-    acceptance_rule: hard
+    demand_set: baseline_traffic_matrix
     alpha_start: 1.0
     growth_factor: 2.0
     alpha_min: 0.001
@@ -12,23 +11,18 @@ design_analysis_brief:
     resolution: 0.05
     max_bracket_iters: 16
     max_bisect_iters: 32
-    seeds_per_alpha: 1
-    placement_rounds: 2
-  - step_type: TrafficMatrixPlacement
+  - type: TrafficMatrixPlacement
     name: tm_placement
-    seed: 42
-    matrix_name: baseline_traffic_matrix
+    demand_set: baseline_traffic_matrix
     failure_policy: mc_baseline
     iterations: 1000
     parallelism: 7
-    placement_rounds: auto
-    baseline: true
     store_failure_patterns: false
     include_flow_details: true
     include_used_edges: false
     alpha_from_step: msd_baseline
     alpha_from_field: data.alpha_star
-  - step_type: CostPower
+  - type: CostPower
     name: cost_power
     include_disabled: true
     aggregation_level: 2

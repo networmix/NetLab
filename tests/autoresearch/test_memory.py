@@ -1,4 +1,4 @@
-"""Tests for memory module — covers every acceptance-criteria row."""
+"""Tests for research memory storage, evidence rules, and prompt rendering."""
 
 from __future__ import annotations
 

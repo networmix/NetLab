@@ -6,8 +6,7 @@
       "execution_order": 0,
       "scenario_seed": 42,
       "step_seed": 2022406077,
-      "seed_source": "scenario-derived",
-      "active_seed": 2022406077
+      "seed_source": "scenario-derived"
     },
     "tm_lh_path": {
       "step_type": "TrafficMatrixPlacement",
@@ -15,8 +14,7 @@
       "execution_order": 1,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     },
     "tm_1x_bb": {
       "step_type": "TrafficMatrixPlacement",
@@ -24,19 +22,17 @@
       "execution_order": 2,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     }
   },
   "steps": {
     "msd_baseline": {
       "metadata": {
-        "duration_sec": 0.0008020401000976562
+        "duration_sec": 0.0007808208465576172
       },
       "data": {
         "alpha_star": 3.0,
         "context": {
-          "acceptance_rule": "hard",
           "alpha_start": 1.0,
           "growth_factor": 2.0,
           "alpha_min": 1e-06,
@@ -44,27 +40,32 @@
           "resolution": 0.01,
           "max_bracket_iters": 32,
           "max_bisect_iters": 32,
-          "demand_set": "baseline_traffic_matrix",
-          "placement_rounds": "auto"
+          "demand_set": "baseline_traffic_matrix"
         },
         "base_demands": [
           {
-            "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+            "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
             "source": "^abc1/rsw$",
             "target": "^xyz1/rsw$",
             "volume": 100.0,
-            "mode": "combine",
             "priority": 0,
-            "flow_policy": "TE_WCMP_UNLIM"
+            "mode": "combine",
+            "group_mode": "flatten",
+            "flow_policy": "TE_WCMP_UNLIM",
+            "static_paths": [],
+            "attrs": {}
           },
           {
-            "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+            "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
             "source": "^xyz1/rsw$",
             "target": "^abc1/rsw$",
             "volume": 100.0,
-            "mode": "combine",
             "priority": 0,
-            "flow_policy": "TE_WCMP_UNLIM"
+            "mode": "combine",
+            "group_mode": "flatten",
+            "flow_policy": "TE_WCMP_UNLIM",
+            "static_paths": [],
+            "attrs": {}
           }
         ],
         "probes": [
@@ -132,9 +133,13 @@
         "parallelism": 1,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "fm_lh_path",
-        "execution_time": 0.00033736228942871094,
+        "execution_time": 0.0002608299255371094,
         "unique_patterns": 2,
-        "duration_sec": 0.0007271766662597656
+        "occurrence_counts": [
+          5,
+          5
+        ],
+        "duration_sec": 0.0005931854248046875
       },
       "data": {
         "baseline": {
@@ -147,8 +152,8 @@
           "occurrence_count": 1,
           "flows": [
             {
-              "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -160,8 +165,8 @@
               "data": {}
             },
             {
-              "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -184,20 +189,20 @@
         },
         "flow_results": [
           {
-            "failure_id": "4a0abc7ae1cd7e46",
+            "failure_id": "88c28b1a2b6a4de7",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "bb/abc1/pl2|bb/xyz1/pl2|EHOHqMgfQiqyUJWGTuJh5A",
-                "bb/abc1/pl1|bb/xyz1/pl1|-L-xtjX7R92VSac1ziYrwQ"
+                "bb/abc1/pl1|bb/xyz1/pl1|0",
+                "bb/abc1/pl2|bb/xyz1/pl2|0"
               ]
             },
             "failure_trace": null,
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 100.0,
@@ -208,8 +213,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 100.0,
@@ -230,20 +235,20 @@
             "data": {}
           },
           {
-            "failure_id": "eca6a62f4b17e87c",
+            "failure_id": "466b1a34af1a7089",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "bb/abc1/pl2|bb/xyz1/pl2|Eh8E5pYySU2rUENZhhSsxw",
-                "bb/abc1/pl1|bb/xyz1/pl1|tyrL1xo_QNaFtdiK1BBMcg"
+                "bb/abc1/pl1|bb/xyz1/pl1|1",
+                "bb/abc1/pl2|bb/xyz1/pl2|1"
               ]
             },
             "failure_trace": null,
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 200.0,
@@ -254,8 +259,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 200.0,
@@ -278,29 +283,32 @@
         ],
         "context": {
           "demand_set": "baseline_traffic_matrix",
-          "placement_rounds": "auto",
           "include_flow_details": true,
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "source": "^abc1/rsw$",
               "target": "^xyz1/rsw$",
               "volume": 100.0,
-              "mode": "combine",
               "priority": 0,
+              "mode": "combine",
+              "group_mode": "flatten",
               "flow_policy": "TE_WCMP_UNLIM",
-              "group_mode": "flatten"
+              "static_paths": [],
+              "attrs": {}
             },
             {
-              "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "source": "^xyz1/rsw$",
               "target": "^abc1/rsw$",
               "volume": 100.0,
-              "mode": "combine",
               "priority": 0,
+              "mode": "combine",
+              "group_mode": "flatten",
               "flow_policy": "TE_WCMP_UNLIM",
-              "group_mode": "flatten"
+              "static_paths": [],
+              "attrs": {}
             }
           ],
           "alpha": 3.0,
@@ -314,9 +322,15 @@
         "parallelism": 1,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "fm_1x_bb",
-        "execution_time": 0.00048828125,
+        "execution_time": 0.0003719329833984375,
         "unique_patterns": 4,
-        "duration_sec": 0.0008680820465087891
+        "occurrence_counts": [
+          5,
+          9,
+          5,
+          1
+        ],
+        "duration_sec": 0.0007352828979492188
       },
       "data": {
         "baseline": {
@@ -329,8 +343,8 @@
           "occurrence_count": 1,
           "flows": [
             {
-              "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -342,8 +356,8 @@
               "data": {}
             },
             {
-              "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -377,8 +391,8 @@
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -390,8 +404,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -424,8 +438,8 @@
             "occurrence_count": 9,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -437,8 +451,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -471,8 +485,8 @@
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -484,8 +498,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -518,8 +532,8 @@
             "occurrence_count": 1,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -531,8 +545,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -556,29 +570,32 @@
         ],
         "context": {
           "demand_set": "baseline_traffic_matrix",
-          "placement_rounds": "auto",
           "include_flow_details": true,
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+              "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "source": "^abc1/rsw$",
               "target": "^xyz1/rsw$",
               "volume": 100.0,
-              "mode": "combine",
               "priority": 0,
+              "mode": "combine",
+              "group_mode": "flatten",
               "flow_policy": "TE_WCMP_UNLIM",
-              "group_mode": "flatten"
+              "static_paths": [],
+              "attrs": {}
             },
             {
-              "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+              "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "source": "^xyz1/rsw$",
               "target": "^abc1/rsw$",
               "volume": 100.0,
-              "mode": "combine",
               "priority": 0,
+              "mode": "combine",
+              "group_mode": "flatten",
               "flow_policy": "TE_WCMP_UNLIM",
-              "group_mode": "flatten"
+              "static_paths": [],
+              "attrs": {}
             }
           ],
           "alpha": 3.0,
@@ -593,25 +610,25 @@
       "fm_lh_path": {
         "attrs": {},
         "expand_groups": false,
-        "expand_children": false,
         "modes": [
           {
             "weight": 1.0,
             "rules": [
               {
                 "scope": "risk_group",
-                "logic": "or",
+                "match": {
+                  "logic": "or",
+                  "conditions": [
+                    {
+                      "attr": "type",
+                      "op": "==",
+                      "value": "long_haul_path"
+                    }
+                  ]
+                },
                 "mode": "choice",
                 "probability": 1.0,
-                "count": 1,
-                "path": null,
-                "conditions": [
-                  {
-                    "attr": "type",
-                    "op": "==",
-                    "value": "long_haul_path"
-                  }
-                ]
+                "count": 1
               }
             ],
             "attrs": {}
@@ -621,25 +638,25 @@
       "fm_1x_bb": {
         "attrs": {},
         "expand_groups": false,
-        "expand_children": false,
         "modes": [
           {
             "weight": 1.0,
             "rules": [
               {
                 "scope": "node",
-                "logic": "or",
+                "match": {
+                  "logic": "or",
+                  "conditions": [
+                    {
+                      "attr": "role",
+                      "op": "==",
+                      "value": "bb"
+                    }
+                  ]
+                },
                 "mode": "choice",
                 "probability": 1.0,
-                "count": 1,
-                "path": null,
-                "conditions": [
-                  {
-                    "attr": "role",
-                    "op": "==",
-                    "value": "bb"
-                  }
-                ]
+                "count": 1
               }
             ],
             "attrs": {}
@@ -650,25 +667,27 @@
     "demands": {
       "baseline_traffic_matrix": [
         {
-          "id": "^abc1/rsw$|^xyz1/rsw$|zjatuP9aTm2WPUBg7iNqMA",
+          "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
           "source": "^abc1/rsw$",
           "target": "^xyz1/rsw$",
           "volume": 100.0,
           "priority": 0,
           "mode": "combine",
           "group_mode": "flatten",
-          "flow_policy": 3,
+          "flow_policy": "TE_WCMP_UNLIM",
+          "static_paths": [],
           "attrs": {}
         },
         {
-          "id": "^xyz1/rsw$|^abc1/rsw$|8KXhHNyTQJmCyo3OikMAxA",
+          "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
           "source": "^xyz1/rsw$",
           "target": "^abc1/rsw$",
           "volume": 100.0,
           "priority": 0,
           "mode": "combine",
           "group_mode": "flatten",
-          "flow_policy": 3,
+          "flow_policy": "TE_WCMP_UNLIM",
+          "static_paths": [],
           "attrs": {}
         }
       ]

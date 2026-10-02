@@ -8,11 +8,6 @@
 # Pattern: Two DC rows mesh to two BB planes, creating isolated groups
 #   DC-1, DC-2 → BB-1, BB-2 (full mesh)
 #   DC-3, DC-4 → BB-3, BB-4 (full mesh)
-#
-# WARNING: 50% FAILURE MODE
-#   - Traffic between DC groups has no alternative path
-#   - Single plane failure in a group = 50% capacity loss for that group
-#   - Despite 100% Alpha*, plane resilience is only 50%
 
 blueprints:
   DC_Row:

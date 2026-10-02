@@ -1,4 +1,4 @@
-# Balanced Dense: Skip-one rotation for high resilience with even distribution
+# Balanced Dense: Skip-one rotation with equal BB connection counts
 #
 # Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
@@ -10,14 +10,7 @@
 #   DC-2,6 → BB 1,3,4 in all planes (skip BB 2)
 #   DC-3,7 → BB 1,2,4 in all planes (skip BB 3)
 #   DC-4,8 → BB 1,2,3 in all planes (skip BB 4)
-#   DC-9 → unconnected (enables perfect even distribution)
-#
-# Trade-offs:
-#   + Best DC-BB link resilience (99.82%) among balanced patterns
-#   + 3 BB options per plane provides excellent path redundancy
-#   + Perfectly even BB distribution (24 links each)
-#   - Higher link count than semi-dense (but still < full_mesh)
-#   - DC node 9 unconnected (8/9 DC nodes used)
+#   DC-9 → unconnected
 
 blueprints:
   DC_Row:

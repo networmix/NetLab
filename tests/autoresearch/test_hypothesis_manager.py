@@ -87,7 +87,7 @@ class TestHypothesisManager:
         assert (tmp_path / "cycles" / "001" / "status.yml").exists()
         assert (tmp_path / "cycle_log.jsonl").exists()
 
-        # Metrics report contains verified numbers
+        # Metrics report includes calculated capacity and bandwidth.
         report = (tmp_path / "cycles" / "001" / "metrics_report.md").read_text()
         assert "alpha_star" in report
 

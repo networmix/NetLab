@@ -6,7 +6,7 @@ matches the expected structure derived from config parameters.
 Two validation levels:
   Level 1: Parse ngraph inspect output for total node/link counts.
   Level 2: Load via Scenario.from_yaml(), verify per-layer counts
-           and per-node degree distributions.
+           and mesh-group membership.
 """
 
 from __future__ import annotations
@@ -199,8 +199,8 @@ def validate_expanded_network(
 ) -> list[str]:
     """Validate an expanded Network object against expected counts.
 
-    Level 2 validation: thorough, requires loading via Scenario.from_yaml().
-    Checks per-layer link counts and per-node degree distributions.
+    Check total node/link counts and links per layer. Load the network with
+    Scenario.from_yaml() before calling this function.
     """
     errors = []
 

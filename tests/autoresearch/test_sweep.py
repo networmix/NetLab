@@ -1,15 +1,18 @@
-"""Tests for Phase 2 sweep module."""
+"""Tests for DC-BB simulation sweeps."""
 
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from netlab.autoresearch.structural_analysis import run_structural_analysis
 from netlab.autoresearch.sweep import (
     ResultEntry,
     SweepConfig,
     _dedup_configs,
+    _extract_step_metrics,
     print_results,
 )
 
@@ -99,3 +102,48 @@ class TestPrintResults:
         captured = capsys.readouterr()
         assert "1 success / 2 total" in captured.out
         assert "Failed: 1" in captured.out
+
+
+def test_step_metrics_preserve_destinations_and_weights():
+    results = {
+        "steps": {
+            "tm": {
+                "data": {
+                    "baseline": {
+                        "flows": [
+                            {
+                                "source": "A",
+                                "destination": "B",
+                                "demand": 100.0,
+                                "placed": 100.0,
+                            },
+                            {
+                                "source": "A",
+                                "destination": "C",
+                                "demand": 200.0,
+                                "placed": 200.0,
+                            },
+                        ]
+                    },
+                    "flow_results": [
+                        {
+                            "occurrence_count": 2,
+                            "failure_state": {},
+                            "flows": [
+                                {"source": "A", "destination": "B", "placed": 0.0},
+                                {"source": "A", "destination": "C", "placed": 100.0},
+                            ],
+                        }
+                    ],
+                }
+            }
+        }
+    }
+    metrics = _extract_step_metrics(results, "tm")
+    assert metrics["auc"] == pytest.approx(5 / 9, abs=1e-6)
+    assert set(metrics["flow_bac"]) == {"A>B", "A>C"}
+    assert metrics["flow_bac"]["A>B"]["auc"] == pytest.approx(1 / 3, abs=1e-6)
+    assert metrics["flow_bac"]["A>C"]["auc"] == pytest.approx(2 / 3, abs=1e-6)
+    assert metrics["flow_bac"]["A>B"]["pct"][49] == 0.0
+    assert metrics["flow_bac"]["A>C"]["pct"][49] == 0.5
+    assert metrics["failure_stats"]["event_count"] == 2

@@ -1,6 +1,6 @@
 # NetLab Development Makefile
 
-.PHONY: help venv clean-venv dev install check check-ci lint format test qt build clean check-dist publish-test publish info hooks check-python
+.PHONY: help venv clean-venv dev install check check-ci lint format test qt build clean check-dist info hooks check-python
 
 .DEFAULT_GOAL := help
 
@@ -51,8 +51,6 @@ help:
 	@echo "  make build         - Build distribution packages"
 	@echo "  make clean         - Clean build artifacts and cache files"
 	@echo "  make check-dist    - Check distribution packages with twine"
-	@echo "  make publish-test  - Publish to Test PyPI"
-	@echo "  make publish       - Publish to PyPI"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make info          - Show project information"
@@ -154,24 +152,6 @@ check-dist:
 	@echo "🔍 Checking distribution packages..."
 	@if $(PYTHON) -c "import twine" >/dev/null 2>&1; then \
 		$(PYTHON) -m twine check dist/*; \
-	else \
-		echo "❌ twine not installed. Install dev dependencies with: make dev"; \
-		exit 1; \
-	fi
-
-publish-test:
-	@echo "📦 Publishing to Test PyPI..."
-	@if $(PYTHON) -c "import twine" >/dev/null 2>&1; then \
-		$(PYTHON) -m twine upload --repository testpypi dist/*; \
-	else \
-		echo "❌ twine not installed. Install dev dependencies with: make dev"; \
-		exit 1; \
-	fi
-
-publish:
-	@echo "🚀 Publishing to PyPI..."
-	@if $(PYTHON) -c "import twine" >/dev/null 2>&1; then \
-		$(PYTHON) -m twine upload dist/*; \
 	else \
 		echo "❌ twine not installed. Install dev dependencies with: make dev"; \
 		exit 1; \

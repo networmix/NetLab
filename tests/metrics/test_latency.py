@@ -51,10 +51,14 @@ def _latency_results() -> dict:
             "tm_placement": {
                 "metadata": {"iterations": 3, "unique_patterns": 2},
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": base_flows},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": base_flows,
+                    },
                     "flow_results": [
-                        {"failure_id": "f1", "flows": f1_flows},
-                        {"failure_id": "f2", "flows": f2_flows},
+                        {"occurrence_count": 1, "failure_id": "f1", "flows": f1_flows},
+                        {"occurrence_count": 1, "failure_id": "f2", "flows": f2_flows},
                     ],
                 },
             }
@@ -90,9 +94,7 @@ def test_compute_latency_stretch_correctness() -> None:
     #  (A,C): {20:0.5, 40:1.5} -> stretches {1.0:0.5, 2.0:1.5}
     # Combined sum weights = 7.0; weighted values [1.0 x 5.5, 2.0 x 1.5]
     # p50=1.0; p95=2.0; best_path_share=5.5/7≈0.785714; WES=(0*5.5 + 1.0*1.5)/7=1.5/7≈0.2142857
-    # Medians across failures (two values): p50=1.0, p95=1.75 (lower interpolation gives 1.5?), p99 similar.
-    # Because implementation uses discrete order and left-search, medians across [1.0,1.0] for p50,
-    # and [1.5,2.0] for p95/p99 → median=1.5.
+    # Failure medians: p50=1.0 and p95=p99=(1.5+2.0)/2=1.75.
     assert np.isclose(out.failures["p50"], 1.0)
     # Across failures: medians use arithmetic median for even counts
     assert np.isclose(out.failures["p95"], 1.75)
@@ -136,7 +138,7 @@ def test_latency_occurrence_count_weighting() -> None:
     - Failure f2 (count=2): stretch 1.0 (cost 10, volume 5)
 
     Without weighting: median of [2.0, 1.0] = 1.5
-    With weighting: median of [2.0]*8 + [1.0]*2 = 2.0 (8th value in sorted 10)
+    With weighting: median of [2.0]*8 + [1.0]*2 = 2.0 (both middle values in the sorted sample)
     """
     base_flows = [
         {
@@ -164,7 +166,11 @@ def test_latency_occurrence_count_weighting() -> None:
             "tm_placement": {
                 "metadata": {"iterations": 10, "unique_patterns": 2},
                 "data": {
-                    "baseline": {"failure_id": "baseline", "flows": base_flows},
+                    "baseline": {
+                        "occurrence_count": 1,
+                        "failure_id": "baseline",
+                        "flows": base_flows,
+                    },
                     "flow_results": [
                         {"failure_id": "f1", "occurrence_count": 8, "flows": f1_flows},
                         {"failure_id": "f2", "occurrence_count": 2, "flows": f2_flows},

@@ -1,25 +1,8 @@
-"""Cross-seed BAC aggregation and plotting (publishable figure).
+"""Plot pooled bandwidth availability across seeds.
 
-Approach (sound for our use case): pooled empirical BAC per scenario.
-
-Rationale:
-- Each seed runs the same Monte Carlo failure policy with the same number of
-  iterations (≈100). Each iteration is a draw from the same distribution of
-  failure patterns conditional on the scenario/topology.
-- Pooling all normalized delivered samples across seeds uniformly estimates the
-  population CDF of delivered/offered under that scenario. The availability
-  curve is then 1 − CDF. With identical iteration counts, this implicitly gives
-  equal weight per seed.
-- This avoids the artifact of positional medians across seeds and yields a
-  high-resolution tail (more samples ⇒ smoother BAC), which is critical around
-  p90–p99.
-
-For uncertainty visualization, we also compute per-seed availability curves on
-an x-grid and show the cross-seed IQR band.
-
-Usage:
-    python -m metrics.plot_cross_seed_bac scenarios_metrics \
-        --save scenarios_metrics/_figures/bac_all_cross_seed.png
+Samples are normalized by baseline delivery and capped at 100%. Pooling gives
+each sample equal weight, so seeds with more iterations contribute more weight.
+With at least three seeds, the plot includes an IQR band of per-seed curves.
 """
 
 from __future__ import annotations

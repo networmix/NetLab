@@ -1,13 +1,5 @@
-# Test 3: Test "combine" mode with multiple source/target nodes
-#
-# 2 DC nodes at each site, 1 BB node at each site
-# BB-BB link is the bottleneck (100)
-#
-# Demand: all DC-A to all DC-B using "combine" mode
-#
-# Expected:
-#   4 DC pairs (2×2), each gets 250 demand (1000/4)
-#   Bottleneck is 100, so Alpha* should be 100/1000 = 0.1
+# Combine-mode demand across two source and two destination DC nodes.
+# A 100 Gbps backbone link limits aggregate delivery.
 
 network:
   nodes:

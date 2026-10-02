@@ -207,23 +207,6 @@ class DcBbVisualizer(GraphVisualizer):
         self.positions = positions
         return positions
 
-    def _parse_node_id(self, node_id: str) -> dict:
-        """Parse node ID to extract DC row or BB plane."""
-        parts = node_id.split("/")
-        result = {}
-
-        if len(parts) >= 2:
-            if parts[0].startswith("Site"):
-                result["site"] = parts[0][-1]
-
-            layer_part = parts[1]
-            if layer_part.startswith("DC-"):
-                result["dc_id"] = int(layer_part.split("-")[1])
-            elif layer_part.startswith("BB-"):
-                result["bb_plane_id"] = int(layer_part.split("-")[1])
-
-        return result
-
     def _group_nodes(self) -> dict:
         """Group nodes by role, site, and ID."""
         groups = {
@@ -238,14 +221,12 @@ class DcBbVisualizer(GraphVisualizer):
             if not role or not site:
                 continue
 
-            parsed = self._parse_node_id(node)
-
             if role == "dc":
-                dc_id = parsed.get("dc_id", attrs.get("dc_row_id"))
+                dc_id = attrs.get("dc_row_id")
                 if dc_id is not None:
                     groups["dc"][site][dc_id].append(node)
             elif role == "bb":
-                plane_id = parsed.get("bb_plane_id", attrs.get("bb_plane_id"))
+                plane_id = attrs.get("bb_plane_id")
                 if plane_id is not None:
                     groups["bb"][site][plane_id].append(node)
 

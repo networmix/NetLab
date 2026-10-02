@@ -8,12 +8,6 @@
 # Pattern: DC nodes split by position
 #   DC nodes 1-5 → BB nodes 1,2 in all planes
 #   DC nodes 6-9 → BB nodes 3,4 in all planes
-#
-# WARNING: UNEVEN DISTRIBUTION
-#   - BB nodes 1,2 receive 20 DC connections each
-#   - BB nodes 3,4 receive only 16 DC connections each
-#   - This imbalance causes 10% Alpha* loss (90% of maximum)
-#   - Use balanced_semi_dense for even distribution with same d_DC
 
 blueprints:
   DC_Row:

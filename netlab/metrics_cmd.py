@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""
-netlab.metrics_cmd — Orchestrator for metric computation and reporting.
-
-This module ports the analysis workflow from the standalone script into a library
-function callable from the netlab CLI.
-"""
+"""Compute per-seed metrics, aggregate scenarios, and write tables and plots."""
 
 from __future__ import annotations
 
@@ -168,16 +163,16 @@ def analyze_one_seed(
         seen = set()
         base_total = 0.0
         for rec in base_demands:
-            src = str(rec.get("source_path", "")).strip()
-            dst = str(rec.get("sink_path", "")).strip()
+            src = str(rec.get("source", "")).strip()
+            dst = str(rec.get("target", "")).strip()
             if not src or not dst:
-                raise ValueError("Empty source_path/sink_path in base_demands entry")
+                raise ValueError("Empty source/target in base_demands entry")
             key = (src, dst, rec.get("mode", None), rec.get("priority", None))
             if key in seen:
                 duplicates.append(f"{src}→{dst}")
             seen.add(key)
             try:
-                dem = float(rec.get("demand", float("nan")))
+                dem = float(rec["volume"])
             except Exception:
                 dem = float("nan")
             if not np.isfinite(dem):
@@ -827,7 +822,7 @@ def run_metrics(
                     f"No BAC data found to plot for scenario '{scenario_stem}'"
                 )
 
-            # Cross-seed latency availability (p99) for this scenario
+            # Cross-seed latency exceedance (p99) for this scenario
             scen_lat_png = scen_dir / "Latency_p99.png"
             res_lat = _plot_cross_seed_latency(
                 out_root, metric="p99", only=[scenario_stem], save_to=scen_lat_png
@@ -895,7 +890,7 @@ def run_metrics(
     print(text, end="")
     print(f"Wrote project CSV: {project_csv}")
 
-    # Create and save comprehensive provenance information for metrics run
+    # Record inputs and analysis settings.
     metrics_provenance = _create_metrics_provenance(root, out_root, files, only)
 
     # Add scenarios and seeds analyzed
@@ -937,7 +932,7 @@ def print_summary_from_csv(
 
     # Baseline-normalized t-tests are printed above; project-level A vs B tests are available via CLI 'test'.
 
-    # Cross-seed figures (publishable) when plotting is enabled
+    # Cross-seed figures
     if plots:
         # Prefer cross-seed pooled BAC overlay for the summary figure
         from metrics.plot_bac_delta_vs_baseline import (
@@ -966,7 +961,7 @@ def print_summary_from_csv(
             raise ValueError("No BAC data found to plot")
         print(f"Saved BAC summary figure: {bac_path}")
 
-        # Latency availability figure (p99; PNG)
+        # Latency exceedance figure (p99; PNG)
         out_lat_png = fig_dir / "Latency_p99.png"
         lat_path = _plot_cross_seed_latency(out_root, metric="p99", save_to=out_lat_png)
         if lat_path is None:
@@ -1264,7 +1259,7 @@ def print_summary_from_csv(
 def _create_metrics_provenance(
     root: Path, out_root: Path, files: List[Path], only: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Create comprehensive provenance information for a metrics run."""
+    """Record source files, hashes, and settings for a metrics run."""
     cwd = Path.cwd()
     provenance: Dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),

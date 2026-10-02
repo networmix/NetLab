@@ -52,7 +52,7 @@ class TestMetricsReport:
 
 class TestAnalysisLoop:
     def test_produces_interpretation_and_next_hypothesis(self) -> None:
-        """LLM receives verified metrics and produces interpretation + next hypothesis."""
+        """The LLM receives the metrics report and returns an interpretation and next experiment."""
         results = _load_results()
         backend = MockBackend(
             [

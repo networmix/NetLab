@@ -1,5 +1,5 @@
 {
-  "alpha_star": 1.6875,
+  "alpha_star": 1.40625,
   "source": "msd_baseline",
   "base_total_demand": 90000.0
 }

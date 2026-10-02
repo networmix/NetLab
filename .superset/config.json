@@ -1,0 +1,5 @@
+{
+  "setup": ["bash .superset/workspace.sh setup"],
+  "teardown": ["bash .superset/workspace.sh teardown"],
+  "run": ["bash .superset/workspace.sh check"]
+}

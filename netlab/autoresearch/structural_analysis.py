@@ -1,11 +1,7 @@
-"""Phase 1: Structural analysis of DC-BB mesh group configurations.
+"""Evaluate DC-BB mesh layouts against connection-retention rules.
 
-Enumerates all valid (G, layout) combinations for each DC side,
-computes per-failure-type worst-case capacity loss, and classifies
-feasibility against the 75% retention / no-hanging rules.
-
-No simulation or LLM is needed — this is pure combinatorics over
-the mesh group geometry and failure domain alignment.
+Enumerate valid group counts and layouts, then compute worst-case connection
+loss from their geometry. This analysis does not run simulations.
 """
 
 from __future__ import annotations
@@ -42,13 +38,9 @@ class FailureFingerprint:
 
     @property
     def worst_feasibility(self) -> float:
-        """Worst-case loss for feasibility check.
+        """Maximum loss across plane-site, device-index, and single-device failures.
 
-        Excludes plane_group: a plane_group failure kills one mesh group
-        (e.g., 9/576 = 1.6% of FADUs), not the whole topology. The per-device
-        loss is 100% but the topology-wide impact is small. Feasibility
-        should focus on failure types where per-device loss reflects
-        meaningful capacity degradation: plane_site, device_index, single_device.
+        Plane-group failures are excluded from the feasibility rule.
         """
         return max(
             self.plane_site,
@@ -86,7 +78,7 @@ class ConfigResult:
 
 @dataclass
 class StructuralAnalysisResult:
-    """Complete Phase 1 output for one side."""
+    """Structural analysis results for one DC side."""
 
     side: str
     dc_rows: int
@@ -263,15 +255,7 @@ def analyze_side(
 def run_structural_analysis(
     config: DcBbScenarioConfig | None = None,
 ) -> dict[str, StructuralAnalysisResult]:
-    """Run Phase 1 structural analysis for both DC sides.
-
-    Args:
-        config: Optional config to extract grid dimensions from.
-            Uses defaults if None.
-
-    Returns:
-        Dict mapping side name to analysis result.
-    """
+    """Analyze both DC sides using the supplied configuration or its defaults."""
     if config is None:
         config = DcBbScenarioConfig()
 

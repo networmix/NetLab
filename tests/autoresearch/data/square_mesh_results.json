@@ -6,8 +6,7 @@
       "execution_order": 0,
       "scenario_seed": 42,
       "step_seed": 2022406077,
-      "seed_source": "scenario-derived",
-      "active_seed": 2022406077
+      "seed_source": "scenario-derived"
     },
     "tm_placement": {
       "step_type": "TrafficMatrixPlacement",
@@ -15,8 +14,7 @@
       "execution_order": 1,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     },
     "node_to_node_capacity_matrix": {
       "step_type": "MaxFlow",
@@ -24,19 +22,17 @@
       "execution_order": 2,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     }
   },
   "steps": {
     "msd_baseline": {
       "metadata": {
-        "duration_sec": 0.0006399154663085938
+        "duration_sec": 0.0005278587341308594
       },
       "data": {
         "alpha_star": 1.0,
         "context": {
-          "acceptance_rule": "hard",
           "alpha_start": 1.0,
           "growth_factor": 2.0,
           "alpha_min": 0.001,
@@ -44,18 +40,22 @@
           "resolution": 0.05,
           "max_bracket_iters": 16,
           "max_bisect_iters": 32,
-          "demand_set": "baseline_traffic_matrix",
-          "placement_rounds": 2
+          "demand_set": "baseline_traffic_matrix"
         },
         "base_demands": [
           {
-            "id": "^N([1-4])$|^N([1-4])$|dkJXIxbTQz-6HthFEsIgqw",
+            "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
             "source": "^N([1-4])$",
             "target": "^N([1-4])$",
             "volume": 12.0,
-            "mode": "pairwise",
             "priority": 0,
-            "flow_policy": null
+            "mode": "pairwise",
+            "group_mode": "flatten",
+            "flow_policy": null,
+            "static_paths": [],
+            "attrs": {
+              "euclidean_km": 10
+            }
           }
         ],
         "probes": [
@@ -103,9 +103,17 @@
         "parallelism": 8,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "single_link_failure",
-        "execution_time": 0.0019550323486328125,
+        "execution_time": 0.0015289783477783203,
         "unique_patterns": 6,
-        "duration_sec": 0.013847112655639648
+        "occurrence_counts": [
+          164,
+          180,
+          165,
+          183,
+          164,
+          144
+        ],
+        "duration_sec": 0.010584115982055664
       },
       "data": {
         "baseline": {
@@ -273,11 +281,11 @@
         },
         "flow_results": [
           {
-            "failure_id": "6d9f3cfac8351fbe",
+            "failure_id": "ca9ac02fcfaeb187",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+                "N1|N2|0"
               ]
             },
             "failure_trace": {
@@ -290,14 +298,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+                    "N1|N2|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -457,11 +464,11 @@
             "data": {}
           },
           {
-            "failure_id": "928d92ed50e90b11",
+            "failure_id": "d557aab4272465f9",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+                "N3|N4|0"
               ]
             },
             "failure_trace": {
@@ -474,14 +481,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+                    "N3|N4|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 180,
@@ -637,11 +643,11 @@
             "data": {}
           },
           {
-            "failure_id": "e3cd717666c3ac61",
+            "failure_id": "7e53330c88ad16d2",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+                "N2|N4|0"
               ]
             },
             "failure_trace": {
@@ -654,14 +660,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+                    "N2|N4|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 165,
@@ -821,11 +826,11 @@
             "data": {}
           },
           {
-            "failure_id": "a1015d1037998a6f",
+            "failure_id": "2fd271c2e9b3d7ba",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+                "N2|N3|0"
               ]
             },
             "failure_trace": {
@@ -838,14 +843,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+                    "N2|N3|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 183,
@@ -903,11 +907,9 @@
                 "destination": "N3",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 1.0,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "2": 1.0
-                },
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
                 "data": {}
               },
               {
@@ -915,10 +917,10 @@
                 "destination": "N4",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 0.5,
-                "dropped": 0.5,
+                "placed": 1.0,
+                "dropped": 0.0,
                 "cost_distribution": {
-                  "1": 0.5
+                  "1": 1.0
                 },
                 "data": {}
               },
@@ -939,11 +941,9 @@
                 "destination": "N2",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 1.0,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "2": 1.0
-                },
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
                 "data": {}
               },
               {
@@ -975,9 +975,11 @@
                 "destination": "N2",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 0.0,
-                "dropped": 1.0,
-                "cost_distribution": {},
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
                 "data": {}
               },
               {
@@ -995,19 +997,19 @@
             ],
             "summary": {
               "total_demand": 12.0,
-              "total_placed": 10.5,
-              "overall_ratio": 0.875,
+              "total_placed": 10.0,
+              "overall_ratio": 0.8333333333333334,
               "dropped_flows": 2,
               "num_flows": 12
             },
             "data": {}
           },
           {
-            "failure_id": "8dbcb9c1d2d51fb0",
+            "failure_id": "ffd11e1ea6e582ec",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+                "N1|N3|0"
               ]
             },
             "failure_trace": {
@@ -1020,14 +1022,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+                    "N1|N3|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -1187,11 +1188,11 @@
             "data": {}
           },
           {
-            "failure_id": "b5759f0408091fcf",
+            "failure_id": "0eb8b5bf0fdfdebb",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+                "N1|N4|0"
               ]
             },
             "failure_trace": {
@@ -1204,14 +1205,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+                    "N1|N4|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 144,
@@ -1245,11 +1245,9 @@
                 "destination": "N4",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 1.0,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "2": 1.0
-                },
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
                 "data": {}
               },
               {
@@ -1281,9 +1279,11 @@
                 "destination": "N4",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 0.0,
-                "dropped": 1.0,
-                "cost_distribution": {},
+                "placed": 1.0,
+                "dropped": 0.0,
+                "cost_distribution": {
+                  "1": 1.0
+                },
                 "data": {}
               },
               {
@@ -1327,11 +1327,9 @@
                 "destination": "N1",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 1.0,
-                "dropped": 0.0,
-                "cost_distribution": {
-                  "2": 1.0
-                },
+                "placed": 0.0,
+                "dropped": 1.0,
+                "cost_distribution": {},
                 "data": {}
               },
               {
@@ -1339,10 +1337,10 @@
                 "destination": "N2",
                 "priority": 0,
                 "demand": 1.0,
-                "placed": 0.5,
-                "dropped": 0.5,
+                "placed": 1.0,
+                "dropped": 0.0,
                 "cost_distribution": {
-                  "1": 0.5
+                  "1": 1.0
                 },
                 "data": {}
               },
@@ -1361,8 +1359,8 @@
             ],
             "summary": {
               "total_demand": 12.0,
-              "total_placed": 10.5,
-              "overall_ratio": 0.875,
+              "total_placed": 10.0,
+              "overall_ratio": 0.8333333333333334,
               "dropped_flows": 2,
               "num_flows": 12
             },
@@ -1371,19 +1369,22 @@
         ],
         "context": {
           "demand_set": "baseline_traffic_matrix",
-          "placement_rounds": "auto",
           "include_flow_details": true,
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^N([1-4])$|^N([1-4])$|dkJXIxbTQz-6HthFEsIgqw",
+              "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
               "source": "^N([1-4])$",
               "target": "^N([1-4])$",
               "volume": 12.0,
-              "mode": "pairwise",
               "priority": 0,
+              "mode": "pairwise",
+              "group_mode": "flatten",
               "flow_policy": null,
-              "group_mode": "flatten"
+              "static_paths": [],
+              "attrs": {
+                "euclidean_km": 10
+              }
             }
           ],
           "alpha": 1.0,
@@ -1397,9 +1398,17 @@
         "parallelism": 8,
         "analysis_function": "max_flow_analysis",
         "policy_name": "single_link_failure",
-        "execution_time": 0.004663705825805664,
+        "execution_time": 0.002185821533203125,
         "unique_patterns": 6,
-        "duration_sec": 0.016952991485595703
+        "occurrence_counts": [
+          164,
+          180,
+          165,
+          183,
+          164,
+          144
+        ],
+        "duration_sec": 0.011137008666992188
       },
       "data": {
         "baseline": {
@@ -1425,11 +1434,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  "N1|N2|0:fwd",
+                  "N1|N3|0:fwd",
+                  "N1|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1447,11 +1454,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  "N1|N2|0:fwd",
+                  "N1|N3|0:fwd",
+                  "N1|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1470,11 +1475,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  "N1|N2|0:fwd",
+                  "N1|N3|0:fwd",
+                  "N1|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1493,11 +1496,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  "N1|N2|0:rev",
+                  "N2|N3|0:fwd",
+                  "N2|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1516,11 +1517,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  "N1|N2|0:rev",
+                  "N2|N3|0:fwd",
+                  "N2|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1538,11 +1537,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  "N1|N2|0:rev",
+                  "N2|N3|0:fwd",
+                  "N2|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1560,11 +1557,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                  "N1|N3|0:rev",
+                  "N2|N3|0:rev",
+                  "N3|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1583,11 +1578,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                  "N1|N3|0:rev",
+                  "N2|N3|0:rev",
+                  "N3|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1606,11 +1599,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                  "N1|N3|0:rev",
+                  "N2|N3|0:rev",
+                  "N3|N4|0:fwd"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1629,11 +1620,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  "N1|N4|0:rev",
+                  "N2|N4|0:rev",
+                  "N3|N4|0:rev"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1651,11 +1640,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  "N1|N4|0:rev",
+                  "N2|N4|0:rev",
+                  "N3|N4|0:rev"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1674,11 +1661,9 @@
               },
               "data": {
                 "edges": [
-                  "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                  "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                  "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                  "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                  "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                  "N1|N4|0:rev",
+                  "N2|N4|0:rev",
+                  "N3|N4|0:rev"
                 ],
                 "edges_kind": "min_cut"
               }
@@ -1735,11 +1720,11 @@
         },
         "flow_results": [
           {
-            "failure_id": "6d9f3cfac8351fbe",
+            "failure_id": "ca9ac02fcfaeb187",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+                "N1|N2|0"
               ]
             },
             "failure_trace": {
@@ -1752,14 +1737,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ"
+                    "N1|N2|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -1777,10 +1761,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N3|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1798,9 +1780,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N3|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1818,8 +1799,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd"
+                    "N1|N3|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1837,10 +1818,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N2|N3|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1858,8 +1837,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N2|N3|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1877,9 +1856,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N2|N3|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1897,9 +1875,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N1|N3|0:rev",
+                    "N1|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1917,8 +1894,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N2|N3|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1936,9 +1913,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N2|N4|0:fwd",
+                    "N1|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1956,8 +1933,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N1|N3|0:rev",
+                    "N1|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1975,9 +1952,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N2|N3|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -1995,9 +1971,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N3|0:fwd",
+                    "N2|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2053,11 +2029,11 @@
             "data": {}
           },
           {
-            "failure_id": "928d92ed50e90b11",
+            "failure_id": "d557aab4272465f9",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+                "N3|N4|0"
               ]
             },
             "failure_trace": {
@@ -2070,14 +2046,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w"
+                    "N3|N4|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 180,
@@ -2095,9 +2070,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N2|0:fwd",
+                    "N1|N3|0:fwd",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2115,9 +2090,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                    "N1|N3|0:fwd",
+                    "N2|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2135,8 +2109,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N1|N4|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2154,9 +2128,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev"
+                    "N1|N2|0:rev",
+                    "N2|N4|0:fwd",
+                    "N1|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2174,8 +2148,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                    "N1|N3|0:fwd",
+                    "N2|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2193,9 +2167,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N1|N4|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2213,9 +2186,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                    "N1|N3|0:rev",
+                    "N2|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2233,8 +2205,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                    "N1|N3|0:rev",
+                    "N2|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2252,10 +2224,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                    "N1|N3|0:rev",
+                    "N2|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2273,8 +2243,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N4|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2292,9 +2262,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N4|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2312,10 +2281,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N4|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2371,11 +2338,11 @@
             "data": {}
           },
           {
-            "failure_id": "e3cd717666c3ac61",
+            "failure_id": "7e53330c88ad16d2",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+                "N2|N4|0"
               ]
             },
             "failure_trace": {
@@ -2388,14 +2355,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw"
+                    "N2|N4|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 165,
@@ -2414,8 +2380,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                    "N1|N2|0:fwd",
+                    "N2|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2433,11 +2399,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N2|0:fwd",
+                    "N1|N3|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2456,8 +2420,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N1|N4|0:fwd",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2476,8 +2440,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                    "N1|N2|0:rev",
+                    "N2|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2496,8 +2460,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                    "N1|N2|0:rev",
+                    "N2|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2514,10 +2478,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N1|N2|0:rev",
+                    "N2|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2535,11 +2497,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N1|N3|0:rev",
+                    "N2|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2558,8 +2518,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                    "N1|N2|0:fwd",
+                    "N2|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2578,8 +2538,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N1|N4|0:fwd",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2598,8 +2558,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2616,10 +2576,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2638,8 +2596,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2695,11 +2653,11 @@
             "data": {}
           },
           {
-            "failure_id": "a1015d1037998a6f",
+            "failure_id": "2fd271c2e9b3d7ba",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+                "N2|N3|0"
               ]
             },
             "failure_trace": {
@@ -2712,14 +2670,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ"
+                    "N2|N3|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 183,
@@ -2737,8 +2694,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N2|0:fwd",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2756,9 +2713,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N3|0:fwd",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2776,9 +2732,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N1|N3|0:fwd",
+                    "N1|N4|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2796,8 +2752,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N1|N2|0:rev",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2815,10 +2771,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N2|0:rev",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2836,9 +2790,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N1|N2|0:rev",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2856,9 +2809,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N1|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2876,10 +2828,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2897,8 +2847,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N1|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2916,9 +2866,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N3|0:rev",
+                    "N1|N4|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2936,9 +2886,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N2|0:fwd",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -2956,8 +2905,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N3|0:fwd",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3013,11 +2962,11 @@
             "data": {}
           },
           {
-            "failure_id": "8dbcb9c1d2d51fb0",
+            "failure_id": "ffd11e1ea6e582ec",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+                "N1|N3|0"
               ]
             },
             "failure_trace": {
@@ -3030,14 +2979,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg"
+                    "N1|N3|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -3056,8 +3004,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd"
+                    "N1|N2|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3074,10 +3022,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N2|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3096,8 +3042,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd"
+                    "N1|N2|0:fwd",
+                    "N1|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3116,8 +3062,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N1|N2|0:rev",
+                    "N1|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3136,8 +3082,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N2|N3|0:fwd",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3155,11 +3101,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:fwd",
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N1|N2|0:rev",
+                    "N2|N3|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3176,10 +3120,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N2|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3198,8 +3140,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N2|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3218,8 +3160,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N2|N3|0:rev",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3238,8 +3180,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev"
+                    "N1|N2|0:rev",
+                    "N1|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3257,11 +3199,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N1|N4|0:rev",
+                    "N2|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3280,8 +3220,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N2|N3|0:fwd",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3337,11 +3277,11 @@
             "data": {}
           },
           {
-            "failure_id": "b5759f0408091fcf",
+            "failure_id": "0eb8b5bf0fdfdebb",
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+                "N1|N4|0"
               ]
             },
             "failure_trace": {
@@ -3354,14 +3294,13 @@
                   "mode": "choice",
                   "matched_count": 6,
                   "selected_ids": [
-                    "N1|N4|bEDAMEieQjWJHGGpoN4bGg"
+                    "N1|N4|0"
                   ]
                 }
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 144,
@@ -3379,8 +3318,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd"
+                    "N1|N2|0:fwd",
+                    "N1|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3398,9 +3337,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd"
+                    "N1|N2|0:fwd",
+                    "N1|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3418,10 +3356,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:fwd",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N1|N2|0:fwd",
+                    "N1|N3|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3439,8 +3375,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev"
+                    "N1|N2|0:rev",
+                    "N1|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3458,9 +3394,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:fwd",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd"
+                    "N1|N3|0:fwd",
+                    "N2|N3|0:fwd",
+                    "N2|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3478,9 +3414,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:fwd",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N2|N4|0:fwd",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3498,9 +3433,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev"
+                    "N1|N2|0:rev",
+                    "N1|N3|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3518,9 +3452,9 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev"
+                    "N1|N3|0:rev",
+                    "N2|N3|0:rev",
+                    "N2|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3538,8 +3472,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:fwd",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:fwd"
+                    "N2|N4|0:fwd",
+                    "N3|N4|0:fwd"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3557,10 +3491,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N1|N2|8df2zyzXTCyvpk4o0sw0rQ:rev",
-                    "N1|N3|JKYvpt8hQ0irtVKlGrOawg:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N2|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3578,9 +3510,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N3|zyxeNDUaSbelBIhMGbKinQ:rev",
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N2|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3598,8 +3529,8 @@
                 },
                 "data": {
                   "edges": [
-                    "N2|N4|zS0xfazLT6KrhRYgNYxTWw:rev",
-                    "N3|N4|u-uXyXsmTIyfsCvkcVTI9w:rev"
+                    "N2|N4|0:rev",
+                    "N3|N4|0:rev"
                   ],
                   "edges_kind": "min_cut"
                 }
@@ -3674,19 +3605,19 @@
       "single_link_failure": {
         "attrs": {},
         "expand_groups": false,
-        "expand_children": false,
         "modes": [
           {
             "weight": 1.0,
             "rules": [
               {
                 "scope": "link",
-                "logic": "or",
+                "match": {
+                  "logic": "or",
+                  "conditions": []
+                },
                 "mode": "choice",
                 "probability": 1.0,
-                "count": 1,
-                "path": null,
-                "conditions": []
+                "count": 1
               }
             ],
             "attrs": {}
@@ -3697,7 +3628,7 @@
     "demands": {
       "baseline_traffic_matrix": [
         {
-          "id": "^N([1-4])$|^N([1-4])$|dkJXIxbTQz-6HthFEsIgqw",
+          "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
           "source": "^N([1-4])$",
           "target": "^N([1-4])$",
           "volume": 12.0,
@@ -3705,6 +3636,7 @@
           "mode": "pairwise",
           "group_mode": "flatten",
           "flow_policy": null,
+          "static_paths": [],
           "attrs": {
             "euclidean_km": 10
           }

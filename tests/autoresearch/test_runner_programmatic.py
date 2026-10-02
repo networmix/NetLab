@@ -226,7 +226,8 @@ class TestProgrammaticHappyPath:
 class TestProgrammaticGenerationError:
     def test_invalid_g_produces_generation_error(self, tmp_path: Path) -> None:
         """g_abc1=32 with default layout -> ValueError from generate_scenario
-        -> logged as generation_error."""
+        -> logged as generation_error.
+        """
         proj = make_programmatic_project(tmp_path)
 
         # g_abc1=32 is invalid with default layout_abc1=(16,4,16,4) because

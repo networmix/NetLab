@@ -1,14 +1,5 @@
-# Test 1: Simple chain - should achieve 100% of bottleneck
-#
-# Topology: DC-A -> BB-A -> BB-B -> DC-B
-#
-# Capacities:
-#   DC-BB: 1000 (not bottleneck)
-#   BB-BB: 100 (BOTTLENECK)
-#   BB-DC: 1000 (not bottleneck)
-#
-# Expected: With demand=1000, Alpha* should be 0.1 (100/1000)
-#           Placed flow should be 100
+# Unidirectional chain with a 100 Gbps cross-site bottleneck.
+# Demand is 1,000 Gbps; the capacity upper bound on alpha is 0.1.
 
 network:
   nodes:

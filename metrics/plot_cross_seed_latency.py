@@ -1,13 +1,7 @@
-"""Cross-seed latency exceedance curves (publishable figure).
+"""Plot pooled failure-iteration latency exceedance across seeds.
 
-Approach: pooled empirical (like BAC). For each seed, take per-iteration
-latency tail (e.g., p99 stretch) across failure iterations, pool across seeds,
-and plot exceedance probability P(stretch > x) = 1 − CDF(stretch). Also show an
-IQR band by computing seed-wise exceedance on a common x-grid.
-
-Usage:
-    python3 -m metrics.plot_cross_seed_latency scenarios_metrics \
-        --metric p99 --save scenarios_metrics/_figures/latency_p99_cross_seed.png
+Each sample is an iteration's volume-weighted stretch percentile. Per-seed
+curves provide the IQR band.
 """
 
 from __future__ import annotations

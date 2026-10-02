@@ -10,11 +10,6 @@
 #   DC-2 → BB-2 (full mesh)
 #   DC-3 → BB-3 (full mesh)
 #   DC-4 → BB-4 (full mesh)
-#
-# Trade-offs:
-#   - Simple and efficient
-#   - Each DC row isolated to single plane (no cross-plane paths)
-#   - DC row failure = 75% (loses 1 of 4 planes worth of DC capacity)
 
 blueprints:
   DC_Row:
