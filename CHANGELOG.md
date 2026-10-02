@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING**: **Dependencies**: Require NetGraph `>=0.23.1`.
+- **BREAKING**: **Dependencies**: Require NetGraph `>=0.24.0`.
 - **BREAKING**: **Workflows**: Placement inherits the scenario seed; set step `seed` explicitly to keep using `42`.
 - **BREAKING**: **Metrics**: Require a positive integer `occurrence_count` on every failure flow result.
 - **BREAKING**: **Summaries**: Replace operation counters with `iters_fail`, `iters_total`, and `unique_patterns`.

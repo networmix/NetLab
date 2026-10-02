@@ -6,8 +6,7 @@
       "execution_order": 0,
       "scenario_seed": 42,
       "step_seed": 2022406077,
-      "seed_source": "scenario-derived",
-      "active_seed": 2022406077
+      "seed_source": "scenario-derived"
     },
     "tm_lh_path": {
       "step_type": "TrafficMatrixPlacement",
@@ -15,8 +14,7 @@
       "execution_order": 1,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     },
     "tm_1x_bb": {
       "step_type": "TrafficMatrixPlacement",
@@ -24,19 +22,17 @@
       "execution_order": 2,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     }
   },
   "steps": {
     "msd_baseline": {
       "metadata": {
-        "duration_sec": 0.00084686279296875
+        "duration_sec": 0.0007808208465576172
       },
       "data": {
         "alpha_star": 3.0,
         "context": {
-          "acceptance_rule": "hard",
           "alpha_start": 1.0,
           "growth_factor": 2.0,
           "alpha_min": 1e-06,
@@ -48,7 +44,7 @@
         },
         "base_demands": [
           {
-            "id": "^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+            "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
             "source": "^abc1/rsw$",
             "target": "^xyz1/rsw$",
             "volume": 100.0,
@@ -60,7 +56,7 @@
             "attrs": {}
           },
           {
-            "id": "^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+            "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
             "source": "^xyz1/rsw$",
             "target": "^abc1/rsw$",
             "volume": 100.0,
@@ -137,13 +133,13 @@
         "parallelism": 1,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "fm_lh_path",
-        "execution_time": 0.0002760887145996094,
+        "execution_time": 0.0002608299255371094,
         "unique_patterns": 2,
         "occurrence_counts": [
           5,
           5
         ],
-        "duration_sec": 0.0006341934204101562
+        "duration_sec": 0.0005931854248046875
       },
       "data": {
         "baseline": {
@@ -156,8 +152,8 @@
           "occurrence_count": 1,
           "flows": [
             {
-              "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+              "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -169,8 +165,8 @@
               "data": {}
             },
             {
-              "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+              "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -205,8 +201,8 @@
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 100.0,
@@ -217,8 +213,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 100.0,
@@ -243,16 +239,16 @@
             "failure_state": {
               "excluded_nodes": [],
               "excluded_links": [
-                "bb/abc1/pl2|bb/xyz1/pl2|1",
-                "bb/abc1/pl1|bb/xyz1/pl1|1"
+                "bb/abc1/pl1|bb/xyz1/pl1|1",
+                "bb/abc1/pl2|bb/xyz1/pl2|1"
               ]
             },
             "failure_trace": null,
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 200.0,
@@ -263,8 +259,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 200.0,
@@ -291,7 +287,7 @@
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+              "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "source": "^abc1/rsw$",
               "target": "^xyz1/rsw$",
               "volume": 100.0,
@@ -303,7 +299,7 @@
               "attrs": {}
             },
             {
-              "id": "^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+              "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "source": "^xyz1/rsw$",
               "target": "^abc1/rsw$",
               "volume": 100.0,
@@ -326,7 +322,7 @@
         "parallelism": 1,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "fm_1x_bb",
-        "execution_time": 0.00038886070251464844,
+        "execution_time": 0.0003719329833984375,
         "unique_patterns": 4,
         "occurrence_counts": [
           5,
@@ -334,7 +330,7 @@
           5,
           1
         ],
-        "duration_sec": 0.00075531005859375
+        "duration_sec": 0.0007352828979492188
       },
       "data": {
         "baseline": {
@@ -347,8 +343,8 @@
           "occurrence_count": 1,
           "flows": [
             {
-              "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+              "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -360,8 +356,8 @@
               "data": {}
             },
             {
-              "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+              "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "priority": 0,
               "demand": 300.0,
               "placed": 300.0,
@@ -395,8 +391,8 @@
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -408,8 +404,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -442,8 +438,8 @@
             "occurrence_count": 9,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -455,8 +451,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -489,8 +485,8 @@
             "occurrence_count": 5,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -502,8 +498,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -536,8 +532,8 @@
             "occurrence_count": 1,
             "flows": [
               {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+                "source": "_src_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
+                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -549,8 +545,8 @@
                 "data": {}
               },
               {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+                "source": "_src_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
+                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
                 "priority": 0,
                 "demand": 300.0,
                 "placed": 150.0,
@@ -578,7 +574,7 @@
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+              "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
               "source": "^abc1/rsw$",
               "target": "^xyz1/rsw$",
               "volume": 100.0,
@@ -590,7 +586,7 @@
               "attrs": {}
             },
             {
-              "id": "^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+              "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
               "source": "^xyz1/rsw$",
               "target": "^abc1/rsw$",
               "volume": 100.0,
@@ -671,7 +667,7 @@
     "demands": {
       "baseline_traffic_matrix": [
         {
-          "id": "^abc1/rsw$|^xyz1/rsw$|luLHmozES16aUA6s65MrqA",
+          "id": "^abc1/rsw$|^xyz1/rsw$|4Nb419O9Tcur16fm7Z3oUw",
           "source": "^abc1/rsw$",
           "target": "^xyz1/rsw$",
           "volume": 100.0,
@@ -683,7 +679,7 @@
           "attrs": {}
         },
         {
-          "id": "^xyz1/rsw$|^abc1/rsw$|VTZez3-BTYm2peeInjJrAg",
+          "id": "^xyz1/rsw$|^abc1/rsw$|n1PhD3laR4igrS0PxW9d3A",
           "source": "^xyz1/rsw$",
           "target": "^abc1/rsw$",
           "volume": 100.0,

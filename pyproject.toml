@@ -27,7 +27,7 @@ dependencies = [
     "seaborn>=0.13",
     "scipy>=1.11",
     "rich>=13.0",
-    "ngraph>=0.23.1",
+    "ngraph>=0.24.0",
     "topogen @ git+https://github.com/networmix/TopoGen@main",
     "cairosvg>=2.7",
 ]

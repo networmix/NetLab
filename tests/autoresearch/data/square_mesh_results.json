@@ -6,8 +6,7 @@
       "execution_order": 0,
       "scenario_seed": 42,
       "step_seed": 2022406077,
-      "seed_source": "scenario-derived",
-      "active_seed": 2022406077
+      "seed_source": "scenario-derived"
     },
     "tm_placement": {
       "step_type": "TrafficMatrixPlacement",
@@ -15,8 +14,7 @@
       "execution_order": 1,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     },
     "node_to_node_capacity_matrix": {
       "step_type": "MaxFlow",
@@ -24,19 +22,17 @@
       "execution_order": 2,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step",
-      "active_seed": 42
+      "seed_source": "explicit-step"
     }
   },
   "steps": {
     "msd_baseline": {
       "metadata": {
-        "duration_sec": 0.0005350112915039062
+        "duration_sec": 0.0005278587341308594
       },
       "data": {
         "alpha_star": 1.0,
         "context": {
-          "acceptance_rule": "hard",
           "alpha_start": 1.0,
           "growth_factor": 2.0,
           "alpha_min": 0.001,
@@ -48,7 +44,7 @@
         },
         "base_demands": [
           {
-            "id": "^N([1-4])$|^N([1-4])$|ZYaaQaB1Q8aI2zeeWnZINw",
+            "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
             "source": "^N([1-4])$",
             "target": "^N([1-4])$",
             "volume": 12.0,
@@ -107,7 +103,7 @@
         "parallelism": 8,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "single_link_failure",
-        "execution_time": 0.0018160343170166016,
+        "execution_time": 0.0015289783477783203,
         "unique_patterns": 6,
         "occurrence_counts": [
           164,
@@ -117,7 +113,7 @@
           164,
           144
         ],
-        "duration_sec": 0.011080026626586914
+        "duration_sec": 0.010584115982055664
       },
       "data": {
         "baseline": {
@@ -308,8 +304,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -492,8 +487,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 180,
@@ -672,8 +666,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 165,
@@ -856,8 +849,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 183,
@@ -1036,8 +1028,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -1220,8 +1211,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 144,
@@ -1383,7 +1373,7 @@
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^N([1-4])$|^N([1-4])$|ZYaaQaB1Q8aI2zeeWnZINw",
+              "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
               "source": "^N([1-4])$",
               "target": "^N([1-4])$",
               "volume": 12.0,
@@ -1408,7 +1398,7 @@
         "parallelism": 8,
         "analysis_function": "max_flow_analysis",
         "policy_name": "single_link_failure",
-        "execution_time": 0.005521059036254883,
+        "execution_time": 0.002185821533203125,
         "unique_patterns": 6,
         "occurrence_counts": [
           164,
@@ -1418,7 +1408,7 @@
           164,
           144
         ],
-        "duration_sec": 0.015133857727050781
+        "duration_sec": 0.011137008666992188
       },
       "data": {
         "baseline": {
@@ -1753,8 +1743,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -2063,8 +2052,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 180,
@@ -2373,8 +2361,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 165,
@@ -2689,8 +2676,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 183,
@@ -2999,8 +2985,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 164,
@@ -3315,8 +3300,7 @@
               ],
               "expansion": {
                 "nodes": [],
-                "links": [],
-                "risk_groups": []
+                "links": []
               }
             },
             "occurrence_count": 144,
@@ -3644,7 +3628,7 @@
     "demands": {
       "baseline_traffic_matrix": [
         {
-          "id": "^N([1-4])$|^N([1-4])$|ZYaaQaB1Q8aI2zeeWnZINw",
+          "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
           "source": "^N([1-4])$",
           "target": "^N([1-4])$",
           "volume": 12.0,

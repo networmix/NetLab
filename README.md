@@ -7,7 +7,7 @@ and interpret simulation results.
 
 ## Installation
 
-Requires Python 3.11+ and Git. Dependencies: `ngraph >= 0.23.1` (which brings
+Requires Python 3.11+ and Git. Dependencies: `ngraph >= 0.24.0` (which brings
 `netgraph-core >= 0.10.0`) and [TopoGen](https://github.com/networmix/TopoGen),
 installed from its `main` branch. NetLab is not published on PyPI.
 
