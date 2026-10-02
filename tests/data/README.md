@@ -31,4 +31,4 @@ record execution duration and are not performance assertions.
 
 Current fixtures were generated with Python 3.13, `ngraph==0.23.1` and
 `netgraph-core==0.10.0` from PyPI, and TopoGen commit
-`5f7cbbea12d7ec27d108ed5a13c58352c92dcc9d` (`main`, version 0.5.0).
+`5f7cbbea12d7ec27d108ed5a13c58352c92dcc9d` from `main`.
