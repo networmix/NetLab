@@ -328,7 +328,7 @@ network:
         target:
           component: 800G-ZR+
           count: 40.0
-  # Inter-metro corridor connectivity (backbone links between metros)
+  # Inter-metro corridors
   - source:
       path: metro1/pop2
       match: *id003

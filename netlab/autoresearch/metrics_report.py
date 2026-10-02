@@ -94,10 +94,8 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
         except (ValueError, KeyError):
             pass
 
-        # Latency (requires step to be named tm_placement for the latency module)
         try:
-            lat_data = {"steps": {"tm_placement": results["steps"][step_name]}}
-            lat = compute_latency_stretch(lat_data)
+            lat = compute_latency_stretch(results, step_name)
             if lat.baseline and lat.failures:
                 lines.append("")
                 lines.append("### Latency Stretch")

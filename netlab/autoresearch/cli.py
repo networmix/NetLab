@@ -195,7 +195,7 @@ def _build_mock_backend(args: argparse.Namespace) -> MockBackend:
     with open(template_path) as f:
         data = yaml.safe_load(f)
 
-    params_data = data.get("params") or data.get("parameters") or {}
+    params_data = data.get("params") or {}
     n = getattr(args, "max_experiments", 10)
 
     import random

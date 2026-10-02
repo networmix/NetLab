@@ -374,9 +374,8 @@ def _execute_scenario(
             if step_name in steps:
                 bac_modes[mode] = _extract_step_metrics(results_data, step_name)
 
-        combined = "tm_combined" if "tm_combined" in steps else "tm_placement"
-        if combined in steps:
-            combined_metrics = _extract_step_metrics(results_data, combined)
+        if "tm_combined" in steps:
+            combined_metrics = _extract_step_metrics(results_data, "tm_combined")
             result["bac_combined"] = combined_metrics.get("auc", 0.0)
             bac_modes["combined"] = combined_metrics
         else:

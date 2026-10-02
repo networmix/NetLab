@@ -2,6 +2,6 @@
   "iters_fail": 1000,
   "iters_total": 1001,
   "unique_patterns": 558,
-  "tm_duration_total_sec": 0.45325303077697754,
-  "tm_duration_per_iter_sec": 0.0004528002305464311
+  "tm_duration_total_sec": 0.44082093238830566,
+  "tm_duration_per_iter_sec": 0.0004403805518364692
 }

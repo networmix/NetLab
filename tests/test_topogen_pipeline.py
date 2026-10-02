@@ -1,8 +1,7 @@
-"""Local-source gate: NetLab CLI -> TopoGen build -> NetGraph run -> metrics.
+"""NetLab CLI -> TopoGen build -> NetGraph run -> metrics.
 
-Run explicitly from check_ngraph_integration.sh. The geographic input is a tiny
-pre-generated graph, so this verifies the build/simulation boundary without
-requiring Census datasets or invoking external research backends.
+The geographic input is a tiny pre-generated graph, so this exercises the
+build/simulation boundary without Census datasets or research backends.
 """
 
 from __future__ import annotations
@@ -19,6 +18,8 @@ import pytest
 import yaml
 from topogen.config import TopologyConfig
 from topogen.integrated_graph import save_to_json
+
+pytestmark = [pytest.mark.slow, pytest.mark.timeout(300)]
 
 
 @pytest.mark.parametrize(

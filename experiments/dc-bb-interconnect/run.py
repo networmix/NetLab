@@ -164,7 +164,7 @@ class DcBbExperimentRunner(ExperimentRunner):
         if not graph_data:
             return
 
-        edges = graph_data.get("links", graph_data.get("edges", []))
+        edges = graph_data["edges"]
         bb_link_counts: Dict[str, int] = {}
 
         for edge in edges:

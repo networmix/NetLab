@@ -113,9 +113,7 @@ make lint PYTHON="$VIRTUAL_ENV/bin/python" 2>&1 | tee "$run_dir/lint.log"
 # Discard inherited pytest filters so the integration gate runs the whole suite.
 export PYTEST_ADDOPTS="--junitxml=$run_dir/pytest.xml"
 test_status=0
-# Select the explicit local-source pipeline checks as well as the normal suite.
-python -m pytest tests -o 'python_files=test_*.py check_topogen_pipeline.py' \
-    2>&1 | tee "$run_dir/pytest.log" || test_status=$?
+python -m pytest tests 2>&1 | tee "$run_dir/pytest.log" || test_status=$?
 source_state > "$run_dir/source-state-after.json"
 if ! cmp -s "$run_dir/source-state-before.json" "$run_dir/source-state-after.json"; then
     echo 'Source checkout changed during the test run; rerun against stable sources.' >&2

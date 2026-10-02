@@ -1,42 +1,54 @@
 """Rebuild simulation fixtures from cached geography and the installed tools.
 
-Run with the local-source environment used by check_ngraph_integration.sh:
-    python dev/regenerate_fixtures.py --topogen-commit <verified-commit>
-All commands must succeed before any checked-in fixture is replaced.
+Run from an environment installed with the dependencies declared in
+pyproject.toml, for example ``venv/bin/python dev/regenerate_fixtures.py``.
+Every source distribution must be a released version or a clean Git revision so
+the fixtures stay reproducible. All commands must succeed before any checked-in
+fixture is replaced; the recorded provenance is printed at the end.
 """
 
 from __future__ import annotations
 
-import argparse
-import hashlib
+import importlib.metadata
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
-from importlib import import_module
 from pathlib import Path
+
+SOURCES = ("ngraph", "netgraph-core", "topogen")
+
+
+def source_provenance(name: str) -> dict:
+    dist = importlib.metadata.distribution(name)
+    info: dict = {"version": dist.version}
+    raw = dist.read_text("direct_url.json")
+    if raw is None:
+        return info
+    direct = json.loads(raw)
+    info["url"] = direct["url"]
+    if "vcs_info" in direct:
+        info["commit"] = direct["vcs_info"]["commit_id"]
+    elif direct.get("dir_info", {}).get("editable"):
+        root = direct["url"].removeprefix("file://")
+        info["commit"] = subprocess.check_output(
+            ["git", "-C", root, "rev-parse", "HEAD"], text=True
+        ).strip()
+        if subprocess.check_output(["git", "-C", root, "status", "--porcelain"]):
+            sys.exit(
+                f"{name}: {root} has uncommitted changes; fixtures must be "
+                "reproducible from a committed revision."
+            )
+    return info
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--topogen-commit", required=True)
-    args = parser.parse_args()
-    ngraph = import_module("ngraph")
-    topogen = import_module("topogen")
     root = Path(__file__).resolve().parents[1]
-    topogen_file, ngraph_file = topogen.__file__, ngraph.__file__
-    assert topogen_file is not None and ngraph_file is not None
-    topogen_root = Path(topogen_file).resolve().parents[1]
-    actual_commit = subprocess.check_output(
-        ["git", "-C", str(topogen_root), "rev-parse", "HEAD"], text=True
-    ).strip()
-    if actual_commit != args.topogen_commit:
-        parser.error(f"TopoGen is at {actual_commit}, expected {args.topogen_commit}")
-    if subprocess.check_output(
-        ["git", "-C", str(topogen_root), "status", "--porcelain"]
-    ):
-        parser.error("TopoGen source checkout must be clean")
+    provenance = {
+        "python": sys.version.split()[0],
+        "sources": {name: source_provenance(name) for name in SOURCES},
+    }
     build = root / "build/fixture-regeneration"
     build.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="run-", dir=build))
@@ -75,7 +87,7 @@ def main() -> None:
     )
     run("ngraph", "run", "tests/data/mini_dcbb.yaml", "-o", str(work / "mini"))
 
-    # Save input fixtures alongside generated output for review.
+    # Save the previous fixtures alongside the generated output for review.
     shutil.copytree(root / "tests/data/scenarios_metrics", work / "inputs/metrics")
     shutil.copytree(root / "tests/data/scenarios", work / "inputs/scenarios")
     fixture_root = root / "tests/data/scenarios"
@@ -103,22 +115,8 @@ def main() -> None:
         work / "mini/mini_dcbb.results.json",
         root / "tests/data/mini_dcbb_output/mini_dcbb.results.json",
     )
-    provenance = {
-        "python": sys.version,
-        "topogen_commit": actual_commit,
-        "topogen_source": str(topogen_root),
-        "ngraph_source": str(Path(ngraph_file).resolve()),
-    }
-    ngraph_root = Path(ngraph_file).resolve().parents[1]
-    provenance["ngraph_head"] = subprocess.check_output(
-        ["git", "-C", str(ngraph_root), "rev-parse", "HEAD"], text=True
-    ).strip()
-    patch = subprocess.check_output(
-        ["git", "-C", str(ngraph_root), "diff", "HEAD", "--binary"]
-    )
-    (work / "ngraph.patch").write_bytes(patch)
-    provenance["ngraph_diff_sha256"] = hashlib.sha256(patch).hexdigest()
     (work / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
+    print(json.dumps(provenance, indent=2))
 
 
 if __name__ == "__main__":

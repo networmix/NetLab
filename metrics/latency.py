@@ -61,8 +61,10 @@ def _baseline_cost_per_pair_tm(baseline: dict) -> Dict[Tuple[str, str], float]:
     return per_pair
 
 
-def compute_latency_stretch(results: dict) -> LatencyResult:
-    baseline, fr = get_tm_baseline_and_failures(results)
+def compute_latency_stretch(
+    results: dict, step_name: str = "tm_placement"
+) -> LatencyResult:
+    baseline, fr = get_tm_baseline_and_failures(results, step_name)
 
     base_cost = _baseline_cost_per_pair_tm(baseline)
     if not base_cost:

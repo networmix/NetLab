@@ -42,7 +42,7 @@ class HypothesisTemplate:
         with open(path) as f:
             data = yaml.safe_load(f)
 
-        params_data = data.get("params") or data.get("parameters") or {}
+        params_data = data.get("params") or {}
         for name, spec in params_data.items():
             ptype = spec["type"]
             prange = None

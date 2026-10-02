@@ -75,18 +75,20 @@ def baseline_demand_map(
     return out
 
 
-def get_tm_baseline_and_failures(results: dict) -> Tuple[dict, List[dict]]:
-    """Extract baseline dict and expanded failure list from tm_placement.
+def get_tm_baseline_and_failures(
+    results: dict, step_name: str = "tm_placement"
+) -> Tuple[dict, List[dict]]:
+    """Extract baseline dict and expanded failure list from a placement step.
 
     The returned failure list is expanded by ``occurrence_count`` so each
     Monte Carlo iteration is represented as a separate entry.
     """
-    tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
+    tm_step = results.get("steps", {}).get(step_name, {}) or {}
     tm_data = tm_step.get("data", {}) or {}
     baseline = tm_data.get("baseline")
     if not isinstance(baseline, dict):
-        raise ValueError("tm_placement.data.baseline dict required")
+        raise ValueError(f"{step_name}.data.baseline dict required")
     flow_results = tm_data.get("flow_results", []) or []
     if not isinstance(flow_results, list):
-        raise ValueError("tm_placement.data.flow_results must be a list")
+        raise ValueError(f"{step_name}.data.flow_results must be a list")
     return baseline, expand_flow_results(flow_results)
