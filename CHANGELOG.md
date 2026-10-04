@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-04
+
 ### Changed
 
 - **BREAKING**: **Execution**: Use TopoGen `3bf0fa4a` and NetGraph `>=0.24.0` through their Python APIs, with a local process queue. TopoGen and NetGraph executable overrides are removed.
