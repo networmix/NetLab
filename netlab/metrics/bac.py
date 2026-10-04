@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+from math import fsum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -70,8 +71,8 @@ def _detect_mode(results: dict, step_name: str, mode: str) -> str:
 
 
 def _sum_delivered(iteration: dict) -> float:
-    """Sum placed bandwidth across all flows in one iteration result."""
-    return sum(pair_totals(iteration, "placed").values())
+    """Sum placed bandwidth consistently across Python versions."""
+    return fsum(pair_totals(iteration, "placed").values())
 
 
 _QUANTILE_PROBS = (0.50, 0.90, 0.95, 0.99, 0.999, 0.9999)

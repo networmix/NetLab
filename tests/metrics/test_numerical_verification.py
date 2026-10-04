@@ -79,6 +79,22 @@ def test_bandwidth_replicating_empirical_distribution_is_invariant():
     assert one == repeat
 
 
+def test_bandwidth_totals_preserve_small_flows_in_any_order():
+    flows = [record(f"a/{i}", value) for i, value in enumerate([1e16, 1.0, 1.0])]
+    results = payload([])
+    data = results["steps"]["tm_placement"]["data"]
+    data["baseline"] = {"flows": flows}
+    data["flow_results"] = [{"occurrence_count": 1, "flows": flows[::-1]}]
+
+    bac = compute_bac(results, "tm_placement")
+    expected = 10_000_000_000_000_002.0
+    assert bac.offered == expected
+    assert bac.series.tolist() == [expected, expected]
+    thresholds, availability = availability_curve(bac.series.to_numpy() / bac.offered)
+    assert thresholds.tolist() == [1.0]
+    assert availability.tolist() == [1.0]
+
+
 def test_sps_probability_matches_counting_oracle():
     result = compute_sps(payload(range(10)))
     assert result.sps_at_probability[90] == pytest.approx(1 / 9)
