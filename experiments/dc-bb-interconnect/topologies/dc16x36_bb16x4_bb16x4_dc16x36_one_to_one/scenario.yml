@@ -1,11 +1,10 @@
 # One-to-One: Each DC row connects to exactly one BB plane
 #
-# Configuration:
 #   DC: 16 rows x 36 nodes/row = 576 nodes per site
 #   BB: 16 planes x 4 nodes/plane = 64 nodes per site
 #   Total: 640 nodes per site, 1280 nodes total
 #
-# Pattern: DC row i connects to BB plane i
+# Connections: DC row i connects to BB plane i
 #   - Each DC row has path through exactly 1 plane
 
 blueprints:

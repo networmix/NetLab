@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .common import expand_flow_results
+from .common import expand_flow_results, pair_totals
+from .distributions import availability_curve, curve_on_grid, threshold_at_probability
 
 
 @dataclass
@@ -21,7 +22,7 @@ class BacResult:
     failure_ids: List[str]
     offered: float  # baseline delivered bandwidth
     quantiles_abs: Dict[float, float]
-    quantiles_pct: Dict[float, float]  # normalized by offered (0..1)
+    quantiles_pct: Dict[float, float]  # normalized by baseline delivery, uncapped
     availability_at_pct_of_offer: Dict[float, float]  # {90: 0.97, ...}
     auc_normalized: float  # mean(min(delivered/offered, 1.0))
     bw_at_probability_abs: Dict[float, float]
@@ -70,14 +71,7 @@ def _detect_mode(results: dict, step_name: str, mode: str) -> str:
 
 def _sum_delivered(iteration: dict) -> float:
     """Sum placed bandwidth across all flows in one iteration result."""
-    total = 0.0
-    for rec in iteration.get("flows", []) or []:
-        src = rec.get("source", "")
-        dst = rec.get("destination", "")
-        if not src or not dst or src == dst:
-            continue
-        total += float(rec.get("placed", 0.0))
-    return total
+    return sum(pair_totals(iteration, "placed").values())
 
 
 _QUANTILE_PROBS = (0.50, 0.90, 0.95, 0.99, 0.999, 0.9999)
@@ -103,7 +97,7 @@ def _compute_bac_stats(
     if offered > 0:
         for p in _QUANTILE_PROBS:
             val = float(series.quantile(p, interpolation="lower") / offered)
-            q_pct[p] = float(min(val, 1.0))
+            q_pct[p] = val
 
     avail: Dict[float, float] = {}
     if offered > 0 and len(series) > 0:
@@ -115,15 +109,11 @@ def _compute_bac_stats(
     bw_abs: Dict[float, float] = {}
     bw_pct: Dict[float, float] = {}
     for p in _AVAIL_THRESHOLDS:
-        q = max(0.0, 1.0 - (p / 100.0))
-        try:
-            t_abs = float(series.quantile(q, interpolation="lower"))
-        except Exception:
-            t_abs = float("nan")
+        t_abs = threshold_at_probability(series.to_numpy(), p)
         bw_abs[p] = t_abs
         bw_pct[p] = float(t_abs / offered) if offered > 0 else float("nan")
 
-    auc_norm = 1.0
+    auc_norm = float("nan")
     if offered > 0 and len(series) > 0:
         norm = series.astype(float) / offered
         auc_norm = float(norm.clip(upper=1.0).mean())
@@ -150,18 +140,6 @@ def _flow_label(flow_source: str, flow_destination: str) -> str:
     return f"{flow_source}>{flow_destination}"
 
 
-def _delivered_by_pair(iteration: dict) -> Dict[Tuple[str, str], float]:
-    """Sum delivered volume by direction, including multiple priority classes."""
-    pairs: Dict[Tuple[str, str], float] = {}
-    for rec in iteration.get("flows", []) or []:
-        src = rec.get("source", "")
-        dst = rec.get("destination", "")
-        if src and dst and src != dst:
-            pair = (src, dst)
-            pairs[pair] = pairs.get(pair, 0.0) + float(rec.get("placed", 0.0))
-    return pairs
-
-
 def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
     mode = _detect_mode(results, step_name, mode)
     data = _get_step(results, step_name)
@@ -170,18 +148,15 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
     if not isinstance(baseline, dict):
         raise ValueError(f"{step_name}: data.baseline dict required")
     flow_results = data.get("flow_results", [])
-    if not isinstance(flow_results, list) or not flow_results:
-        raise ValueError(f"No flow_results for step: {step_name}")
+    if not isinstance(flow_results, list):
+        raise ValueError(f"flow_results must be a list for step: {step_name}")
 
-    # Baseline determines offered bandwidth
     offered = _sum_delivered(baseline)
-    if not np.isfinite(offered) or offered <= 0:
-        raise ValueError(f"{step_name}: baseline delivered must be finite and > 0")
+    if not np.isfinite(offered) or offered < 0:
+        raise ValueError(f"{step_name}: baseline delivered must be finite and >= 0")
 
-    # Expand deduplicated patterns by occurrence_count
     expanded = expand_flow_results(flow_results)
 
-    # ── Aggregate series ──
     delivered = [offered]
     fids: List[str] = ["baseline"]
     for idx, it in enumerate(expanded):
@@ -193,11 +168,10 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
 
     q_abs, q_pct, avail, auc_norm, bw_abs, bw_pct = _compute_bac_stats(s, offered)
 
-    # ── Per-flow series ──
     # Aggregate priority classes by source/destination pair.
     flow_map = {
         pair: placed
-        for pair, placed in _delivered_by_pair(baseline).items()
+        for pair, placed in pair_totals(baseline, "placed").items()
         if placed > 0
     }
     labels = {pair: _flow_label(*pair) for pair in flow_map}
@@ -205,13 +179,12 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
 
     per_flow: Dict[str, BacResult] = {}
     if len(flow_map) > 1:
-        # Only compute per-flow when there are multiple flows to separate
         flow_series: Dict[Tuple[str, str], List[float]] = {
             pair: [bl_placed] for pair, bl_placed in flow_map.items()
         }
 
         for it in expanded:
-            it_flows = _delivered_by_pair(it)
+            it_flows = pair_totals(it, "placed")
             for pair in flow_map:
                 flow_series[pair].append(it_flows.get(pair, 0.0))
 
@@ -254,17 +227,10 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
     )
 
 
-def _availability_curve(series: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
-    xs = np.sort(np.asarray(series.values, dtype=float))
-    cdf = np.arange(1, len(xs) + 1) / len(xs)
-    avail = 1.0 - cdf
-    return xs, avail
-
-
 def plot_bac(
     bac: BacResult, overlay: Optional[BacResult] = None, save_to: Optional[Path] = None
 ) -> None:
-    x, a = _availability_curve(bac.series)
+    x, a = availability_curve(bac.series.to_numpy())
     if bac.offered > 0:
         x_plot = (x / bac.offered) * 100.0
         x_label = "Delivered bandwidth (% of offered)"
@@ -272,17 +238,22 @@ def plot_bac(
         x_plot = x
         x_label = "Delivered bandwidth (Gbps)"
 
-    plt.figure()
-    sns.lineplot(
-        x=x_plot, y=a, drawstyle="steps-post", label=f"{bac.mode.capitalize()}"
+    grid = np.unique(
+        np.r_[0.0, x_plot, max(100.0 if bac.offered > 0 else 1.0, max(x_plot))]
     )
+    a = curve_on_grid(x_plot, a, grid)
+    x_plot = grid
+    plt.figure(figsize=(8, 5), dpi=300)
+    sns.lineplot(x=x_plot, y=a, drawstyle="steps-pre", label=f"{bac.mode.capitalize()}")
 
     if overlay is not None:
-        xo, ao = _availability_curve(overlay.series)
+        xo, ao = availability_curve(overlay.series.to_numpy())
         if bac.offered > 0 and overlay.offered > 0:
             xo = (xo / overlay.offered) * 100.0
+        grid_o = np.unique(np.r_[0.0, xo, max(grid[-1], max(xo))])
+        ao = curve_on_grid(xo, ao, grid_o)
         sns.lineplot(
-            x=xo, y=ao, drawstyle="steps-post", label=f"{overlay.mode.capitalize()}"
+            x=grid_o, y=ao, drawstyle="steps-pre", label=f"{overlay.mode.capitalize()}"
         )
 
     plt.xlabel(x_label)
@@ -293,5 +264,5 @@ def plot_bac(
     plt.grid(True, linestyle=":", linewidth=0.5)
     if save_to is not None:
         save_to.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_to)
+        plt.savefig(save_to, dpi=300, bbox_inches="tight")
     plt.close()

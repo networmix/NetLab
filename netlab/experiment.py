@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import logging
-import subprocess
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -12,7 +10,9 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+from .artifacts import write_json_atomic, write_text_atomic
 from .scenario import ScenarioMerger
+from .simulation import invalidate_results, run_simulation
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +27,7 @@ class ExperimentRunner(ABC):
         topologies_dir: Optional[Path] = None,
         scenario_filename: str = "scenario.yml",
     ):
-        """
-        Initialize the experiment runner.
-
-        Args:
-            root: Root directory of the experiment
-            results_dir: Directory for results (default: root / "results")
-            topologies_dir: Directory containing topologies (default: root / "topologies")
-            scenario_filename: Name of scenario file in each topology dir
-        """
+        """Use ``root/results`` and ``root/topologies`` unless paths are supplied."""
         self.root = Path(root)
         self.results_dir = Path(results_dir) if results_dir else self.root / "results"
         self.topologies_dir = (
@@ -46,20 +38,15 @@ class ExperimentRunner(ABC):
 
     @abstractmethod
     def get_merger(self) -> ScenarioMerger:
-        """
-        Configure and return a ScenarioMerger for this experiment.
-
-        Subclasses must implement this to configure merge sources.
+        """Configure the experiment's merge sources. Subclasses must implement this.
 
         Example:
-            def get_merger(self) -> ScenarioMerger:
-                merger = ScenarioMerger(self.root)
-                merger.add_source(self.root / "policies", "failures",
-                                  filter_fn=is_failure_policy)
-                merger.add_source(self.root / "demands", "demands",
-                                  source_key="demands")
-                merger.add_workflow_source(self.root / "workflows")
-                return merger
+            merger = ScenarioMerger(self.root)
+            merger.add_source(self.root / "policies", "failures",
+                              filter_fn=is_failure_policy)
+            merger.add_source(self.root / "demands", "demands", source_key="demands")
+            merger.add_workflow_source(self.root / "workflows")
+            return merger
         """
         pass
 
@@ -71,12 +58,7 @@ class ExperimentRunner(ABC):
         return self._merger
 
     def discover_scenarios(self) -> List[str]:
-        """
-        Find all scenario directories.
-
-        Returns:
-            List of scenario names (directory names containing scenario files)
-        """
+        """List directories containing the configured scenario filename."""
         if not self.topologies_dir.exists():
             return []
         return sorted(
@@ -92,17 +74,10 @@ class ExperimentRunner(ABC):
         force: bool = False,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Run scenarios with given seeds.
+        """Run selected scenarios and return counts by outcome.
 
-        Args:
-            scenarios: List of scenario names to run (default: all discovered)
-            seeds: List of random seeds (default: [42, 43, 44])
-            force: Re-run even if results exist
-            dry_run: Only generate merged scenarios, don't run ngraph
-
-        Returns:
-            Dict with overall run statistics
+        Defaults to all discovered scenarios and seeds 42, 43, 44. ``force`` bypasses
+        the result cache; ``dry_run`` writes merged YAML without simulating.
         """
         if scenarios is None:
             scenarios = self.discover_scenarios()
@@ -114,6 +89,7 @@ class ExperimentRunner(ABC):
             "total_ran": 0,
             "total_cached": 0,
             "total_failed": 0,
+            "total_prepared": 0,
         }
 
         for scenario in scenarios:
@@ -122,6 +98,7 @@ class ExperimentRunner(ABC):
             overall_stats["total_ran"] += stats["ran"]
             overall_stats["total_cached"] += stats["cached"]
             overall_stats["total_failed"] += stats["failed"]
+            overall_stats["total_prepared"] += stats["prepared"]
 
         return overall_stats
 
@@ -132,19 +109,18 @@ class ExperimentRunner(ABC):
         force: bool = False,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        """
-        Run a single scenario with given seeds.
+        """Run one scenario across seeds and return counts by outcome.
 
-        Args:
-            scenario: Name of scenario directory
-            seeds: List of random seeds to run
-            force: Re-run even if results exist
-            dry_run: Only generate merged scenario, don't run ngraph
-
-        Returns:
-            Dict with run statistics for this scenario
+        ``force`` bypasses the result cache; ``dry_run`` only writes merged YAML.
         """
-        stats = {"scenario": scenario, "seeds": [], "cached": 0, "ran": 0, "failed": 0}
+        stats = {
+            "scenario": scenario,
+            "seeds": [],
+            "cached": 0,
+            "ran": 0,
+            "failed": 0,
+            "prepared": 0,
+        }
 
         for seed in seeds:
             result = self._run_seed(scenario, seed, force, dry_run)
@@ -153,10 +129,11 @@ class ExperimentRunner(ABC):
                 stats["cached"] += 1
             elif result["status"] == "success":
                 stats["ran"] += 1
+            elif result["status"] == "dry_run":
+                stats["prepared"] += 1
             else:
                 stats["failed"] += 1
 
-        # Write provenance
         self._write_provenance(scenario, seeds, stats)
 
         return stats
@@ -175,59 +152,30 @@ class ExperimentRunner(ABC):
         scenario_file = seed_dir / f"{scenario}__seed{seed}_scenario.yml"
         results_file = seed_dir / f"{scenario}__seed{seed}_scenario.results.json"
 
-        # Skip if cached
-        if results_file.exists() and not force:
-            logger.info("[cached] %s seed=%d", scenario, seed)
-            print(f"  [cached] {scenario} seed={seed}")
-            return {"status": "cached", "results_file": str(results_file)}
-
-        # Merge and write scenario with seed
         scenario_path = self.topologies_dir / scenario / self.scenario_filename
-        merged = self.merger.merge(scenario_path, seed=seed)
-
-        with open(scenario_file, "w") as f:
-            yaml.safe_dump(merged, f, sort_keys=False, default_flow_style=False)
+        try:
+            merged = self.merger.merge(scenario_path, seed=seed)
+            text = yaml.safe_dump(merged, sort_keys=False)
+        except (ValueError, OSError, yaml.YAMLError) as exc:
+            invalidate_results(results_file)
+            scenario_file.unlink(missing_ok=True)
+            return {"status": "invalid", "error": str(exc)}
+        if not scenario_file.exists() or scenario_file.read_text() != text:
+            invalidate_results(results_file)
+        write_text_atomic(scenario_file, text)
 
         if dry_run:
             logger.info("[dry-run] %s seed=%d -> %s", scenario, seed, scenario_file)
             print(f"  [dry-run] {scenario} seed={seed} -> {scenario_file}")
             return {"status": "dry_run", "scenario_file": str(scenario_file)}
 
-        # Validate with ngraph inspect
-        logger.info("[inspect] %s seed=%d", scenario, seed)
-        print(f"  [inspect] {scenario} seed={seed}")
-        result = subprocess.run(
-            ["ngraph", "inspect", str(scenario_file)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            logger.error("[FAILED] inspect: %s", result.stderr.strip())
-            print(f"  [FAILED] inspect: {result.stderr.strip()}")
-            error_log = seed_dir / f"{scenario}__seed{seed}_error.log"
-            with open(error_log, "w") as f:
-                f.write(f"ngraph inspect failed:\n{result.stderr}")
-            return {"status": "inspect_failed", "error": result.stderr}
-
-        # Run ngraph
-        logger.info("[running] %s seed=%d", scenario, seed)
-        print(f"  [running] {scenario} seed={seed}")
-        result = subprocess.run(
-            ["ngraph", "run", str(scenario_file), "-r", str(results_file)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            logger.error("[FAILED] run: %s", result.stderr.strip())
-            print(f"  [FAILED] run: {result.stderr.strip()}")
-            error_log = seed_dir / f"{scenario}__seed{seed}_error.log"
-            with open(error_log, "w") as f:
-                f.write(f"ngraph run failed:\n{result.stderr}")
-            return {"status": "run_failed", "error": result.stderr}
-
-        logger.info("[done] %s seed=%d", scenario, seed)
-        print(f"  [done] {scenario} seed={seed}")
-        return {"status": "success", "results_file": str(results_file)}
+        outcome = run_simulation(scenario_file, results_path=results_file, force=force)
+        logger.info("[%s] %s seed=%d", outcome.status, scenario, seed)
+        return {
+            "status": outcome.status,
+            "results_file": str(results_file),
+            "error": outcome.error,
+        }
 
     def _write_provenance(
         self,
@@ -243,22 +191,13 @@ class ExperimentRunner(ABC):
             "timestamp": datetime.now().isoformat(),
             "stats": stats,
         }
-        with open(provenance_file, "w") as f:
-            json.dump(provenance, f, indent=2)
+        write_json_atomic(provenance_file, provenance)
 
     def get_results_files(
         self,
         scenarios: Optional[List[str]] = None,
     ) -> Dict[str, List[Path]]:
-        """
-        Get all results files grouped by scenario.
-
-        Args:
-            scenarios: List of scenarios to include (default: all discovered)
-
-        Returns:
-            Dict mapping scenario names to lists of results file paths
-        """
+        """Return result paths grouped by scenario; default to all discovered scenarios."""
         if scenarios is None:
             scenarios = self.discover_scenarios()
 

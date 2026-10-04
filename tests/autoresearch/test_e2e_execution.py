@@ -14,7 +14,8 @@ import sys
 import pytest
 import yaml
 
-from netlab.autoresearch.scenario_generator import DcBbScenarioConfig, generate_scenario
+from netlab.autoresearch.dcbb_config import DcBbScenarioConfig
+from netlab.autoresearch.scenario_generator import generate_scenario
 
 
 @pytest.mark.slow

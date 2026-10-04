@@ -1,11 +1,10 @@
 # Full Mesh: Every DC node connects to every BB node in all planes
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: Complete bipartite graph between DC and BB
+# Connections: Complete bipartite graph between DC and BB
 #   Each of 36 DC nodes connects to all 16 BB nodes
 
 blueprints:

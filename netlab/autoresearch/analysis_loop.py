@@ -86,10 +86,14 @@ def run_analysis_loop(
         backend: LLM backend for interpretation.
         max_iterations: Maximum attempts to obtain a nonempty interpretation.
     """
+    if max_iterations < 1:
+        raise ValueError("max_iterations must be positive")
     metrics_report = build_metrics_report(results)
 
     interpretation = ""
-    for _attempt in range(max_iterations):
+    attempts_used = 0
+    for _attempt in range(1, max_iterations + 1):
+        attempts_used += 1
         prompt = _ANALYSIS_PROMPT.format(
             hypothesis=hypothesis,
             metrics_report=metrics_report,
@@ -125,6 +129,6 @@ def run_analysis_loop(
         metrics_report=metrics_report,
         interpretation=interpretation,
         next_hypothesis=next_hypothesis,
-        iterations_used=1,
-        complete=True,
+        iterations_used=attempts_used,
+        complete=bool(next_hypothesis),
     )

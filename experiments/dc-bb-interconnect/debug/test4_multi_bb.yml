@@ -39,7 +39,7 @@ network:
       capacity: 1000
       cost: 1
 
-    # BB-A to BB-B (1:1, BOTTLENECK)
+    # BB-A to BB-B (1:1, bottleneck)
     - source: "SiteA/BB-${i}/"
       target: "SiteB/BB-${i}/"
       expand:

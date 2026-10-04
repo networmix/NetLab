@@ -1,10 +1,4 @@
-"""CLI handlers for the ``netlab autoresearch`` subcommand.
-
-Provides:
-- autoresearch_init: scaffold a new autoresearch project directory.
-- autoresearch_run: load project, construct runner, execute experiment loop.
-- _build_backend: factory for LLM backend from CLI args.
-"""
+"""Create research projects and run them from the CLI."""
 
 from __future__ import annotations
 
@@ -29,13 +23,11 @@ from netlab.autoresearch.backend import (
     MockBackend,
     OpenAICompatibleBackend,
 )
+from netlab.autoresearch.hypothesis import validate_template_workflow
 from netlab.autoresearch.runner import AutoResearchRunner, RunConfig
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Default templates
-# ---------------------------------------------------------------------------
 
 _DEFAULT_PROGRAM_MD = textwrap.dedent("""\
     You are an autonomous network researcher. Your goal is to find parameter
@@ -60,11 +52,9 @@ _DEFAULT_OBJECTIVE_YAML = textwrap.dedent("""\
 
 
 def _build_default_template(base_scenario_path: Path) -> str:
-    """Build a minimal hypothesis_template.yml.
+    """Define parameters for the base scenario's ``${{...}}`` placeholders.
 
-    If the base scenario contains ${{...}} placeholders, create params
-    matching those names with reasonable defaults. Otherwise, create a
-    single ``link_capacity`` placeholder template.
+    Use ``link_capacity`` when the scenario has no placeholders.
     """
     import re
 
@@ -82,7 +72,6 @@ def _build_default_template(base_scenario_path: Path) -> str:
             }
         return yaml.dump({"params": params}, default_flow_style=False, sort_keys=False)
 
-    # No placeholders found — provide a minimal default
     return textwrap.dedent("""\
         params:
           link_capacity:
@@ -91,11 +80,6 @@ def _build_default_template(base_scenario_path: Path) -> str:
             default: 2.0
             description: "Default template param (replace with your own)"
     """)
-
-
-# ---------------------------------------------------------------------------
-# CLI handlers
-# ---------------------------------------------------------------------------
 
 
 def _build_backend(args: argparse.Namespace) -> LLMBackend:
@@ -109,7 +93,6 @@ def _build_backend(args: argparse.Namespace) -> LLMBackend:
         model = _resolve_model_arg(
             args,
             generic_attr="model",
-            specific_attr="claude_model",
             env_var="CLAUDE_MODEL",
             default=DEFAULT_CLAUDE_MODEL,
         )
@@ -118,7 +101,6 @@ def _build_backend(args: argparse.Namespace) -> LLMBackend:
         model = _resolve_model_arg(
             args,
             generic_attr="model",
-            specific_attr="codex_model",
             env_var="CODEX_MODEL",
             default=DEFAULT_CODEX_MODEL,
         )
@@ -130,7 +112,6 @@ def _build_backend(args: argparse.Namespace) -> LLMBackend:
         model = _resolve_model_arg(
             args,
             generic_attr="model",
-            specific_attr="openai_model",
             env_var="OPENAI_MODEL",
             default=DEFAULT_OPENAI_MODEL,
         )
@@ -149,30 +130,19 @@ def _resolve_model_arg(
     args: argparse.Namespace,
     *,
     generic_attr: str,
-    specific_attr: str,
     env_var: str,
     default: str,
 ) -> str:
-    """Resolve model from generic CLI flag, backend-specific flag, env, then default."""
+    """Choose the model from the CLI flag, then the environment, then the default."""
     generic_value = getattr(args, generic_attr, None)
     if generic_value:
         return generic_value
-
-    specific_value = getattr(args, specific_attr, None)
-    if specific_value:
-        return specific_value
 
     return os.environ.get(env_var, default)
 
 
 def _build_mock_backend(args: argparse.Namespace) -> MockBackend:
-    """Build a MockBackend that generates plausible YAML responses.
-
-    Reads the hypothesis template from the project directory to produce
-    responses whose params match the template definitions. Generates
-    ``max_experiments`` scripted responses using default values with
-    small perturbations.
-    """
+    """Generate scripted responses from template defaults with small perturbations."""
     project_dir = Path(args.project_dir)
     template_path = project_dir / "hypothesis_template.yml"
 
@@ -216,7 +186,7 @@ def _build_mock_backend(args: argparse.Namespace) -> MockBackend:
                 step = spec.get("step", 1)
                 val = rng.randrange(int(lo), int(hi) + 1, int(step))
                 param_lines.append(f"  {name}: {val}")
-            else:  # float
+            else:
                 lo, hi = spec.get("range", [0.0, 10.0])
                 val = round(rng.uniform(float(lo), float(hi)), 4)
                 param_lines.append(f"  {name}: {val}")
@@ -244,52 +214,22 @@ def autoresearch_init(args: argparse.Namespace) -> None:
         print(f"Base scenario does not exist: {base_scenario}", file=sys.stderr)
         sys.exit(1)
 
-    # Validate the base scenario has a MaximumSupportedDemand workflow step
     try:
-        scenario_text = base_scenario.read_text(encoding="utf-8")
-        scenario_data = yaml.safe_load(scenario_text)
-    except Exception as exc:
-        print(f"Failed to read base scenario: {exc}", file=sys.stderr)
+        validate_template_workflow(base_scenario.read_text(encoding="utf-8"))
+    except (ValueError, OSError, yaml.YAMLError) as exc:
+        print(str(exc), file=sys.stderr)
         sys.exit(1)
 
-    workflow = scenario_data.get("workflow", [])
-    has_msd = False
-    if isinstance(workflow, list):
-        for step in workflow:
-            if isinstance(step, dict) and step.get("type") == "MaximumSupportedDemand":
-                has_msd = True
-                break
-    elif isinstance(workflow, dict):
-        for _name, step_data in workflow.items():
-            if (
-                isinstance(step_data, dict)
-                and step_data.get("type") == "MaximumSupportedDemand"
-            ):
-                has_msd = True
-                break
-
-    if not has_msd:
-        print(
-            "Base scenario must have a MaximumSupportedDemand workflow step. "
-            "No step with type 'MaximumSupportedDemand' found in workflow.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    # Create project directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy base scenario
     shutil.copy2(base_scenario, output_dir / "base_scenario.yml")
 
-    # Write default files
     (output_dir / "program.md").write_text(_DEFAULT_PROGRAM_MD, encoding="utf-8")
     (output_dir / "objective.yml").write_text(_DEFAULT_OBJECTIVE_YAML, encoding="utf-8")
     (output_dir / "hypothesis_template.yml").write_text(
         _build_default_template(base_scenario), encoding="utf-8"
     )
 
-    # Create empty directories
     (output_dir / "memory").mkdir(exist_ok=True)
     (output_dir / "results").mkdir(exist_ok=True)
 
@@ -308,7 +248,6 @@ def autoresearch_run(args: argparse.Namespace) -> None:
         print(f"Not a directory: {project_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Determine generation mode from config.yml (if present)
     config_yml_path = project_dir / "config.yml"
     generation_mode = "template"
     if config_yml_path.exists():
@@ -316,7 +255,6 @@ def autoresearch_run(args: argparse.Namespace) -> None:
             project_config = yaml.safe_load(f) or {}
         generation_mode = project_config.get("generation_mode", "template")
 
-    # Validate required files exist
     required = [
         "program.md",
         "objective.yml",
@@ -334,7 +272,6 @@ def autoresearch_run(args: argparse.Namespace) -> None:
     config = RunConfig(
         project_dir=project_dir,
         backend=backend,
-        ngraph_bin=getattr(args, "ngraph_bin", None),
         max_experiments=args.max_experiments,
         timeout_s=args.timeout,
         seed=args.seed,

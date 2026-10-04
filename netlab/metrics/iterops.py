@@ -1,9 +1,4 @@
-"""Iteration-level summary metrics for tm_placement.
-
-Extracts iteration counts, unique pattern counts, and wall-clock timing
-from tm_placement step metadata. Uses ``occurrence_count`` to recover
-the true number of Monte Carlo iterations from deduplicated results.
-"""
+"""Read failure counts and elapsed time from placement results."""
 
 from __future__ import annotations
 
@@ -11,19 +6,19 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from metrics.common import flow_occurrence_count
+from netlab.metrics.common import flow_occurrence_count
+
+from .common import nonnegative_number
+from .validation import validate_sample_counts
 
 
 @dataclass
 class IterOpsResult:
-    """Iteration summary for a single seed.
+    """Counts and timing for one seed.
 
-    Attributes:
-        failures_count: Total failure iterations (sum of occurrence_count).
-        unique_patterns: Number of unique failure patterns after dedup.
-        total_iterations_count: 1 (baseline) + failures_count.
-        total_duration_sec: Wall-clock duration of the tm_placement step.
-        per_iter_duration_sec: total_duration_sec / total_iterations_count.
+    ``failures_count`` sums pattern occurrence counts; ``total_iterations_count``
+    also includes one baseline. ``per_iter_duration_sec`` divides the recorded
+    step duration by that total, including repeated patterns.
     """
 
     failures_count: int
@@ -54,11 +49,7 @@ class IterOpsResult:
 
 
 def compute_iter_ops(results: dict) -> IterOpsResult:
-    """Extract iteration counts and timing from tm_placement metadata.
-
-    The true failure iteration count is recovered by summing
-    ``occurrence_count`` across all deduplicated flow_results entries.
-    """
+    """Sum failure occurrence counts and read the recorded placement duration."""
     tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
     meta = tm_step.get("metadata", {}) or {}
     data = tm_step.get("data", {}) or {}
@@ -69,19 +60,16 @@ def compute_iter_ops(results: dict) -> IterOpsResult:
     if not isinstance(fr, list):
         raise ValueError("tm_placement.data.flow_results must be a list")
 
-    # Recover true iteration count from occurrence_count
+    validate_sample_counts(tm_step, "tm_placement")
+
     fail_count = sum(flow_occurrence_count(it) for it in fr)
     unique_patterns = len(fr)
     total_count = 1 + fail_count  # baseline + failures
 
-    # NetGraph records workflow timing in metadata.duration_sec.
     total_duration = float("nan")
-    try:
-        dur = meta.get("duration_sec")
-        if dur is not None:
-            total_duration = float(dur)
-    except Exception:
-        total_duration = float("nan")
+    dur = meta.get("duration_sec")
+    if dur is not None:
+        total_duration = nonnegative_number(dur, "duration_sec")
 
     per_iter_duration = (
         float(total_duration / total_count)

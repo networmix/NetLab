@@ -12,13 +12,10 @@ import seaborn as sns
 def plot_significance_heatmap(
     analysis_root: Path, save_to: Optional[Path] = None
 ) -> Optional[Path]:
-    """Plot heatmap of normalized effect sizes with significance highlighting.
+    """Plot effects from normalized_insights.csv and mark adjusted p-values < 0.05.
 
-    Expects normalized insights at analysis_root/normalized_insights.csv with columns:
-      scenario, <metric>__mean, <metric>__n, <metric>__p for multiple metrics.
-
-    Effect size is mean-1.0 for ratio metrics (suffix _r__mean) and mean-0.0 for delta metrics (suffix _d__mean).
-    Cells are marked where p < 0.05, using __p_adj when present, otherwise __p.
+    Read ``<metric>__mean`` and ``<metric>__p_adj`` columns. Subtract 1 from
+    ratio means (``_r``); delta means (``_d``) already have a zero reference.
     """
     csv = analysis_root / "normalized_insights.csv"
     if not csv.exists():
@@ -27,7 +24,6 @@ def plot_significance_heatmap(
     if df.empty:
         return None
 
-    # Identify metric bases by scanning __mean columns
     metrics = []
     for c in df.columns:
         if c.endswith("__mean"):
@@ -36,12 +32,11 @@ def plot_significance_heatmap(
     if not metrics:
         return None
 
-    # Build effect size matrix and p-value matrix
     eff = pd.DataFrame(index=df.index, columns=metrics, dtype=float)
     pvals = pd.DataFrame(index=df.index, columns=metrics, dtype=float)
     for m in metrics:
         m_mean = f"{m}__mean"
-        m_p = f"{m}__p_adj" if f"{m}__p_adj" in df.columns else f"{m}__p"
+        m_p = f"{m}__p_adj"
         if m_mean not in df.columns:
             continue
         vals = pd.to_numeric(df[m_mean], errors="coerce")
@@ -52,7 +47,6 @@ def plot_significance_heatmap(
         if m_p in df.columns:
             pvals[m] = pd.to_numeric(df[m_p], errors="coerce")
 
-    # Order metrics for display: ratios first, then deltas
     metrics_sorted = sorted(metrics, key=lambda x: (0 if x.endswith("_r") else 1, x))
     eff = eff[metrics_sorted]
     pvals = pvals[metrics_sorted]
@@ -60,8 +54,6 @@ def plot_significance_heatmap(
     eff_t = eff.T
     pvals_t = pvals.T
 
-    # Heatmap with diverging palette centered at 0
-    sns.set_theme(style="whitegrid")
     fig, ax = plt.subplots(
         figsize=(max(8.0, 1.0 + 0.55 * eff_t.shape[1]), 1.0 + 0.45 * eff_t.shape[0])
     )
@@ -82,9 +74,8 @@ def plot_significance_heatmap(
     )
     ax.set_xlabel("scenario")
     ax.set_ylabel("metric (normalized)")
-    ax.set_title("Baseline-normalized effects with significance (p < 0.05)")
+    ax.set_title("Baseline-normalized effects with significance (Holm p < 0.05)")
 
-    # Overlay significance markers
     for i, m in enumerate(eff_t.index):
         for j, scen in enumerate(eff_t.columns):
             p = (
@@ -92,7 +83,6 @@ def plot_significance_heatmap(
                 if (m in pvals_t.index and scen in pvals_t.columns)
                 else np.nan
             )
-            # Ensure p is numeric before comparison
             p_val = float(p) if isinstance(p, (int, float, np.number)) else np.nan
             if np.isfinite(p_val) and p_val < 0.05:
                 ax.plot(j + 0.5, i + 0.5, marker="o", markersize=4, color="black")

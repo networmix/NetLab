@@ -7,7 +7,7 @@ within a site.
 
 Topology directories are named
 `dc{rows}x{devices}_bb{planes}x{devices}_bb{planes}x{devices}_dc{rows}x{devices}_{pattern}`,
-ordered DC-A, BB-A, BB-B, DC-B. Each directory's `scenario.yml` defines the actual
+ordered DC-A, BB-A, BB-B, DC-B. Each directory's `scenario.yml` defines its
 connections and capacities. Use `--list` to see the available configurations.
 
 ## Run

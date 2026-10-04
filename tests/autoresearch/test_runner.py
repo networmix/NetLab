@@ -14,9 +14,6 @@ from netlab.autoresearch.runner import AutoResearchRunner, RunConfig
 
 DATA_DIR = Path(__file__).parent / "data"
 
-# ---------------------------------------------------------------------------
-# Helpers: create a test project directory
-# ---------------------------------------------------------------------------
 
 # Read the original square_mesh.yaml once at module level
 _SQUARE_MESH_TEXT = (DATA_DIR / "square_mesh.yaml").read_text()
@@ -70,11 +67,6 @@ def _mock_response(link_capacity: float) -> str:
           link_capacity: {link_capacity}
         ```
     """)
-
-
-# ---------------------------------------------------------------------------
-# Init validation tests
-# ---------------------------------------------------------------------------
 
 
 class TestInitValidatesWorkflow:
@@ -134,27 +126,6 @@ class TestInitValidatesPlaceholders:
             AutoResearchRunner(config)
 
 
-class TestNgraphResolution:
-    def test_explicit_ngraph_bin_is_used(self, tmp_path: Path) -> None:
-        proj = make_project(tmp_path)
-        backend = MockBackend([])
-        config = RunConfig(
-            project_dir=proj,
-            backend=backend,
-            ngraph_bin="/tmp/custom-ngraph",
-            max_experiments=0,
-        )
-
-        runner = AutoResearchRunner(config)
-
-        assert runner._ngraph_bin == "/tmp/custom-ngraph"
-
-
-# ---------------------------------------------------------------------------
-# Happy path test (uses real ngraph)
-# ---------------------------------------------------------------------------
-
-
 class TestHappyPath:
     @pytest.mark.timeout(120)
     def test_three_experiments_succeed(self, tmp_path: Path) -> None:
@@ -175,8 +146,7 @@ class TestHappyPath:
 
         assert runner.status == "completed"
 
-        # Check experiment log
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         entries = log.load()
         assert len(entries) == 3
 
@@ -186,24 +156,17 @@ class TestHappyPath:
             assert "alpha_star" in entry.metrics
             assert entry.objective_score is not None
 
-        # Check experiment directories exist
         for i in range(1, 4):
             exp_dir = proj / "results" / f"exp_{i:03d}"
             assert exp_dir.exists()
             assert (exp_dir / "scenario.yml").exists()
             assert (exp_dir / "scenario.results.json").exists()
 
-        # Check best_hypothesis.yml exists
         best_path = proj / "best_hypothesis.yml"
         assert best_path.exists()
         best_data = yaml.safe_load(best_path.read_text())
         assert "objective_score" in best_data
         assert "params" in best_data
-
-
-# ---------------------------------------------------------------------------
-# Deduplication test
-# ---------------------------------------------------------------------------
 
 
 class TestDeduplication:
@@ -224,29 +187,20 @@ class TestDeduplication:
         runner = AutoResearchRunner(config)
         runner.run()
 
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         entries = log.load()
         assert len(entries) == 3
 
-        # First and second have same params_hash
         assert entries[0].params_hash == entries[1].params_hash
 
-        # Second entry is cached
         assert entries[0].status == "success"
         assert entries[1].status == "cached"
         assert entries[2].status == "success"
 
-        # Cached entry should have same metrics as original
         assert entries[1].metrics == entries[0].metrics
         assert entries[1].objective_score == entries[0].objective_score
 
-        # Only 2 ngraph calls (not 3)
         assert runner.ngraph_call_count == 2
-
-
-# ---------------------------------------------------------------------------
-# Circuit breaker tests
-# ---------------------------------------------------------------------------
 
 
 class TestCircuitBreakerTrips:
@@ -268,7 +222,7 @@ class TestCircuitBreakerTrips:
 
         assert runner.status == "circuit_breaker"
 
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         entries = log.load()
         assert len(entries) == 5
         for entry in entries:
@@ -298,15 +252,11 @@ class TestCircuitBreakerResets:
         runner = AutoResearchRunner(config)
         runner.run()
 
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         entries = log.load()
 
-        # The 1 good entry at position 4 resets the counter.
-        # Then 3 more bad. Total consecutive from tail = 3 < 5, no trip.
-        # So we should have all 8 entries.
         assert len(entries) == 8
 
-        # Verify statuses
         assert entries[0].status == "parse_error"
         assert entries[1].status == "parse_error"
         assert entries[2].status == "parse_error"
@@ -319,24 +269,18 @@ class TestCircuitBreakerResets:
         assert runner.status == "completed"
 
 
-# ---------------------------------------------------------------------------
-# Resume test
-# ---------------------------------------------------------------------------
-
-
 class TestResumeCounter:
     @pytest.mark.timeout(120)
     def test_starts_at_exp_004(self, tmp_path: Path) -> None:
         """Pre-create exp_001..exp_003 dirs + 3-entry log -> starts at exp_004."""
         proj = make_project(tmp_path)
+        AutoResearchRunner(RunConfig(project_dir=proj, backend=MockBackend([])))
         results_dir = proj / "results"
 
-        # Pre-create exp directories
         for i in range(1, 4):
             (results_dir / f"exp_{i:03d}").mkdir()
 
-        # Pre-create a 3-entry log
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         for i in range(1, 4):
             entry = LogEntry(
                 exp_id=f"exp_{i:03d}",
@@ -360,7 +304,7 @@ class TestResumeCounter:
         runner = AutoResearchRunner(config)
         runner.run()
 
-        log2 = ExperimentLog(proj, direction="maximize")
+        log2 = ExperimentLog(proj)
         entries = log2.load()
         assert len(entries) == 4
         assert entries[3].exp_id == "exp_004"
@@ -373,14 +317,13 @@ class TestResumeBest:
         Runner re-derives best as 0.9 and uses it as the comparison threshold.
         """
         proj = make_project(tmp_path)
+        AutoResearchRunner(RunConfig(project_dir=proj, backend=MockBackend([])))
         results_dir = proj / "results"
 
-        # Pre-create exp directories
         for i in range(1, 4):
             (results_dir / f"exp_{i:03d}").mkdir()
 
-        # Pre-create log with varying scores
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         scores = [0.5, 0.9, 0.3]
         for i, score in enumerate(scores, 1):
             entry = LogEntry(
@@ -397,7 +340,7 @@ class TestResumeBest:
             )
             log.append(entry)
 
-        # Write a STALE best_hypothesis.yml pointing to score 0.5
+        # A stale best_hypothesis.yml must not override the log.
         stale_best = {
             "exp_id": "exp_001",
             "params": {"link_capacity": 1.0},
@@ -416,70 +359,38 @@ class TestResumeBest:
         runner = AutoResearchRunner(config)
         runner.run()
 
-        # The runner re-derives best as 0.9 from the log.
-        # The new experiment's score from ngraph (alpha_star=1.0) is > 0.9,
-        # so it should become the new best.
         best_path = proj / "best_hypothesis.yml"
         best_data = yaml.safe_load(best_path.read_text())
-        # The new experiment scored 1.0 (alpha_star from ngraph), which is > 0.9
         assert best_data["exp_id"] == "exp_004"
         assert best_data["objective_score"] >= 0.9
 
 
-# ---------------------------------------------------------------------------
-# Timeout test
-# ---------------------------------------------------------------------------
-
-
 class TestTimeoutNoResult:
-    def test_sleep_subprocess_timeout(self, tmp_path: Path) -> None:
-        """Mock ngraph with 'sleep 999', timeout_s=2 -> timeout_no_result."""
+    def test_queue_timeout(self, tmp_path: Path, monkeypatch) -> None:
+        from netlab.simulation import SimulationResult
+
         proj = make_project(tmp_path)
-
-        responses = [_mock_response(2.0)]
-        backend = MockBackend(responses)
-        config = RunConfig(
-            project_dir=proj, backend=backend, max_experiments=1, seed=42, timeout_s=2
+        monkeypatch.setattr(
+            "netlab.autoresearch.runner.run_simulation",
+            lambda *a, **kw: SimulationResult("timeout", error="deadline exceeded"),
         )
-        runner = AutoResearchRunner(config)
-        # Override ngraph binary to sleep
-        runner._ngraph_bin = "sleep"
-
-        # Patch _execute_ngraph to use ["sleep", "999"] for both inspect and run
-        def _timeout_execute(scenario_path, exp_dir):
-            import subprocess as sp
-
-            try:
-                sp.run(
-                    ["sleep", "999"],
-                    capture_output=True,
-                    text=True,
-                    timeout=config.timeout_s,
-                )
-            except sp.TimeoutExpired:
-                return {"status": "timeout_no_result"}
-            return {"status": "success"}
-
-        runner._execute_ngraph = _timeout_execute
-
+        runner = AutoResearchRunner(
+            RunConfig(
+                project_dir=proj,
+                backend=MockBackend([_mock_response(2.0)]),
+                max_experiments=1,
+            )
+        )
         runner.run()
-
-        log = ExperimentLog(proj, direction="maximize")
-        entries = log.load()
-        assert len(entries) == 1
+        entries = ExperimentLog(proj).load()
         assert entries[0].status == "timeout_no_result"
-        assert entries[0].metrics is None
-
-
-# ---------------------------------------------------------------------------
-# Crash: stderr captured
-# ---------------------------------------------------------------------------
+        assert entries[0].error_detail == "deadline exceeded"
 
 
 class TestCrashStderrCaptured:
     @pytest.mark.timeout(120)
     def test_bad_scenario_captures_stderr(self, tmp_path: Path) -> None:
-        """Invalid scenario content -> ngraph fails, stderr captured."""
+        """Simulation errors are recorded in the experiment log."""
         proj = make_project(tmp_path)
 
         # Create a base_scenario that will pass placeholder validation
@@ -522,9 +433,68 @@ class TestCrashStderrCaptured:
         runner = AutoResearchRunner(config)
         runner.run()
 
-        log = ExperimentLog(proj, direction="maximize")
+        log = ExperimentLog(proj)
         entries = log.load()
         assert len(entries) == 1
         assert entries[0].status == "crash"
         assert entries[0].error_detail is not None
         assert len(entries[0].error_detail) > 0
+
+
+@pytest.mark.parametrize(
+    "changed", ["seed", "objective.yml", "base_scenario.yml", "dependencies"]
+)
+def test_resume_rejects_changed_research_inputs(tmp_path, monkeypatch, changed):
+    proj = make_project(tmp_path)
+    config = RunConfig(project_dir=proj, backend=MockBackend([]))
+    AutoResearchRunner(config)
+    if changed == "seed":
+        config.seed += 1
+    elif changed == "dependencies":
+        monkeypatch.setattr(
+            "netlab.autoresearch.runner.package_versions",
+            lambda: {"ngraph": "different"},
+        )
+    else:
+        path = proj / changed
+        path.write_text(path.read_text() + "\n# changed input\n")
+    with pytest.raises(ValueError, match="inputs or dependencies changed"):
+        AutoResearchRunner(config)
+
+
+def test_minimize_selects_zero_and_keeps_distinct_attempt_ids(tmp_path, monkeypatch):
+    from netlab.simulation import SimulationResult
+
+    proj = make_project(tmp_path)
+    objective = proj / "objective.yml"
+    objective.write_text(objective.read_text().replace("maximize", "minimize"))
+    values = iter([1.0, 0.0, 2.0])
+
+    def execute(*args, **kwargs):
+        return SimulationResult(
+            "success",
+            results={"steps": {"msd_baseline": {"data": {"alpha_star": next(values)}}}},
+        )
+
+    monkeypatch.setattr("netlab.autoresearch.runner.run_simulation", execute)
+    backend = MockBackend(
+        [_mock_response(2.0), _mock_response(3.0), _mock_response(4.0)]
+    )
+    runner = AutoResearchRunner(
+        RunConfig(
+            project_dir=proj,
+            backend=backend,
+            max_experiments=3,
+            reflection_interval=100,
+        )
+    )
+    # A new best triggers reflection; avoid consuming the experiment responses there.
+    monkeypatch.setattr(runner, "_run_reflection", lambda entries: None)
+    runner.run()
+    best = ExperimentLog(proj).best_entry()
+    assert best.exp_id == "exp_002"
+    assert best.objective_score == 0
+    assert (
+        yaml.safe_load((proj / "best_hypothesis.yml").read_text())["exp_id"]
+        == "exp_002"
+    )

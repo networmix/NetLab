@@ -2,7 +2,7 @@
 # Run NetLab lint and tests against selected local project sources.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-unset PYTHONPATH PYTHONHOME NETLAB_NGRAPH_BIN NETLAB_TOPOGEN_BIN NGRAPH_ENABLE_MAXFLOW
+unset PYTHONPATH PYTHONHOME
 if [[ $# -ne 3 ]]; then
     echo 'Usage: bash dev/check_ngraph_integration.sh /path/to/NetGraph /path/to/NetGraph-Core /path/to/TopoGen' >&2
     exit 2

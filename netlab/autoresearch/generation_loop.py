@@ -1,193 +1,42 @@
-"""Generate freeform NetGraph YAML with LLM feedback.
-
-Each candidate is inspected and simulated. Errors are returned to the LLM
-for another attempt, up to the configured limit.
-"""
+"""Generate, validate and simulate candidates through the shared execution API."""
 
 from __future__ import annotations
 
-import shutil
-import subprocess
-import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from tempfile import TemporaryDirectory
 
-import yaml
-
-from netlab.runtime import require_executable
+from netlab.artifacts import write_text_atomic
+from netlab.simulation import Inspection, SimulationBatch
+from netlab.tasks import TaskQueue
 
 from .backend import LLMBackend
 
 
 @dataclass
-class InspectResult:
-    """Structured output from ngraph scenario inspection."""
-
-    success: bool
-    node_count: int = 0
-    link_count: int = 0
-    risk_groups: list[str] = field(default_factory=list)
-    demand_count: int = 0
-    workflow_steps: int = 0
-    hierarchy: dict[str, Any] = field(default_factory=dict)
-    errors: list[str] = field(default_factory=list)
-    raw_output: str = ""
-
-    def summary(self) -> str:
-        if not self.success:
-            return f"FAILED: {'; '.join(self.errors)}"
-        return (
-            f"nodes={self.node_count}, links={self.link_count}, "
-            f"risk_groups={self.risk_groups}, demands={self.demand_count}, "
-            f"workflow_steps={self.workflow_steps}"
-        )
-
-
-@dataclass
 class GenerationResult:
-    """Generated scenario and simulation results, or details of the failed attempt."""
-
     success: bool
     scenario_yaml: str = ""
     scenario_path: Path | None = None
     results_path: Path | None = None
     results_data: dict | None = None
-    inspect: InspectResult | None = None
+    inspect: Inspection | None = None
     iterations_used: int = 0
     error: str = ""
-
-
-def inspect_scenario(scenario_path: Path, ngraph_bin: str) -> InspectResult:
-    """Run ``ngraph inspect`` and parse counts, risk groups, and errors."""
-    try:
-        proc = subprocess.run(
-            [ngraph_bin, "inspect", str(scenario_path)],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-    except subprocess.TimeoutExpired:
-        return InspectResult(success=False, errors=["ngraph inspect timed out"])
-    except FileNotFoundError:
-        return InspectResult(
-            success=False, errors=[f"ngraph binary not found: {ngraph_bin}"]
-        )
-
-    output = proc.stdout + proc.stderr
-    if proc.returncode != 0:
-        # Extract the most useful error lines
-        error_lines = [
-            line.strip()
-            for line in output.splitlines()
-            if "error" in line.lower() or "Error" in line or "invalid" in line.lower()
-        ]
-        if not error_lines:
-            error_lines = output.strip().splitlines()[-5:]
-        return InspectResult(
-            success=False,
-            errors=error_lines,
-            raw_output=output,
-        )
-
-    # Parse structured data from the overview table.
-    # Format: "   Metric             | Value"
-    # Only match lines where the metric name starts the line (not hierarchy lines
-    # like "- root | Nodes=10, Links=12" which also contain | and Nodes).
-    result = InspectResult(success=True, raw_output=output)
-    for line in output.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("-") or "=" in stripped.split("|")[-1]:
-            continue  # Skip hierarchy lines and separator lines
-        if stripped.startswith("Nodes") and "|" in stripped:
-            result.node_count = _parse_int(stripped.split("|")[-1])
-        elif stripped.startswith("Links") and "|" in stripped:
-            result.link_count = _parse_int(stripped.split("|")[-1])
-        elif stripped.startswith("Workflow steps") and "|" in stripped:
-            result.workflow_steps = _parse_int(stripped.split("|")[-1])
-        elif (
-            stripped.startswith("Demand") and "|" in stripped and "demands" in stripped
-        ):
-            val_part = stripped.split("|")[-1]
-            if "(" in val_part:
-                inner = val_part.split("(")[1]
-                result.demand_count = _parse_int(inner.split("demand")[0])
-        elif stripped.startswith("Total Nodes:"):
-            if result.node_count == 0:
-                result.node_count = _parse_int(stripped.split(":")[-1])
-        elif stripped.startswith("Total Links:"):
-            if result.link_count == 0:
-                result.link_count = _parse_int(stripped.split(":")[-1])
-        elif line.startswith("Risk groups"):
-            # "2 total; 0 disabled"
-            result.risk_groups = []  # populated below from detailed section
-
-    # Extract risk group names from the detailed section
-    in_rg_section = False
-    for line in output.splitlines():
-        stripped = line.strip()
-        if "RISK GROUPS" in stripped:
-            in_rg_section = True
-            continue
-        if in_rg_section and stripped.startswith("Total:"):
-            continue
-        if in_rg_section and stripped and not stripped.startswith("-"):
-            # Lines like "  path_a (enabled)" or "  rg_fiber (enabled)"
-            name = stripped.split("(")[0].strip()
-            if name and name != "Total:":
-                result.risk_groups.append(name)
-        if in_rg_section and stripped == "":
-            # Empty line after risk groups section
-            if result.risk_groups:
-                in_rg_section = False
-
-    return result
-
-
-def _parse_int(s: str) -> int:
-    try:
-        return int(s.strip().replace(",", ""))
-    except ValueError:
-        return 0
 
 
 _GENERATION_SYSTEM_PROMPT_HEADER = """\
 You are a network topology engineer generating ngraph scenario YAML files.
 
 You will receive a connectivity idea and must produce a complete ngraph
-scenario YAML. After each attempt, you will receive the ngraph inspect
-output showing what was actually built. Compare it against the original
+scenario YAML. After each attempt, you will receive the structured inspection
+summary showing what was actually built. Compare it against the original
 intent and fix any mismatches.
 
 Return ONLY valid YAML. No markdown fences, no explanation.
 """
 
-# Cache the DSL reference after the first generation request.
-_DSL_REFERENCE: str | None = None
-
-
-def _load_dsl_reference() -> str:
-    """Load the ngraph DSL skill reference for use as system prompt context."""
-    global _DSL_REFERENCE
-    if _DSL_REFERENCE is not None:
-        return _DSL_REFERENCE
-
-    # The full reference ships in the .claude/skills submodule.
-    from pathlib import Path
-
-    skill_path = (
-        Path(__file__).resolve().parents[2]
-        / ".claude"
-        / "skills"
-        / "netgraph-dsl"
-        / "SKILL.md"
-    )
-    if skill_path.is_file():
-        _DSL_REFERENCE = skill_path.read_text()
-        return _DSL_REFERENCE
-
-    # Minimal reference used when the submodule is not checked out.
-    _DSL_REFERENCE = """\
+_DSL_REFERENCE = """\
 CRITICAL RULES:
 - Top-level keys: seed, network, risk_groups, demands, failures, workflow
 - nodes and links go INSIDE the network key
@@ -222,12 +71,6 @@ TrafficMatrixPlacement workflow step (all fields required):
     alpha_from_step: msd_baseline
     alpha_from_field: data.alpha_star
 """
-    return _DSL_REFERENCE
-
-
-def _get_generation_system_prompt() -> str:
-    """Build the full system prompt for scenario generation."""
-    return _GENERATION_SYSTEM_PROMPT_HEADER + "\n" + _load_dsl_reference()
 
 
 _GENERATION_PROMPT_TEMPLATE = """\
@@ -263,202 +106,76 @@ Fix the scenario YAML. Return ONLY the YAML content.
 def run_generation_loop(
     idea: str,
     backend: LLMBackend,
-    ngraph_bin: str | None = None,
     max_iterations: int = 20,
     work_dir: Path | None = None,
+    timeout_s: float = 60,
 ) -> GenerationResult:
-    """Generate, inspect, and simulate candidates until one succeeds.
+    """Revise candidates using actual validation/execution errors.
 
-    Args:
-        idea: Description of the topology and experiment to generate.
-        backend: LLM backend for generation and revisions.
-        ngraph_bin: NetGraph executable; resolved automatically if omitted.
-        max_iterations: Maximum generation attempts.
-        work_dir: Output directory; a temporary directory is used if omitted.
-
-    Returns:
-        Scenario and simulation results on success, or error details.
+    Without ``work_dir``, return in-memory YAML/results with no artifact paths.
+    Each attempt owns a separate directory, preventing stale-result reuse.
     """
-    if ngraph_bin is None:
-        try:
-            ngraph_bin = require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
-        except RuntimeError as exc:
-            return GenerationResult(success=False, error=str(exc))
-
-    cleanup_work_dir = False
+    if max_iterations < 1:
+        raise ValueError("max_iterations must be positive")
     if work_dir is None:
-        work_dir = Path(tempfile.mkdtemp(prefix="genloop_"))
-        cleanup_work_dir = True
+        with TemporaryDirectory(prefix="netlab-generation-") as temporary:
+            result = run_generation_loop(
+                idea, backend, max_iterations, Path(temporary), timeout_s
+            )
+            result.scenario_path = None
+            result.results_path = None
+            return result
 
-    work_dir.mkdir(parents=True, exist_ok=True)
-    scenario_path = work_dir / "scenario.yml"
-
-    last_inspect: InspectResult | None = None
+    error = ""
     yaml_text = ""
-
-    try:
-        for iteration in range(max_iterations):
-            # Generate or revise
-            if iteration == 0:
-                prompt = _GENERATION_PROMPT_TEMPLATE.format(idea=idea, feedback="")
-            else:
-                validation_errors = ""
-                if last_inspect and last_inspect.errors:
-                    validation_errors = "Errors:\n" + "\n".join(
-                        f"- {e}" for e in last_inspect.errors
-                    )
-                prompt = _REVISION_PROMPT_TEMPLATE.format(
-                    inspect_summary=last_inspect.summary() if last_inspect else "N/A",
+    inspection = None
+    with TaskQueue() as queue:
+        batch = SimulationBatch(queue)
+        for iteration in range(1, max_iterations + 1):
+            prompt = (
+                _GENERATION_PROMPT_TEMPLATE.format(idea=idea, feedback="")
+                if iteration == 1
+                else _REVISION_PROMPT_TEMPLATE.format(
                     idea=idea,
-                    validation_errors=validation_errors,
+                    inspect_summary=inspection.summary()
+                    if inspection
+                    else "Invalid scenario",
+                    validation_errors=error,
                 )
-
+            )
             try:
                 response = backend.generate(
-                    prompt, system=_get_generation_system_prompt()
+                    prompt,
+                    system=_GENERATION_SYSTEM_PROMPT_HEADER + "\n" + _DSL_REFERENCE,
                 )
             except (RuntimeError, OSError) as exc:
-                last_inspect = InspectResult(
-                    success=False,
-                    errors=[f"LLM backend error: {exc}"],
-                )
+                error = f"LLM backend error: {exc}"
                 continue
-
-            # Extract YAML from response
             yaml_text = _extract_yaml(response)
-            if not yaml_text:
-                last_inspect = InspectResult(
-                    success=False,
-                    errors=["Could not extract valid YAML from LLM response"],
-                )
-                continue
-
-            # Validate YAML syntax
-            try:
-                yaml.safe_load(yaml_text)
-            except yaml.YAMLError as e:
-                last_inspect = InspectResult(
-                    success=False,
-                    errors=[f"YAML syntax error: {e}"],
-                )
-                continue
-
-            # Write and inspect
-            scenario_path.write_text(yaml_text)
-            last_inspect = inspect_scenario(scenario_path, ngraph_bin)
-
-            if last_inspect.success:
-                # Post-inspect viability checks
-                viability_errors = _check_viability(last_inspect)
-                if viability_errors:
-                    last_inspect.success = False
-                    last_inspect.errors = viability_errors
-                    continue
-
-                # Exercise demands, failure policies, and workflow references.
-                sim_result = _run_simulation(scenario_path, ngraph_bin, work_dir)
-                if not sim_result.success:
-                    last_inspect = InspectResult(
-                        success=False,
-                        errors=[f"Simulation failed: {sim_result.error}"],
-                    )
-                    continue
-
+            scenario_path = work_dir / f"attempt_{iteration:03d}" / "scenario.yml"
+            write_text_atomic(scenario_path, yaml_text)
+            outcome = batch.submit(
+                scenario_path, timeout=timeout_s, require_traffic=True
+            ).result()
+            inspection = outcome.inspection
+            if outcome.success:
                 return GenerationResult(
                     success=True,
                     scenario_yaml=yaml_text,
                     scenario_path=scenario_path,
-                    results_path=sim_result.results_path,
-                    results_data=sim_result.results_data,
-                    inspect=last_inspect,
-                    iterations_used=iteration + 1,
+                    results_path=scenario_path.with_suffix(".results.json"),
+                    results_data=outcome.results,
+                    inspect=inspection,
+                    iterations_used=iteration,
                 )
-
-        # Budget exhausted
-        return GenerationResult(
-            success=False,
-            scenario_yaml=yaml_text,
-            inspect=last_inspect,
-            iterations_used=max_iterations,
-            error=f"Failed to generate valid scenario in {max_iterations} iterations",
-        )
-
-    finally:
-        if cleanup_work_dir and work_dir.exists():
-            shutil.rmtree(work_dir, ignore_errors=True)
-
-
-@dataclass
-class _SimResult:
-    """Internal result from a trial simulation run."""
-
-    success: bool
-    results_path: Path | None = None
-    results_data: dict | None = None
-    error: str = ""
-
-
-def _run_simulation(scenario_path: Path, ngraph_bin: str, work_dir: Path) -> _SimResult:
-    """Simulate a candidate with a 60-second timeout and load its results."""
-    import json
-
-    results_dir = work_dir / "results"
-    results_dir.mkdir(exist_ok=True)
-    try:
-        proc = subprocess.run(
-            [ngraph_bin, "run", str(scenario_path), "-o", str(results_dir)],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-    except subprocess.TimeoutExpired:
-        return _SimResult(success=False, error="Simulation timed out (60s)")
-
-    if proc.returncode != 0:
-        # Extract useful error from stderr
-        stderr = proc.stderr.strip()
-        error_lines = [
-            line
-            for line in stderr.splitlines()
-            if "error" in line.lower() or "Error" in line
-        ]
-        error_msg = "; ".join(error_lines[-3:]) if error_lines else stderr[-300:]
-        return _SimResult(success=False, error=error_msg)
-
-    # Find and load results
-    results_files = list(results_dir.glob("*.results.json"))
-    if not results_files:
-        return _SimResult(success=False, error="No results file produced")
-
-    results_path = results_files[0]
-    try:
-        with results_path.open() as f:
-            results_data = json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        return _SimResult(success=False, error=f"Failed to load results: {e}")
-
-    return _SimResult(
-        success=True,
-        results_path=results_path,
-        results_data=results_data,
+            error = outcome.error
+    return GenerationResult(
+        success=False,
+        scenario_yaml=yaml_text,
+        inspect=inspection,
+        iterations_used=max_iterations,
+        error=f"Failed after {max_iterations} attempts: {error}",
     )
-
-
-def _check_viability(inspect: InspectResult) -> list[str]:
-    """Check that an inspected scenario is minimally viable.
-
-    Returns a list of error strings. Empty list means viable.
-    """
-    errors: list[str] = []
-    if inspect.node_count < 2:
-        errors.append(f"Need at least 2 nodes, got {inspect.node_count}")
-    if inspect.link_count < 1:
-        errors.append(f"Need at least 1 link, got {inspect.link_count}")
-    if inspect.demand_count < 1:
-        errors.append(f"Need at least 1 demand, got {inspect.demand_count}")
-    if inspect.workflow_steps < 1:
-        errors.append(f"Need at least 1 workflow step, got {inspect.workflow_steps}")
-    return errors
 
 
 def _extract_yaml(response: str) -> str:

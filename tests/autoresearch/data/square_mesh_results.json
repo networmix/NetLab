@@ -28,7 +28,7 @@
   "steps": {
     "msd_baseline": {
       "metadata": {
-        "duration_sec": 0.0005278587341308594
+        "duration_sec": 0.0004851818084716797
       },
       "data": {
         "alpha_star": 1.0,
@@ -44,7 +44,7 @@
         },
         "base_demands": [
           {
-            "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
+            "id": "^N([1-4])$|^N([1-4])$|ENrw5L9jSfiSmpClIKshsA",
             "source": "^N([1-4])$",
             "target": "^N([1-4])$",
             "volume": 12.0,
@@ -103,7 +103,7 @@
         "parallelism": 8,
         "analysis_function": "demand_placement_analysis",
         "policy_name": "single_link_failure",
-        "execution_time": 0.0015289783477783203,
+        "execution_time": 0.0015802383422851562,
         "unique_patterns": 6,
         "occurrence_counts": [
           164,
@@ -113,7 +113,7 @@
           164,
           144
         ],
-        "duration_sec": 0.010584115982055664
+        "duration_sec": 0.01028299331665039
       },
       "data": {
         "baseline": {
@@ -1373,7 +1373,7 @@
           "include_used_edges": false,
           "base_demands": [
             {
-              "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
+              "id": "^N([1-4])$|^N([1-4])$|ENrw5L9jSfiSmpClIKshsA",
               "source": "^N([1-4])$",
               "target": "^N([1-4])$",
               "volume": 12.0,
@@ -1398,7 +1398,7 @@
         "parallelism": 8,
         "analysis_function": "max_flow_analysis",
         "policy_name": "single_link_failure",
-        "execution_time": 0.002185821533203125,
+        "execution_time": 0.0023889541625976562,
         "unique_patterns": 6,
         "occurrence_counts": [
           164,
@@ -1408,7 +1408,7 @@
           164,
           144
         ],
-        "duration_sec": 0.011137008666992188
+        "duration_sec": 0.011208772659301758
       },
       "data": {
         "baseline": {
@@ -3628,7 +3628,7 @@
     "demands": {
       "baseline_traffic_matrix": [
         {
-          "id": "^N([1-4])$|^N([1-4])$|C5S1BzutRq6NWyHY_uawpA",
+          "id": "^N([1-4])$|^N([1-4])$|ENrw5L9jSfiSmpClIKshsA",
           "source": "^N([1-4])$",
           "target": "^N([1-4])$",
           "volume": 12.0,

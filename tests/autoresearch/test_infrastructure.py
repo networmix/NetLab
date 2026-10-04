@@ -1,4 +1,4 @@
-"""Tests verifying the autoresearch test infrastructure works correctly."""
+"""Check the square-mesh fixture and research template."""
 
 from __future__ import annotations
 
@@ -86,14 +86,14 @@ class TestSeedAnalysis:
 
     def test_compute_alpha_star_works(self, square_mesh_results: dict) -> None:
         """compute_alpha_star extracts alpha_star and base_total_demand."""
-        from metrics.msd import compute_alpha_star
+        from netlab.metrics.msd import compute_alpha_star
 
         alpha = compute_alpha_star(square_mesh_results)
         assert alpha.alpha_star == 1.0
         assert alpha.base_total_demand == 12.0
 
     def test_analyze_one_seed(self, square_mesh_results, tmp_path, monkeypatch):
-        from netlab.metrics_cmd import analyze_one_seed
+        from netlab.metrics.analysis import analyze_one_seed
 
         monkeypatch.delenv("NGRAPH_ENABLE_MAXFLOW", raising=False)
         alpha, bac, _, latency, _, _, _ = analyze_one_seed(

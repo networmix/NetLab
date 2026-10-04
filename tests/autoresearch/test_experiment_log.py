@@ -40,9 +40,6 @@ def _make_entry(
     )
 
 
-# ---------- Append + read ----------
-
-
 class TestAppendAndRead:
     def test_append_and_read_five_entries(self, tmp_path: Path) -> None:
         """Append 5 entries, read — len == 5, field-by-field match."""
@@ -75,9 +72,6 @@ class TestAppendAndRead:
             assert r.timestamp == w.timestamp
 
 
-# ---------- Atomic write ----------
-
-
 class TestAtomicWrite:
     def test_no_tmp_file_persists(self, tmp_path: Path) -> None:
         """After append, no .tmp file remains."""
@@ -90,9 +84,6 @@ class TestAtomicWrite:
         assert (tmp_path / "experiment_log.jsonl").exists()
 
 
-# ---------- Corrupt-tail recovery ----------
-
-
 class TestCorruptTailRecovery:
     def test_corrupt_tail_discarded_with_warning(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
@@ -102,7 +93,6 @@ class TestCorruptTailRecovery:
         for i in range(1, 6):
             log.append(_make_entry(exp_id=f"exp_{i:03d}"))
 
-        # Append garbage to the file
         log_path = tmp_path / "experiment_log.jsonl"
         with open(log_path, "ab") as f:
             f.write(b"this is 30 bytes of garbage!!!")
@@ -112,9 +102,6 @@ class TestCorruptTailRecovery:
 
         assert len(entries) == 5
         assert any("corrupt" in r.message.lower() for r in caplog.records)
-
-
-# ---------- Counter derivation ----------
 
 
 class TestCounterDerivation:
@@ -145,13 +132,10 @@ class TestCounterDerivation:
         assert log.next_experiment_id() == "exp_006"
 
 
-# ---------- Best derivation ----------
-
-
 class TestBestDerivation:
     def test_best_entry_maximize(self, tmp_path: Path) -> None:
         """10 entries with known scores; best_entry picks score=0.9."""
-        log = ExperimentLog(tmp_path, direction="maximize")
+        log = ExperimentLog(tmp_path)
         scores = [0.1, 0.5, 0.9, 0.3, 0.2, 0.7, 0.4, 0.6, 0.8, 0.05]
         for i, score in enumerate(scores, start=1):
             log.append(
@@ -168,9 +152,9 @@ class TestBestDerivation:
         assert best.objective_score == 0.9
 
     def test_best_entry_minimize(self, tmp_path: Path) -> None:
-        """direction='minimize', scores [0.9, 0.1, 0.5] => best is 0.1."""
-        log = ExperimentLog(tmp_path, direction="minimize")
-        scores = [0.9, 0.1, 0.5]
+        """Minimized values are stored as negative scores; -0.1 ranks above -0.9."""
+        log = ExperimentLog(tmp_path)
+        scores = [-0.9, -0.1, -0.5]
         for i, score in enumerate(scores, start=1):
             log.append(
                 _make_entry(
@@ -183,16 +167,13 @@ class TestBestDerivation:
         best = log.best_entry()
         assert best is not None
         assert best.exp_id == "exp_002"
-        assert best.objective_score == 0.1
+        assert best.objective_score == -0.1
 
     def test_best_entry_no_scoreable(self, tmp_path: Path) -> None:
         """All entries have None score => best_entry returns None."""
         log = ExperimentLog(tmp_path)
         log.append(_make_entry(status="crash", objective_score=None, metrics=None))
         assert log.best_entry() is None
-
-
-# ---------- History windowing ----------
 
 
 class TestHistoryWindowing:
@@ -211,15 +192,12 @@ class TestHistoryWindowing:
 
         result = log.windowed_history(last_n=10, top_n=5)
 
-        # Should contain last 10 entries (exp_016..exp_025)
         for i in range(16, 26):
             assert f"exp_{i:03d}" in result, f"Missing recent entry exp_{i:03d}"
 
-        # Should contain top 5 by score (exp_025, exp_024, exp_023, exp_022, exp_021)
         for i in range(21, 26):
             assert f"exp_{i:03d}" in result, f"Missing top entry exp_{i:03d}"
 
-        # Should contain summary stats
         assert "Total experiments: 25" in result
         assert "Min score:" in result
         assert "Max score:" in result
@@ -241,12 +219,9 @@ class TestHistoryWindowing:
         result = log.windowed_history(last_n=10, top_n=5, max_chars=500)
         assert len(result) <= 500
 
-        # Must contain best entry (exp_025, score=1.0)
         assert "exp_025" in result
 
-        # Must contain at least 3 recent entries
         recent_count = sum(1 for i in range(16, 26) if f"exp_{i:03d}" in result)
-        # Or at least 3 entries from the tail
         tail_count = sum(1 for i in range(23, 26) if f"exp_{i:03d}" in result)
         assert recent_count >= 3 or tail_count >= 3, (
             f"Expected at least 3 recent entries, found {recent_count} recent, "
@@ -260,9 +235,6 @@ class TestHistoryWindowing:
         assert "No experiments" in result
 
 
-# ---------- Config hash detection ----------
-
-
 class TestConfigHash:
     def test_config_hash_stored_and_retrieved(self, tmp_path: Path) -> None:
         """Write config hash, retrieve it, compare to a different hash."""
@@ -272,7 +244,6 @@ class TestConfigHash:
         stored = log.config_hash()
         assert stored == "abc123"
 
-        # Simulate config change detection
         current_hash = "def456"
         config_changed = stored != current_hash
         assert config_changed is True
@@ -298,9 +269,6 @@ class TestConfigHash:
         assert stored == current_hash
 
 
-# ---------- Empty log ----------
-
-
 class TestEmptyLog:
     def test_read_nonexistent_file(self, tmp_path: Path) -> None:
         """Read from nonexistent file => empty list, no error."""
@@ -308,9 +276,6 @@ class TestEmptyLog:
         entries = log.load()
         assert len(entries) == 0
         assert entries == []
-
-
-# ---------- Consecutive failures ----------
 
 
 class TestConsecutiveFailures:
@@ -372,47 +337,22 @@ class TestConsecutiveFailures:
         assert log.consecutive_failures() == 0
 
 
-# ---------- Direction validation ----------
+def test_cached_success_does_not_trip_circuit_breaker(tmp_path):
+    log = ExperimentLog(tmp_path)
+    log.append(_make_entry(status="cached"))
+    assert log.consecutive_failures() == 0
 
 
-class TestDirectionValidation:
-    def test_invalid_direction_raises(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError, match="direction"):
-            ExperimentLog(tmp_path, direction="invalid")
+def test_append_recovers_partial_tail(tmp_path):
+    log = ExperimentLog(tmp_path)
+    log.append(_make_entry(exp_id="exp_001"))
+    with (tmp_path / "experiment_log.jsonl").open("a") as stream:
+        stream.write('{"exp_id":')
+    log.append(_make_entry(exp_id="exp_002"))
+    assert [entry.exp_id for entry in log.load()] == ["exp_001", "exp_002"]
 
 
-# ---------- Error detail in history ----------
-
-
-class TestErrorDetailInHistory:
-    def test_error_detail_appears_in_history(self, tmp_path: Path) -> None:
-        """Error detail from entry appears in windowed history output."""
-        log = ExperimentLog(tmp_path)
-        log.append(
-            _make_entry(
-                exp_id="exp_001",
-                status="crash",
-                error_detail="ValueError: bad flow",
-                objective_score=None,
-                metrics=None,
-            )
-        )
-        result = log.windowed_history()
-        assert "ValueError: bad flow" in result
-
-
-# ---------- Metadata line coexists with entries ----------
-
-
-class TestMetadataCoexistence:
-    def test_metadata_does_not_break_load(self, tmp_path: Path) -> None:
-        """Metadata lines are silently skipped by load()."""
-        log = ExperimentLog(tmp_path)
-        log.write_config_hash("hash1")
-        log.append(_make_entry(exp_id="exp_001"))
-        log.append(_make_entry(exp_id="exp_002"))
-
-        entries = log.load()
-        assert len(entries) == 2
-        assert entries[0].exp_id == "exp_001"
-        assert entries[1].exp_id == "exp_002"
+def test_ids_include_logged_attempts_without_result_directories(tmp_path):
+    log = ExperimentLog(tmp_path)
+    log.append(_make_entry(exp_id="exp_009", status="parse_error"))
+    assert log.next_experiment_id() == "exp_010"

@@ -6,11 +6,11 @@ loss from their geometry. This analysis does not run simulations.
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from netlab.autoresearch.scenario_generator import (
+from netlab.artifacts import write_json_atomic
+from netlab.autoresearch.dcbb_config import (
     DcBbScenarioConfig,
     get_valid_layouts,
     get_viable_g_values,
@@ -66,8 +66,8 @@ class ConfigResult:
     k_dc: int  # BB connections per DC device
     fingerprint: FailureFingerprint
     feasible: bool
-    rule1_pass: bool  # no hanging
-    rule2_pass: bool  # >=75% retention
+    rule1_pass: bool  # Every device keeps a BB connection.
+    rule2_pass: bool  # Meets the configured retention threshold.
     notation: str  # ArxBc <> CrxDc block shape string
 
     def to_dict(self) -> dict:
@@ -125,24 +125,14 @@ def _compute_failure_fingerprint(
     if k == 0:
         return FailureFingerprint()
 
-    # plane_site: kills all devices in one plane within the block
-    # A plane row in the BB grid intersects bb_block_cols devices per block.
     plane_site_loss = bb_block_cols / k
 
-    # plane_group: kills planes_per_group consecutive planes.
-    # Worst case: the block's planes are entirely within one plane group.
-    # Affected planes in block = min(bb_block_rows, planes_per_group).
     pg_affected_planes = min(bb_block_rows, planes_per_group)
     plane_group_loss = (pg_affected_planes * bb_block_cols) / k
 
-    # device_index_across_pg: kills one device index across planes_per_group planes.
-    # Affected devices in block = min(bb_block_rows, planes_per_group) if the block
-    # has that device index column, which it does (worst case).
-    # But only 1 column is affected per device index.
     dev_idx_affected = min(bb_block_rows, planes_per_group)
     device_index_loss = dev_idx_affected / k
 
-    # single_bb_device: exactly 1 device
     single_device_loss = 1 / k
 
     return FailureFingerprint(
@@ -174,24 +164,11 @@ def analyze_side(
     planes_per_group: int = 4,
     retention_threshold: float = 0.75,
 ) -> StructuralAnalysisResult:
-    """Run structural analysis for one DC side.
+    """Enumerate layouts and check per-device connection retention after failures.
 
-    Enumerates all valid (G, layout) combinations, computes failure
-    fingerprints, and classifies feasibility.
-
-    Args:
-        side: "abc1" or "xyz1".
-        dc_rows: DC device grid rows.
-        dc_cols: DC device grid columns.
-        bb_rows: BB grid rows (planes).
-        bb_cols: BB grid columns (devices per plane).
-        dc_ports: Max BB-facing ports per DC device.
-        bb_ports: Max DC-facing ports per BB device.
-        planes_per_group: Planes per plane group (default 4).
-        retention_threshold: Minimum surviving fraction for Rule 2.
-
-    Returns:
-        StructuralAnalysisResult with all configs analyzed.
+    Rows and columns describe the DC and BB grids; port limits constrain mesh
+    group sizes. ``retention_threshold`` is the minimum surviving connection
+    fraction for plane-site, device-index, and single-device failures.
     """
     dc_total = dc_rows * dc_cols
     result = StructuralAnalysisResult(
@@ -226,7 +203,7 @@ def analyze_side(
 
             rule1 = (
                 fp.worst_feasibility < 1.0
-            )  # no hanging under feasibility-relevant failures
+            )  # Every device keeps a BB connection. under feasibility-relevant failures
             rule2 = fp.best_retention >= retention_threshold
 
             notation = _block_notation(
@@ -286,7 +263,7 @@ def save_results(results: dict[str, StructuralAnalysisResult], path: Path) -> No
     """Save structural analysis results to JSON."""
     data = {side: r.to_dict() for side, r in results.items()}
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2))
+    write_json_atomic(path, data)
 
 
 def print_summary(results: dict[str, StructuralAnalysisResult]) -> None:

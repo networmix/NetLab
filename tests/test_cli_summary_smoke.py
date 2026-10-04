@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from netlab.metrics_cmd import print_summary_from_csv
+from netlab.metrics.reporting import print_summary_from_csv
 
 
 def test_print_summary_from_csv_smoke(capsys) -> None:

@@ -9,10 +9,6 @@ import pytest
 
 from netlab.autoresearch.objective import ObjectiveFunction
 
-# ---------------------------------------------------------------------------
-# Fixtures — inline mock results and objective YAML
-# ---------------------------------------------------------------------------
-
 OBJECTIVE_YAML = textwrap.dedent("""\
     direction: maximize
     primary_metric: bac_auc
@@ -95,11 +91,6 @@ def obj_multi_constraint(tmp_path: Path) -> ObjectiveFunction:
     return ObjectiveFunction(path)
 
 
-# ---------------------------------------------------------------------------
-# Test: Extract metric (alpha_star)
-# ---------------------------------------------------------------------------
-
-
 class TestExtractMetric:
     def test_extract_alpha_star(self, obj_maximize: ObjectiveFunction) -> None:
         """Extract metric: results dict, metric_key='alpha_star' -> exact float match."""
@@ -117,11 +108,6 @@ class TestExtractMetric:
         results = _make_results(alpha_star=1.5, bac_auc=0.85, total_cost=100.0)
         value = obj_maximize.extract_metric(results, "total_cost")
         assert value == 100.0
-
-
-# ---------------------------------------------------------------------------
-# Test: Primary metric score (maximize)
-# ---------------------------------------------------------------------------
 
 
 class TestPrimaryMetricScore:
@@ -154,11 +140,6 @@ class TestPrimaryMetricScore:
         assert r200.primary_value == 200.0
 
 
-# ---------------------------------------------------------------------------
-# Test: Constraint pass
-# ---------------------------------------------------------------------------
-
-
 class TestConstraintPass:
     def test_constraint_passes(self, obj_maximize: ObjectiveFunction) -> None:
         """alpha_star >= 1.0 with alpha_star=1.5 -> feasible, no penalty."""
@@ -179,11 +160,6 @@ class TestConstraintPass:
         assert result.violated_constraints == []
 
 
-# ---------------------------------------------------------------------------
-# Test: Constraint fail
-# ---------------------------------------------------------------------------
-
-
 class TestConstraintFail:
     def test_constraint_fails(self, obj_maximize: ObjectiveFunction) -> None:
         """alpha_star >= 1.0 with alpha_star=0.8 -> infeasible, penalized score."""
@@ -199,11 +175,6 @@ class TestConstraintFail:
         assert "alpha_feasibility" in r_infeasible.violated_constraints
         # Infeasible score must be less than feasible with same primary
         assert r_infeasible.score < r_feasible.score
-
-
-# ---------------------------------------------------------------------------
-# Test: Multiple constraints (one passes, one fails)
-# ---------------------------------------------------------------------------
 
 
 class TestMultipleConstraints:
@@ -238,11 +209,6 @@ class TestMultipleConstraints:
         assert result.score == 0.85 - 2e6
 
 
-# ---------------------------------------------------------------------------
-# Test: Missing metric
-# ---------------------------------------------------------------------------
-
-
 class TestMissingMetric:
     def test_undefined_metric_key(self, obj_maximize: ObjectiveFunction) -> None:
         """metric_key='nonexistent' -> raises KeyError with metric name."""
@@ -256,11 +222,6 @@ class TestMissingMetric:
         # bac_auc path is workflow.tm_placement.bac.auc_normalized — missing
         with pytest.raises(KeyError, match="bac_auc"):
             obj_maximize.extract_metric(results, "bac_auc")
-
-
-# ---------------------------------------------------------------------------
-# Test: Objective from YAML
-# ---------------------------------------------------------------------------
 
 
 class TestObjectiveFromYAML:
@@ -300,17 +261,11 @@ class TestObjectiveFromYAML:
 
         assert obj.direction == "minimize"
         assert obj.primary_metric == "total_cost"
-        # Verify constraints load by evaluating
         results = _make_results(alpha_star=1.5, bac_auc=0.85, total_cost=100.0)
         result = obj.evaluate(results)
         assert result.status == "feasible"
         assert "alpha_star" in result.all_metrics
         assert "total_cost" in result.all_metrics
-
-
-# ---------------------------------------------------------------------------
-# Test: Score computation details
-# ---------------------------------------------------------------------------
 
 
 class TestScoreComputation:
@@ -337,7 +292,7 @@ class TestScoreComputation:
     def test_infeasible_always_below_feasible(
         self, obj_maximize: ObjectiveFunction
     ) -> None:
-        """Even with a higher primary value, infeasible scores below any feasible."""
+        """The constraint penalty outweighs the BAC gain in this example."""
         results_infeasible = _make_results(
             alpha_star=0.1, bac_auc=0.99, total_cost=100.0
         )
@@ -345,11 +300,6 @@ class TestScoreComputation:
         r_inf = obj_maximize.evaluate(results_infeasible)
         r_feas = obj_maximize.evaluate(results_feasible)
         assert r_inf.score < r_feas.score
-
-
-# ---------------------------------------------------------------------------
-# Test: all_metrics populated
-# ---------------------------------------------------------------------------
 
 
 class TestAllMetrics:
@@ -361,11 +311,6 @@ class TestAllMetrics:
             "bac_auc": 0.85,
             "total_cost": 100.0,
         }
-
-
-# ---------------------------------------------------------------------------
-# Test: Invalid objective YAML
-# ---------------------------------------------------------------------------
 
 
 class TestInvalidObjective:
@@ -411,11 +356,6 @@ class TestInvalidObjective:
         path.write_text(yaml_text)
         with pytest.raises(ValueError, match="operator"):
             ObjectiveFunction(path)
-
-
-# ---------------------------------------------------------------------------
-# Test: Equality constraint operator
-# ---------------------------------------------------------------------------
 
 
 class TestEqualityConstraint:

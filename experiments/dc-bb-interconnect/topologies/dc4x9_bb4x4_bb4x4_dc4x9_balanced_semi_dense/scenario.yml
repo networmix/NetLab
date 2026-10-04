@@ -1,11 +1,10 @@
 # Balanced Semi-Dense: Rotated pairs with two BB connections per plane
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: Each DC connects to 2 adjacent BB nodes per plane
+# Connections: Each DC connects to 2 adjacent BB nodes per plane
 #   DC-1,5 → BB 1,2 in all planes
 #   DC-2,6 → BB 2,3 in all planes
 #   DC-3,7 → BB 3,4 in all planes

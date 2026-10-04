@@ -1,20 +1,15 @@
-"""Tests for generate_scenario and validate_config in scenario_generator.py."""
+"""Tests for DC-BB configuration validation and scenario generation."""
 
 from __future__ import annotations
 
 import pytest
 import yaml
 
+from netlab.autoresearch.dcbb_config import DcBbScenarioConfig, validate_config
 from netlab.autoresearch.scenario_generator import (
-    DcBbScenarioConfig,
     generate_scenario,
     generate_scenario_with_validation,
-    validate_config,
 )
-
-# ---------------------------------------------------------------------------
-# validate_config
-# ---------------------------------------------------------------------------
 
 
 class TestValidateConfig:
@@ -67,11 +62,6 @@ class TestValidateConfig:
         assert len(errors) >= 2
 
 
-# ---------------------------------------------------------------------------
-# generate_scenario structure
-# ---------------------------------------------------------------------------
-
-
 class TestGenerateScenarioStructure:
     """Verify generate_scenario produces a well-formed scenario dict."""
 
@@ -113,14 +103,14 @@ class TestGenerateScenarioStructure:
             assert d["source"].endswith("$") or d["target"].endswith("$")
 
     def test_failures_is_dict(self, scenario):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         assert isinstance(scenario["failures"], dict)
         assert "fm_combined" in scenario["failures"]
         assert len(scenario["failures"]) == len(FAILURE_MODE_NAMES) + 1
 
     def test_workflow_is_list(self, scenario):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         assert isinstance(scenario["workflow"], list)
         assert len(scenario["workflow"]) == 1 + len(FAILURE_MODE_NAMES) + 1
@@ -146,11 +136,6 @@ class TestGenerateScenarioStructure:
                 assert "metadata" not in step
             elif step["type"] == "TrafficMatrixPlacement":
                 assert "metadata" not in step
-
-
-# ---------------------------------------------------------------------------
-# Post-expansion validation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.timeout(180)
@@ -191,11 +176,6 @@ class TestPostExpansionValidation:
         network, _ = expanded
         errors = validate_no_cross_group_links(network)
         assert errors == [], f"Cross-group errors: {errors[:3]}"
-
-
-# ---------------------------------------------------------------------------
-# generate_scenario with invalid config
-# ---------------------------------------------------------------------------
 
 
 class TestGenerateScenarioValidation:

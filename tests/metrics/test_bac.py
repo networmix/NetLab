@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from metrics.bac import BacResult, compute_bac
+from netlab.metrics.bac import BacResult, compute_bac
 
 
 def _build_bac_results() -> dict:
@@ -82,10 +82,10 @@ def test_bac_requires_baseline() -> None:
         compute_bac(res, step_name="tm_placement", mode="auto")
 
 
-def test_bac_requires_flow_results() -> None:
+def test_bac_requires_flow_results_list() -> None:
     res = _build_bac_results()
-    res["steps"]["tm_placement"]["data"]["flow_results"] = []
-    with pytest.raises(ValueError, match="No flow_results"):
+    res["steps"]["tm_placement"]["data"]["flow_results"] = {}
+    with pytest.raises(ValueError, match="flow_results must be a list"):
         compute_bac(res, step_name="tm_placement", mode="auto")
 
 
@@ -123,7 +123,6 @@ def test_bac_per_flow() -> None:
     assert bac.offered == 150.0
     assert np.isclose(bac.auc_normalized, (1.0 + 110.0 / 150.0) / 2.0)
 
-    # Two flows → per_flow populated
     assert len(bac.per_flow) == 2
 
     # Flow A→B: offered=100, series=[100, 80], AUC=(1 + 0.8)/2 = 0.9
@@ -136,7 +135,6 @@ def test_bac_per_flow() -> None:
     assert pf_bc.offered == 50.0
     assert np.isclose(pf_bc.auc_normalized, 0.8)
 
-    # B→C degrades more than A→B
     assert pf_bc.auc_normalized < pf_ab.auc_normalized
 
 
@@ -278,15 +276,12 @@ def test_bac_occurrence_count_weighting() -> None:
     }
     bac = compute_bac(res, step_name="tm_placement")
 
-    # Series should have 11 entries (1 baseline + 7 f1 + 3 f2)
     assert len(bac.series) == 11
     assert bac.offered == 200.0
 
-    # AUC: weighted mean
     expected_auc = (1.0 + 7 * 0.75 + 3 * 0.9) / 11.0
     assert np.isclose(bac.auc_normalized, expected_auc)
 
-    # Verify value counts in series
     vals = list(bac.series.values)
     assert vals.count(200.0) == 1  # baseline
     assert vals.count(150.0) == 7  # f1 expanded

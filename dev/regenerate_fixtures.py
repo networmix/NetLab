@@ -1,21 +1,24 @@
-"""Rebuild simulation fixtures from cached geography and the installed tools.
+"""Rebuild fixtures from cached geography and the installed dependencies.
 
-Run from an environment installed with the dependencies declared in
-pyproject.toml, for example ``venv/bin/python dev/regenerate_fixtures.py``.
-Every source distribution must be a released version or a clean Git revision so
-the fixtures stay reproducible. All commands must succeed before any checked-in
-fixture is replaced; the recorded provenance is printed at the end.
+Run: venv/bin/python dev/regenerate_fixtures.py
+Require released packages or clean Git revisions. Replace checked-in fixtures
+only after all simulations and analyses succeed; print the provenance path.
 """
 
 from __future__ import annotations
 
 import importlib.metadata
 import json
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from netlab.metrics.batch import run_metrics
+from netlab.pipeline import PipelineConfig, discover_configs, run_pipeline
+from netlab.simulation import run_simulation
 
 SOURCES = ("ngraph", "netgraph-core", "topogen")
 
@@ -45,6 +48,7 @@ def source_provenance(name: str) -> dict:
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
+    os.chdir(root)
     provenance = {
         "python": sys.version.split()[0],
         "sources": {name: source_provenance(name) for name in SOURCES},
@@ -54,38 +58,34 @@ def main() -> None:
     work = Path(tempfile.mkdtemp(prefix="run-", dir=build))
     print(f"Regeneration artifacts: {work}", flush=True)
     scenarios = work / "scenarios"
+    graphs = work / "graphs"
+    graphs.mkdir()
     for graph in (root / "tests/data/scenarios").rglob("*_integrated_graph.json"):
-        target = scenarios / graph.relative_to(root / "tests/data/scenarios")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(graph, target)
-
-    def run(module: str, *command: str) -> None:
-        subprocess.run([sys.executable, "-m", module, *command], cwd=root, check=True)
-
-    run(
-        "netlab.cli",
-        "run",
-        "topogen_configs_small",
-        "--seeds",
-        "11",
-        "12",
-        "--scenarios-dir",
-        str(scenarios),
-        "--force-run",
-        "--build-jobs",
-        "1",
-        "--run-jobs",
-        "1",
+        shutil.copy2(graph, graphs / graph.name)
+    outcome = run_pipeline(
+        PipelineConfig(
+            masters=discover_configs(root / "topogen_configs_small"),
+            seeds=[11, 12],
+            output_dir=scenarios,
+            graphs_dir=graphs,
+            build_jobs=2,
+            run_jobs=2,
+            force=True,
+        )
     )
-    run("netlab.cli", "metrics", str(scenarios), "--no-plots")
-    run(
-        "ngraph",
-        "run",
-        "tests/autoresearch/data/square_mesh.yaml",
-        "-o",
-        str(work / "square"),
-    )
-    run("ngraph", "run", "tests/data/mini_dcbb.yaml", "-o", str(work / "mini"))
+    if not outcome.success:
+        raise RuntimeError(outcome.errors)
+    run_metrics(scenarios, no_plots=True)
+    for source, output in (
+        (
+            root / "tests/autoresearch/data/square_mesh.yaml",
+            work / "square/square_mesh.results.json",
+        ),
+        (root / "tests/data/mini_dcbb.yaml", work / "mini/mini_dcbb.results.json"),
+    ):
+        result = run_simulation(source, results_path=output, force=True)
+        if not result.success:
+            raise RuntimeError(result.error)
 
     # Save the previous fixtures alongside the generated output for review.
     shutil.copytree(root / "tests/data/scenarios_metrics", work / "inputs/metrics")

@@ -1,11 +1,10 @@
 # Sparse All-Planes Option 1: Striped assignment across planes
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: DC node pairs assigned to specific planes
+# Connections: DC node pairs assigned to specific planes
 #   DC nodes 1,2 → BB Plane 1 (full mesh)
 #   DC nodes 3,4 → BB Plane 2 (full mesh)
 #   DC nodes 5,6 → BB Plane 3 (full mesh)

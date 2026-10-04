@@ -1,16 +1,10 @@
-"""Hypothesis management for autoresearch.
-
-Provides:
-- ParamDef: dataclass defining a single parameter's type, range, and default.
-- HypothesisTemplate: parses a hypothesis_template.yml, exposes param definitions.
-- Hypothesis: holds param values, validates against template, computes deterministic hash.
-- HypothesisMerger: substitutes ${{param}} placeholders in a base scenario YAML text.
-"""
+"""Validate research parameters and substitute them into scenario templates."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,13 +19,13 @@ class ParamDef:
     type: Literal["int", "float", "enum"]
     range: Optional[tuple[float, float]] = None  # for int/float
     step: Optional[float] = None  # for int/float
-    values: Optional[list[str]] = None  # for enum
+    values: Optional[list[str | int | float]] = None  # for enum
     default: Any = None
     description: str = ""
 
 
 class HypothesisTemplate:
-    """Parses a hypothesis_template.yml and exposes parameter definitions."""
+    """Load parameter types, ranges, and defaults from hypothesis_template.yml."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
@@ -45,6 +39,8 @@ class HypothesisTemplate:
         params_data = data.get("params") or {}
         for name, spec in params_data.items():
             ptype = spec["type"]
+            if ptype not in {"int", "float", "enum"}:
+                raise ValueError(f"Parameter {name}: unsupported type {ptype!r}")
             prange = None
             step = None
             values = None
@@ -52,13 +48,33 @@ class HypothesisTemplate:
             if ptype in ("int", "float"):
                 raw_range = spec.get("range")
                 if raw_range is not None:
+                    if len(raw_range) != 2:
+                        raise ValueError(f"Parameter {name}: range needs two bounds")
                     prange = (float(raw_range[0]), float(raw_range[1]))
+                    if (
+                        not all(math.isfinite(v) for v in prange)
+                        or prange[0] > prange[1]
+                    ):
+                        raise ValueError(f"Parameter {name}: invalid range")
                 step = spec.get("step")
                 if step is not None:
                     step = float(step)
+                    if not math.isfinite(step) or step <= 0:
+                        raise ValueError(
+                            f"Parameter {name}: step must be finite and positive"
+                        )
 
             if ptype == "enum":
                 values = list(spec["values"])
+                if not values or any(
+                    type(v) not in {str, int, float}
+                    or (isinstance(v, str) and "\n" in v)
+                    or (isinstance(v, float) and not math.isfinite(v))
+                    for v in values
+                ):
+                    raise ValueError(
+                        f"Parameter {name}: enum values must be finite numbers or single-line strings"
+                    )
 
             default = spec.get("default")
             description = spec.get("description", "")
@@ -81,17 +97,14 @@ class HypothesisTemplate:
         """Returns list of error messages. Empty = valid."""
         errors: list[str] = []
 
-        # Check for unknown params
         for name in params:
             if name not in self._params:
                 errors.append(f"Unrecognized parameter: {name}")
 
-        # Check for missing params (no default)
         for name, _pdef in self._params.items():
             if name not in params:
                 errors.append(f"Missing required parameter: {name}")
 
-        # Validate types and ranges for known params
         for name, value in params.items():
             if name not in self._params:
                 continue
@@ -114,6 +127,8 @@ class HypothesisTemplate:
                     errors.append(
                         f"Parameter {name}: expected type float, got {type(value).__name__}"
                     )
+                elif not math.isfinite(value):
+                    errors.append(f"Parameter {name}: value must be finite")
                 elif pdef.range is not None:
                     lo, hi = pdef.range
                     if value < lo or value > hi:
@@ -122,7 +137,9 @@ class HypothesisTemplate:
                         )
 
             elif pdef.type == "enum":
-                if pdef.values is not None and str(value) not in pdef.values:
+                if not any(
+                    type(value) is type(v) and value == v for v in (pdef.values or [])
+                ):
                     errors.append(
                         f"Parameter {name}: value {value!r} not in allowed values {pdef.values}"
                     )
@@ -131,7 +148,7 @@ class HypothesisTemplate:
 
 
 class Hypothesis:
-    """Holds parameter values, validates against template, computes deterministic hash."""
+    """Parameter values with template validation and a stable hash."""
 
     def __init__(self, params: dict[str, Any], template: HypothesisTemplate) -> None:
         self._params = dict(params)
@@ -143,9 +160,8 @@ class Hypothesis:
 
     @property
     def params_hash(self) -> str:
-        """Deterministic hash of normalized params. Same params in any order -> same hash."""
-        # Sort keys for deterministic ordering
-        normalized = json.dumps(self._params, sort_keys=True, default=str)
+        """Hash parameter values independently of dictionary key order."""
+        normalized = json.dumps(self._params, sort_keys=True, allow_nan=False)
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     def validate(self) -> list[str]:
@@ -159,11 +175,7 @@ _PLACEHOLDER_RE = re.compile(r"\$\{\{(\w+)\}\}")
 
 
 class HypothesisMerger:
-    """Template mode only. Not used in programmatic mode.
-
-    Loads a base scenario as text, substitutes ${{param}} placeholders with
-    hypothesis param values, and returns the parsed YAML dict.
-    """
+    """Substitute ``${{param}}`` values in YAML for template-mode research."""
 
     def __init__(self, base_scenario_text: str, template: HypothesisTemplate) -> None:
         self._base_text = base_scenario_text
@@ -175,13 +187,11 @@ class HypothesisMerger:
         placeholders_in_text = set(_PLACEHOLDER_RE.findall(self._base_text))
         template_params = set(self._template.params.keys())
 
-        # Placeholders in text that are not in template
         for ph in sorted(placeholders_in_text - template_params):
             errors.append(
                 f"Placeholder ${{{{{ph}}}}} in scenario not found in template params"
             )
 
-        # Template params not referenced in text
         for p in sorted(template_params - placeholders_in_text):
             errors.append(
                 f"Template parameter {p} has no corresponding placeholder in scenario"
@@ -190,10 +200,7 @@ class HypothesisMerger:
         return errors
 
     def merge(self, hypothesis: Hypothesis) -> dict:
-        """Substitute params, parse YAML, return scenario dict.
-
-        Raises ValueError on unreplaced tokens.
-        """
+        """Substitute parameters and parse YAML; reject unreplaced placeholders."""
         params = hypothesis.params
         text = self._base_text
 
@@ -205,14 +212,25 @@ class HypothesisMerger:
                     f"parameter not found in hypothesis"
                 )
             value = params[name]
-            # Return the raw value as a string for YAML substitution.
             return str(value)
 
         text = _PLACEHOLDER_RE.sub(_replacer, text)
 
-        # Post-substitution scan: reject if any ${{ remains
         remaining = _PLACEHOLDER_RE.findall(text)
         if remaining:
             raise ValueError(f"Unreplaced placeholders after merge: {remaining}")
 
         return yaml.safe_load(text)
+
+
+def validate_template_workflow(text: str) -> None:
+    """Require the current list-form workflow and its capacity-search step."""
+    data = yaml.safe_load(text)
+    workflow = data.get("workflow") if isinstance(data, dict) else None
+    if not isinstance(workflow, list) or not any(
+        isinstance(step, dict) and step.get("type") == "MaximumSupportedDemand"
+        for step in workflow
+    ):
+        raise ValueError(
+            "Base scenario must have a MaximumSupportedDemand workflow step in a workflow list"
+        )

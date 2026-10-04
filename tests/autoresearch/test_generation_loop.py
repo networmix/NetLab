@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from netlab.autoresearch.backend import MockBackend
 from netlab.autoresearch.generation_loop import (
     _extract_yaml,
-    inspect_scenario,
     run_generation_loop,
 )
+from netlab.simulation import inspect_scenario
 
 # A minimal valid scenario that ngraph will accept
 VALID_SCENARIO = """\
@@ -54,23 +52,8 @@ network:
       cost: 1
 """
 
-# Actually invalid YAML that ngraph will reject
+# Invalid YAML, rejected before model expansion.
 INVALID_YAML = "not: [valid: yaml: {{{"
-
-
-def _find_ngraph() -> str:
-    import shutil
-    import sys
-
-    # Check PATH first, then the current Python's venv bin directory
-    path = shutil.which("ngraph")
-    if path is None:
-        venv_bin = Path(sys.executable).parent / "ngraph"
-        if venv_bin.exists():
-            path = str(venv_bin)
-    if path is None:
-        pytest.skip("ngraph binary not found")
-    return path
 
 
 class TestExtractYaml:
@@ -91,8 +74,7 @@ class TestInspectScenario:
     def test_valid_scenario(self, tmp_path: Path) -> None:
         scenario_path = tmp_path / "scenario.yml"
         scenario_path.write_text(VALID_SCENARIO)
-        result = inspect_scenario(scenario_path, _find_ngraph())
-        assert result.success
+        result = inspect_scenario(scenario_path.read_text())
         assert result.node_count == 2
         assert result.link_count == 1
 
@@ -102,9 +84,8 @@ class TestInspectScenario:
         """ngraph silently drops links to nonexistent nodes."""
         scenario_path = tmp_path / "scenario.yml"
         scenario_path.write_text(BROKEN_SCENARIO)
-        result = inspect_scenario(scenario_path, _find_ngraph())
+        result = inspect_scenario(scenario_path.read_text())
         # inspect succeeds (valid YAML) but link count is 0
-        assert result.success
         assert result.link_count == 0
 
 
@@ -115,7 +96,6 @@ class TestGenerationLoop:
         result = run_generation_loop(
             idea="Two nodes A and B connected by a single link",
             backend=backend,
-            ngraph_bin=_find_ngraph(),
             work_dir=tmp_path,
         )
         assert result.success
@@ -129,7 +109,6 @@ class TestGenerationLoop:
         result = run_generation_loop(
             idea="Two connected nodes",
             backend=backend,
-            ngraph_bin=_find_ngraph(),
             work_dir=tmp_path,
         )
         assert result.success
@@ -141,7 +120,6 @@ class TestGenerationLoop:
         result = run_generation_loop(
             idea="Two connected nodes",
             backend=backend,
-            ngraph_bin=_find_ngraph(),
             max_iterations=3,
             work_dir=tmp_path,
         )
@@ -154,7 +132,6 @@ class TestGenerationLoop:
         result = run_generation_loop(
             idea="Two connected nodes",
             backend=backend,
-            ngraph_bin=_find_ngraph(),
             work_dir=tmp_path,
         )
         assert result.success

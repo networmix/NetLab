@@ -1,45 +1,26 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
-
-### Fixed
-
-- **CLI**: Invoke `ngraph inspect` without the unsupported output option.
-- **CLI**: Return a nonzero exit status when scenario inspection or simulation fails.
-- **BAC**: Keep destinations distinct for flows sharing a source and sum priority classes within each direction.
-- **Sweeps**: Normalize directional BAC by baseline delivery, matching the metrics pipeline.
-- **Plots**: Compute iteration-count and timing medians and interquartile ranges from per-seed data.
 
 ### Changed
 
-- **BREAKING**: **Dependencies**: Require NetGraph `>=0.24.0`.
-- **BREAKING**: **Workflows**: Placement inherits the scenario seed; set step `seed` explicitly to keep using `42`.
-- **BREAKING**: **Metrics**: Require a positive integer `occurrence_count` on every failure flow result.
-- **BREAKING**: **Summaries**: Replace operation counters with `iters_fail`, `iters_total`, and `unique_patterns`.
-- **Scenarios**: Generated scenarios, shared templates, and the autoresearch prompt use current NetGraph keys.
-- **Autoresearch**: Prompts distinguish measurements from explanations and flag missing or inconsistent evidence.
-- **Autoresearch**: Load the NetGraph DSL reference from the `.claude/skills` submodule; run `git submodule update --init` to enable it.
-- **Fixtures**: Regenerate scenarios, results, and metrics; see `tests/data/README.md` for numerical changes.
-- **Docs**: Correct command examples, metric definitions, and scenario descriptions.
-- **Internal**: Consolidate metric and provenance helpers, run the TopoGen pipeline checks in the default test suite, and remove unused code, fixtures, and the PyPI publish workflow.
+- **BREAKING**: **Execution**: Use TopoGen `3bf0fa4a` and NetGraph `>=0.24.0` through their Python APIs, with a local process queue. TopoGen and NetGraph executable overrides are removed.
+- **BREAKING**: **Scenarios**: `netlab build` now produces seeded scenarios. Supply existing corridor MultiGraphs with `--graphs-dir`. Placement workflows inherit the scenario seed unless a step sets its own.
+- **BREAKING**: **Python API**: Import metrics from `netlab.metrics`; the top-level `metrics` package is removed.
+- **BREAKING**: **Input formats**: Require list-form workflows and current NetGraph result fields: MSD `source`/`target`/`volume` under `msd_baseline`, timing in `metadata.duration_sec`, and graph `edges`. Failure patterns require a positive integer `occurrence_count`.
+- **BREAKING**: **Metric files**: Preserve full endpoint names and bandwidth above baseline; write unavailable numbers as `null`. Research logs use `bw_p99_pct` for availability. See [metrics.md](metrics.md) for output fields and definitions.
+- **BREAKING**: **Research**: Templates require `params`, and programmatic generators receive typed values. Resuming requires matching inputs, seed, and dependencies; use a new output directory when these change.
+
+### Fixed
+
+- **Bandwidth**: Correct availability thresholds and failure-pattern weighting. Sum priority classes without merging distinct endpoints, and keep complete outages in the samples.
+- **Latency and comparisons**: Use each endpoint pair's baseline path cost and compare matching seeds. Fix errors caused by measurement scale and inconsistent baseline selection in tables and plots.
+- **Runs and reports**: Enforce timeouts, reject stale cached results, and return a failing CLI status when a task fails. Publish complete metric reports only after successful analysis, preserving the previous report on failure.
+- **Research**: Rank minimized objectives correctly and prevent infeasible candidates from winning. Allow failed hypotheses and sweep entries to be retried.
 
 ### Added
 
-- **Workspaces**: Superset setup creates an isolated environment and copies missing `.env` files; Run executes `make check-ci`.
-- **Integration**: Add local-source validation and fixture regeneration commands.
-
-### Removed
-
-- **BREAKING**: **MSD**: Remove `base_demands` aliases `source_path`, `sink_path`, and `demand`; use `source`, `target`, and `volume`.
-- **BREAKING**: **MSD**: Read alpha from `msd_baseline.data.alpha_star`; remove `msd` and placement-probe inference.
-- **BREAKING**: **Timing**: Read step duration from `metadata.duration_sec`; remove the `execution_time` alias.
-- **BREAKING**: **Graphs**: Require `edges` in graph results; remove support for the `links` alias.
-- **BREAKING**: **Autoresearch**: Remove the `parameters` alias in hypothesis templates; use `params`.
+- **Workspaces**: Superset setup installs a development environment and copies missing `.env` files; Run executes `make check-ci`.
 
 ## [0.3.0] - 2026-03-26
 

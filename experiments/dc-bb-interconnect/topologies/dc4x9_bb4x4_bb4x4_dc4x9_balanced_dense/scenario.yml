@@ -1,11 +1,10 @@
 # Balanced Dense: Skip-one rotation with equal BB connection counts
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: Each DC connects to 3 of 4 BB nodes per plane (skips one)
+# Connections: Each DC connects to 3 of 4 BB nodes per plane (skips one)
 #   DC-1,5 → BB 2,3,4 in all planes (skip BB 1)
 #   DC-2,6 → BB 1,3,4 in all planes (skip BB 2)
 #   DC-3,7 → BB 1,2,4 in all planes (skip BB 3)

@@ -13,6 +13,9 @@ from typing import Iterable, Literal, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .distributions import availability_curve, curve_on_grid
+from .seed_data import select_baseline
+
 LegendLocation = Literal[
     "best",
     "upper right",
@@ -37,11 +40,7 @@ def _list_scenario_dirs(analysis_root: Path) -> list[Path]:
 
 
 def _pooled_availability_curve(scen_dir: Path) -> Tuple[np.ndarray, np.ndarray]:
-    """Return pooled availability curve for a scenario.
-
-    Returns:
-        (xs_pct, availability) where xs_pct is sorted in [0, 100].
-    """
+    """Return sorted bandwidth thresholds (% of baseline) and pooled availability."""
     pooled: list[float] = []
     for seed_dir in sorted(scen_dir.glob("seed*")):
         bac_path = seed_dir / "bac.json"
@@ -49,70 +48,51 @@ def _pooled_availability_curve(scen_dir: Path) -> Tuple[np.ndarray, np.ndarray]:
             continue
         try:
             data = json.loads(bac_path.read_text(encoding="utf-8"))
-        except Exception:
+        except (ValueError, TypeError, KeyError, OSError):
             continue
         try:
             offered = float(data.get("offered", float("nan")))
             series = [float(x) for x in (data.get("series", []) or [])]
-        except Exception:
+        except (ValueError, TypeError, KeyError, OSError):
             continue
         if not series or not np.isfinite(offered) or offered <= 0.0:
             continue
-        norm = np.minimum(np.asarray(series, dtype=float) / offered, 1.0) * 100.0
+        norm = (np.asarray(series, dtype=float) / offered) * 100.0
         pooled.extend([float(v) for v in norm if np.isfinite(v)])
 
     if not pooled:
         return np.array([], dtype=float), np.array([], dtype=float)
 
-    xs = np.sort(np.asarray(pooled, dtype=float))
-    cdf = np.arange(1, xs.size + 1, dtype=float) / float(xs.size)
-    availability = 1.0 - cdf
-    return xs, availability
+    return availability_curve(np.asarray(pooled, dtype=float))
 
 
 def plot_bac_delta_vs_baseline(
     analysis_root: Path,
     *,
-    baseline: Optional[str] = "baseline_SingleRouter",
+    baseline: Optional[str] = None,
     only: Optional[Iterable[str]] = None,
     grid_min: float = 80.0,
     grid_max: float = 100.0,
     legend_loc: LegendLocation = "upper left",
     save_to: Optional[Path] = None,
 ) -> Optional[Path]:
-    """Plot BAC Δ-availability vs baseline over [grid_min, grid_max].
+    """Save availability differences over the inclusive bandwidth-percentage range.
 
-    Args:
-        analysis_root: Root with per-scenario metrics (e.g., scenarios_metrics).
-        baseline: Scenario name to use as baseline; if None or missing, the
-            first scenario in alphabetical order is used.
-        only: Optional list of scenario names to include (besides baseline).
-        grid_min: Lower bound on delivered percent (x-axis), inclusive.
-        grid_max: Upper bound on delivered percent (x-axis), inclusive.
-        legend_loc: Matplotlib legend loc string (e.g., "upper left").
-        save_to: Path to save the figure; defaults to analysis_root/BAC_delta_vs_baseline.png.
-
-    Returns:
-        The path to the saved figure, or None if no data.
+    ``only`` selects scenarios to compare with the chosen baseline. ``save_to``
+    defaults to analysis_root/BAC_delta_vs_baseline.png. Return None without data.
     """
     analysis_root = analysis_root.resolve()
     scen_dirs = _list_scenario_dirs(analysis_root)
+    if not scen_dirs:
+        return None
+    base_name = select_baseline([p.name for p in scen_dirs], baseline)
     if only:
         only_set = set(only)
-        scen_dirs = [p for p in scen_dirs if p.name in only_set]
+        scen_dirs = [p for p in scen_dirs if p.name in only_set or p.name == base_name]
     if not scen_dirs:
         return None
 
-    # Determine baseline directory
-    base_dir: Optional[Path] = None
-    if baseline:
-        for p in scen_dirs:
-            if p.name == baseline:
-                base_dir = p
-                break
-    if base_dir is None:
-        base_dir = scen_dirs[0]
-    # Non-baseline scenarios
+    base_dir = analysis_root / base_name
     comp_dirs = [p for p in scen_dirs if p != base_dir]
     if not comp_dirs:
         return None
@@ -121,25 +101,27 @@ def plot_bac_delta_vs_baseline(
     if base_x.size == 0:
         return None
 
-    grid = np.linspace(
-        float(grid_min), float(grid_max), 1 + int(4 * (grid_max - grid_min))
+    curves = {sd.name: _pooled_availability_curve(sd) for sd in comp_dirs}
+    if grid_min >= grid_max:
+        raise ValueError("grid_min must be below grid_max")
+    observations = np.concatenate([base_x, *(curve[0] for curve in curves.values())])
+    grid = np.unique(
+        np.r_[
+            grid_min,
+            observations[(observations >= grid_min) & (observations <= grid_max)],
+            grid_max,
+        ]
     )
-    base_on_grid = np.interp(
-        grid,
-        base_x,
-        base_a,
-        left=(base_a[0] if base_a.size else 0.0),
-        right=(base_a[-1] if base_a.size else 0.0),
-    )
+    base_on_grid = curve_on_grid(base_x, base_a, grid)
 
     fig, ax = plt.subplots(figsize=(7.5, 4.5))
     for sd in comp_dirs:
-        sx, sa = _pooled_availability_curve(sd)
+        sx, sa = curves[sd.name]
         if sx.size == 0:
             continue
-        s_on_grid = np.interp(grid, sx, sa, left=sa[0], right=sa[-1])
+        s_on_grid = curve_on_grid(sx, sa, grid)
         delta = s_on_grid - base_on_grid
-        ax.plot(grid, delta, label=sd.name)
+        ax.step(grid, delta, where="pre", label=sd.name)
 
     ax.axhline(0.0, color="black", linewidth=0.8)
     for v in (80.0, 90.0, 95.0):

@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""
-DC-BB Topology Visualizer
-
-Generates organized SVG diagrams from ngraph results with BuildGraph export.
-Layout: Semantic attribute-based positioning - DC rows horizontal, BB planes in middle.
-Site A DCs at top, BB planes in middle, Site B DCs at bottom.
-"""
+"""Draw DC-BB graphs with site A above the backbone and site B below it."""
 
 import sys
 from collections import defaultdict
@@ -23,14 +17,7 @@ from netlab.visualize import GraphVisualizer, StyleConfig, layout_row  # noqa: E
 
 
 class DcBbVisualizer(GraphVisualizer):
-    """
-    DC-BB specific 3-tier layout visualizer.
-
-    Layout structure:
-    - Site A DC rows: horizontal band at top
-    - BB planes: vertical boxes in middle (Site A nodes top, Site B nodes bottom)
-    - Site B DC rows: horizontal band at bottom
-    """
+    """Place DC rows above and below BB planes; group each plane in a box."""
 
     # DC-BB specific layout constants (not in StyleConfig)
     DC_ROW_GAP = 24
@@ -63,24 +50,20 @@ class DcBbVisualizer(GraphVisualizer):
         self._groups = groups
         positions = {}
 
-        # Discover all DC rows and BB planes
         dc_ids = sorted(set(groups["dc"]["A"].keys()) | set(groups["dc"]["B"].keys()))
         bb_plane_ids = sorted(
             set(groups["bb"]["A"].keys()) | set(groups["bb"]["B"].keys())
         )
 
-        # Find max nodes per DC row (for consistent spacing)
         max_dc_nodes = 0
         for site in ["A", "B"]:
             for dc_id in dc_ids:
                 max_dc_nodes = max(max_dc_nodes, len(groups["dc"][site].get(dc_id, [])))
 
-        # Calculate DC row box width
         dc_row_box_width = (
             max_dc_nodes * self.style.node_spacing + self.style.group_padding * 2
         )
 
-        # Find max BB nodes per site per plane
         max_bb_nodes_per_plane = 0
         for site in ["A", "B"]:
             for plane_id in bb_plane_ids:
@@ -88,11 +71,9 @@ class DcBbVisualizer(GraphVisualizer):
                     max_bb_nodes_per_plane, len(groups["bb"][site].get(plane_id, []))
                 )
 
-        # Calculate BB plane box width
         bb_plane_width = max_bb_nodes_per_plane * self.BB_NODE_SPACING + 32
         self._bb_plane_width = bb_plane_width
 
-        # Calculate total widths for centering
         num_dc_rows = len(dc_ids)
         num_planes = len(bb_plane_ids)
 
@@ -103,11 +84,9 @@ class DcBbVisualizer(GraphVisualizer):
             num_planes * bb_plane_width + (num_planes - 1) * self.BB_PLANE_GAP
         )
 
-        # Canvas width is the maximum of the two bands plus padding
         content_width = max(dc_band_width, bb_band_width)
         self.canvas_width = content_width + self.style.canvas_padding * 2
 
-        # Y positions for each section
         y_dc_a = (
             self.style.canvas_padding
             + self.style.node_radius
@@ -120,7 +99,6 @@ class DcBbVisualizer(GraphVisualizer):
             + self.style.section_gap
         )
 
-        # Calculate BB section height
         bb_section_height = (
             self.style.node_radius * 2 + 40 + self.style.node_radius * 2 + 60
         )
@@ -134,7 +112,6 @@ class DcBbVisualizer(GraphVisualizer):
             + self.style.canvas_padding
         )
 
-        # --- Position DC nodes - Site A (top) ---
         dc_start_x = self.style.canvas_padding + (content_width - dc_band_width) / 2
         for i, dc_id in enumerate(dc_ids):
             nodes = groups["dc"]["A"].get(dc_id, [])
@@ -153,7 +130,6 @@ class DcBbVisualizer(GraphVisualizer):
             )
             positions.update(row_positions)
 
-        # --- Position DC nodes - Site B (bottom) ---
         for i, dc_id in enumerate(dc_ids):
             nodes = groups["dc"]["B"].get(dc_id, [])
             row_x = (
@@ -171,7 +147,6 @@ class DcBbVisualizer(GraphVisualizer):
             )
             positions.update(row_positions)
 
-        # --- Position BB nodes (middle section) ---
         bb_start_x = self.style.canvas_padding + (content_width - bb_band_width) / 2
         y_bb_a = y_bb_start + self.style.node_radius + 20
         y_bb_b = y_bb_start + bb_section_height - self.style.node_radius - 20
@@ -249,12 +224,10 @@ class DcBbVisualizer(GraphVisualizer):
 
         result = {}
 
-        # DC row groups
         for site in ["A", "B"]:
             for dc_id, nodes in self._groups["dc"][site].items():
                 result[f"dc_{site}_{dc_id}"] = nodes
 
-        # BB plane groups
         bb_plane_ids = sorted(
             set(self._groups["bb"]["A"].keys()) | set(self._groups["bb"]["B"].keys())
         )
@@ -278,7 +251,6 @@ class DcBbVisualizer(GraphVisualizer):
     def get_group_label(self, group_name: str) -> Optional[str]:
         """Get label for a group."""
         if group_name.startswith("dc_"):
-            # Extract DC-N from dc_A_N or dc_B_N
             parts = group_name.split("_")
             if len(parts) >= 3:
                 return f"DC-{parts[2]}"
@@ -293,15 +265,10 @@ def visualize_topology(
     output_path: Optional[Path] = None,
     split: bool = False,
 ) -> Path:
-    """Visualize a topology from results JSON.
+    """Render a NetGraph result as SVG, defaulting to the result directory.
 
-    Args:
-        results_path: Path to .results.json file
-        output_path: Optional output path for SVG (default: same dir as results)
-        split: If True, also generate a split view with disconnected components stacked
-
-    Returns:
-        Path to generated SVG
+    With ``split``, also render a view with disconnected components stacked.
+    Return the main SVG path.
     """
     if output_path is None:
         output_path = results_path.parent / "topology.svg"

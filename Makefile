@@ -4,27 +4,17 @@
 
 .DEFAULT_GOAL := help
 
-# --------------------------------------------------------------------------
-# Python interpreter detection
-# --------------------------------------------------------------------------
-# VENV_BIN: path to local virtualenv bin directory
 VENV_BIN := $(PWD)/venv/bin
 
-# PY_BEST: scan for newest supported Python (used when creating new venvs)
-# Supports 3.11-3.13 to match common CI matrix
+# Choose a Python version from the CI matrix for new virtual environments.
 PY_BEST := $(shell for v in 3.13 3.12 3.11; do command -v python$$v >/dev/null 2>&1 && { echo python$$v; exit 0; }; done; command -v python3 2>/dev/null || command -v python 2>/dev/null)
 
-# PY_PATH: active python3/python on PATH (respects CI setup-python and activated venvs)
 PY_PATH := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null)
 
-# PYTHON: interpreter used for all commands
-#   1. Use local venv if present
-#   2. Otherwise use active python on PATH (important for CI)
-#   3. Fall back to best available version
-#   4. Final fallback to 'python3' literal for clear error messages
+# Prefer the local venv, then PATH (including CI's setup-python), then PY_BEST.
 PYTHON ?= $(if $(wildcard $(VENV_BIN)/python),$(VENV_BIN)/python,$(if $(PY_PATH),$(PY_PATH),$(if $(PY_BEST),$(PY_BEST),python3)))
 
-# Derived tool commands (always use -m to ensure correct environment)
+# Run tools through the selected interpreter.
 PIP := $(PYTHON) -m pip
 PYTEST := $(PYTHON) -m pytest
 RUFF := $(PYTHON) -m ruff

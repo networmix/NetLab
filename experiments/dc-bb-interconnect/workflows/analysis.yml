@@ -12,7 +12,7 @@ workflows:
       name: msd
       demand_set: inter_site
       alpha_start: 1.0
-      resolution: 0.01 # Fine resolution for accurate Alpha*
+      resolution: 0.01 # MSD search increment.
     # DC-BB link failure (intra-site)
     - type: TrafficMatrixPlacement
       name: tm_dc_bb_link

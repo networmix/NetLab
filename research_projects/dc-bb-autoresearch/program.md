@@ -36,8 +36,9 @@ runs each configured failure mode separately and combines them with equal weight
 Record the NetGraph version, seed, iteration count, and policies for new results.
 
 Metrics:
-- **alpha_star**: Maximum demand multiplier the topology supports (higher = more capacity)
-- **BAC AUC**: Bandwidth Availability Curve area under curve (higher = more resilient under failures)
+
+- **alpha_star**: Demand multiplier found within the configured MSD search bounds.
+- **BAC AUC**: Mean delivered/baseline bandwidth, capped at 1, over baseline and failure samples.
 
 ### ABC1 Results (other side fixed at G_xyz1=64)
 
@@ -109,6 +110,7 @@ A layout is `DC_row_groups x DC_column_groups _ BB_row_groups x BB_column_groups
 Block dimensions are grid dimensions divided by these group counts.
 
 Return parameter choices as YAML:
+
 ```yaml
 params:
   g_abc1: "16"

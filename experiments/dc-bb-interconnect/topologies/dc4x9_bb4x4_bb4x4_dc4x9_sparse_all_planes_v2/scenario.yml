@@ -1,11 +1,10 @@
 # Sparse All-Planes Option 2: Round-robin assignment (all 9 nodes connected)
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: DC nodes distributed round-robin across planes
+# Connections: DC nodes distributed round-robin across planes
 #   DC nodes 1,5,9 → BB Plane 1 (full mesh)
 #   DC nodes 2,6   → BB Plane 2 (full mesh)
 #   DC nodes 3,7   → BB Plane 3 (full mesh)

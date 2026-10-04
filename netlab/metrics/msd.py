@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .common import nonnegative_number
+
 
 @dataclass
 class AlphaResult:
@@ -24,8 +26,14 @@ class AlphaResult:
 def compute_alpha_star(results: dict) -> AlphaResult:
     try:
         msd = results["steps"]["msd_baseline"]["data"]
-        alpha = float(msd["alpha_star"])
-        base_total = sum(float(demand["volume"]) for demand in msd["base_demands"])
+        alpha = nonnegative_number(msd["alpha_star"], "alpha_star")
+        demands = msd["base_demands"]
+        if not isinstance(demands, list) or not demands:
+            raise ValueError("base_demands must be a nonempty list")
+        base_total = nonnegative_number(
+            sum(nonnegative_number(demand["volume"], "volume") for demand in demands),
+            "base_total_demand",
+        )
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError(
             "msd_baseline.data requires alpha_star and base_demands[].volume"

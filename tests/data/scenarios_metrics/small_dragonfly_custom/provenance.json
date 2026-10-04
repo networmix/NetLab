@@ -1,8 +1,44 @@
 {
-  "generated_at": "2026-10-02T02:50:26.721116+00:00",
+  "generated_at": "2026-10-04T21:29:27.214583+00:00",
   "python": "3.13.13 (main, May 10 2026, 19:20:37) [Clang 22.1.3 ]",
-  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
-  "scenarios_root": "build/fixture-regeneration/run-3vevzd_6/scenarios",
-  "output_root": "build/fixture-regeneration/run-3vevzd_6/scenarios_metrics",
-  "git_commit": "2e0d966f1ed5cd30862877afd812d7ad2b124730"
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "scenarios_root": "tests/data/scenarios",
+  "output_root": "tests/data/scenarios_metrics",
+  "packages": {
+    "netlab": {
+      "version": "0.3.0"
+    },
+    "topogen": {
+      "version": "0.4.0",
+      "source": {
+        "url": "https://github.com/networmix/TopoGen",
+        "vcs_info": {
+          "commit_id": "3bf0fa4aa08604a886421461f7ce36dbd7275121",
+          "requested_revision": "main",
+          "vcs": "git"
+        }
+      }
+    },
+    "ngraph": {
+      "version": "0.24.0"
+    },
+    "netgraph-core": {
+      "version": "0.11.0"
+    },
+    "numpy": {
+      "version": "2.5.3"
+    },
+    "pandas": {
+      "version": "3.0.6"
+    },
+    "scipy": {
+      "version": "1.18.1"
+    },
+    "matplotlib": {
+      "version": "3.11.2"
+    },
+    "seaborn": {
+      "version": "0.13.2"
+    }
+  }
 }

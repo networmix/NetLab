@@ -1,10 +1,9 @@
 #!/bin/bash
-# Run all code quality checks and tests
-# This script runs pre-commit hooks and the test suite
+# Run pre-commit fixes and tests, then verify the checks pass.
 
-set -e  # Exit on any error
+set -e
 
-# Determine python interpreter (prefer venv if active)
+# Honor an explicit PYTHON; otherwise use python3 from PATH.
 PYTHON=${PYTHON:-python3}
 
 # Check if pre-commit is installed

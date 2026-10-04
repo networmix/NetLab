@@ -1,18 +1,14 @@
-"""Tests for the mesh group algorithm in scenario_generator.py."""
+"""Tests for DC-BB mesh groups and layout validation."""
 
 import pytest
 
-from netlab.autoresearch.scenario_generator import (
+from netlab.autoresearch.dcbb_config import (
     DcBbScenarioConfig,
     _compute_mesh_groups,
     get_valid_layouts,
     get_viable_g_values,
     validate_layout,
 )
-
-# ---------------------------------------------------------------------------
-# Viable G values
-# ---------------------------------------------------------------------------
 
 
 class TestGetViableGValues:
@@ -65,11 +61,6 @@ class TestGetViableGValues:
         assert 1 in result
 
 
-# ---------------------------------------------------------------------------
-# Mesh group computation
-# ---------------------------------------------------------------------------
-
-
 class TestComputeMeshGroups:
     """Test _compute_mesh_groups partitioning and group sizes."""
 
@@ -85,7 +76,6 @@ class TestComputeMeshGroups:
         all_dc = set()
         for dc_devs, _ in groups:
             dc_set = set(dc_devs)
-            # No overlap with previously seen devices
             assert all_dc.isdisjoint(dc_set), "DC device in multiple groups"
             all_dc.update(dc_set)
 
@@ -203,7 +193,6 @@ class TestComputeMeshGroups:
 
         assert len(groups) == 64
 
-        # Verify partition
         all_dc = set()
         all_bb = set()
         for dc_devs, bb_devs in groups:
@@ -218,11 +207,6 @@ class TestComputeMeshGroups:
 
         assert len(all_dc) == 64 * 24
         assert len(all_bb) == 64 * 4
-
-
-# ---------------------------------------------------------------------------
-# Layout validation and enumeration
-# ---------------------------------------------------------------------------
 
 
 class TestValidateLayout:
@@ -264,7 +248,6 @@ class TestGetValidLayouts:
         # BB: (16, 4) works: 64%16=0, 4%4=0. Also (64,1): 64%64=0, 4%1=0
         assert len(layouts) > 0
         assert (16, 4, 16, 4) in layouts
-        # All must be valid
         for layout in layouts:
             assert validate_layout(64, layout, 16, 36, 64, 4)
 
@@ -287,11 +270,6 @@ class TestGetValidLayouts:
             )
             for layout in layouts:
                 assert validate_layout(g, layout, 16, 36, 64, 4)
-
-
-# ---------------------------------------------------------------------------
-# DcBbScenarioConfig dataclass
-# ---------------------------------------------------------------------------
 
 
 class TestDcBbScenarioConfig:
@@ -334,11 +312,6 @@ class TestDcBbScenarioConfig:
         assert cfg.g_xyz1 == 64
 
 
-# ---------------------------------------------------------------------------
-# Integration: viable G + valid layouts + mesh groups together
-# ---------------------------------------------------------------------------
-
-
 class TestIntegration:
     """End-to-end: viable G -> valid layout -> compute groups -> verify."""
 
@@ -373,7 +346,6 @@ class TestIntegration:
             groups = _compute_mesh_groups(dc_rows, dc_cols, bb_rows, bb_cols, g, layout)
             assert len(groups) == g
 
-            # Verify partition
             all_dc = set()
             all_bb = set()
             for dc_devs, bb_devs in groups:
@@ -387,11 +359,9 @@ class TestIntegration:
             assert len(all_dc) == dc_total
             assert len(all_bb) == bb_total
 
-            # Full mesh link count
             total_links = sum(len(dc) * len(bb) for dc, bb in groups)
             assert total_links == dc_total * bb_total // g
 
-            # Port constraints
             for dc_devs, bb_devs in groups:
                 assert len(bb_devs) <= dc_ports
                 assert len(dc_devs) <= bb_ports

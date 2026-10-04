@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 import yaml
 
-from netlab.metrics_cmd import analyze_one_seed
+from netlab.metrics.analysis import analyze_one_seed
 
 
 @pytest.fixture(scope="module")
@@ -78,7 +78,11 @@ def test_metrics_cli_on_fresh_results(current_results):
 
 @pytest.mark.parametrize(
     "volume, message",
-    [(0, "zero-demand"), (-1, "negative demand"), (float("nan"), "non-numeric demand")],
+    [
+        (0, "zero-demand"),
+        (-1, "demand volume must be a finite nonnegative number"),
+        (float("nan"), "demand volume must be a finite nonnegative number"),
+    ],
 )
 def test_current_demands_still_validated(current_results, tmp_path, volume, message):
     results = copy.deepcopy(current_results[0])
@@ -90,7 +94,7 @@ def test_current_demands_still_validated(current_results, tmp_path, volume, mess
 def test_demand_total_must_match_placement(current_results, tmp_path):
     results = copy.deepcopy(current_results[0])
     results["steps"]["msd_baseline"]["data"]["base_demands"][0]["volume"] = 101
-    with pytest.raises(ValueError, match="total_demand does not match"):
+    with pytest.raises(ValueError, match="total flow demand.*does not match"):
         analyze_one_seed(results, tmp_path, False)
 
 
@@ -98,7 +102,7 @@ def test_demand_total_must_match_placement(current_results, tmp_path):
 def test_current_demand_fields_required(current_results, tmp_path, field):
     results = copy.deepcopy(current_results[0])
     del results["steps"]["msd_baseline"]["data"]["base_demands"][0][field]
-    with pytest.raises(ValueError, match="Empty source/target|non-numeric demand"):
+    with pytest.raises(ValueError, match="source/target selector|demand volume must"):
         analyze_one_seed(results, tmp_path, False)
 
 
@@ -123,8 +127,9 @@ def test_pairwise_maxflow_pipeline(tmp_path, monkeypatch):
     )
     assert run.returncode == 0, run.stdout + run.stderr
     results = json.loads((output / "square.results.json").read_text())
-    monkeypatch.setenv("NGRAPH_ENABLE_MAXFLOW", "1")
-    alpha, bac, maxflow, _, _, _, sps = analyze_one_seed(results, tmp_path, False)
+    alpha, bac, maxflow, _, _, _, sps = analyze_one_seed(
+        results, tmp_path, False, enable_maxflow=True
+    )
     assert alpha.alpha_star == pytest.approx(1.0)
     assert alpha.base_total_demand == pytest.approx(12.0)
     assert len(bac.per_flow) == 12

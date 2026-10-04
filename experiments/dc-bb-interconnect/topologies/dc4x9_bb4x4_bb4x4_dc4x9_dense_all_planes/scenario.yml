@@ -1,11 +1,10 @@
 # Dense All-Planes: Each DC connects to 2 BB nodes per plane (ad-hoc pattern)
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: DC nodes split by position
+# Connections: DC nodes split by position
 #   DC nodes 1-5 → BB nodes 1,2 in all planes
 #   DC nodes 6-9 → BB nodes 3,4 in all planes
 
@@ -53,7 +52,7 @@ network:
         bb_plane_id: ${n}
 
   links:
-    # Site A: DC nodes 1-5 connect to BB nodes 1,2 in ALL planes
+    # Site A: DC nodes 1-5 connect to BB nodes 1,2 in all planes
     - source:
         path: "SiteA/DC-.*/[1-5]$"
       target:
@@ -65,7 +64,7 @@ network:
         link_type: dc_bb
         site: A
 
-    # Site A: DC nodes 6-9 connect to BB nodes 3,4 in ALL planes
+    # Site A: DC nodes 6-9 connect to BB nodes 3,4 in all planes
     - source:
         path: "SiteA/DC-.*/[6-9]$"
       target:
@@ -77,7 +76,7 @@ network:
         link_type: dc_bb
         site: A
 
-    # Site B: DC nodes 1-5 connect to BB nodes 1,2 in ALL planes
+    # Site B: DC nodes 1-5 connect to BB nodes 1,2 in all planes
     - source:
         path: "SiteB/DC-.*/[1-5]$"
       target:
@@ -89,7 +88,7 @@ network:
         link_type: dc_bb
         site: B
 
-    # Site B: DC nodes 6-9 connect to BB nodes 3,4 in ALL planes
+    # Site B: DC nodes 6-9 connect to BB nodes 3,4 in all planes
     - source:
         path: "SiteB/DC-.*/[6-9]$"
       target:

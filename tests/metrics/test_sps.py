@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from metrics.sps import SpsResult, compute_sps
+from netlab.metrics.sps import SpsResult, compute_sps
 
 
 def _sps_fixture() -> dict:
@@ -87,7 +87,9 @@ def test_sps_occurrence_count_weighting() -> None:
             },
             "node_to_node_capacity_matrix": {
                 "data": {
-                    "baseline": {"flows": []},
+                    "baseline": {
+                        "flows": [{"source": "A", "destination": "B", "placed": 100}]
+                    },
                     "flow_results": [
                         {
                             "failure_id": "f1",

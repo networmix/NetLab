@@ -18,9 +18,6 @@ from netlab.autoresearch.cli import _build_backend, autoresearch_init, autoresea
 
 DATA_DIR = Path(__file__).parent / "data"
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 _SQUARE_MESH_PATH = DATA_DIR / "square_mesh.yaml"
 
@@ -43,7 +40,6 @@ def _make_run_args(
     backend: str = "mock",
     model: str | None = None,
     backend_bin: str | None = None,
-    ngraph_bin: str | None = None,
     openai_base_url: str | None = None,
     openai_model: str | None = None,
     claude_model: str | None = None,
@@ -57,7 +53,6 @@ def _make_run_args(
         backend=backend,
         model=model,
         backend_bin=backend_bin,
-        ngraph_bin=ngraph_bin,
         openai_base_url=openai_base_url,
         openai_model=openai_model,
         claude_model=claude_model,
@@ -89,11 +84,6 @@ def _no_msd_scenario(tmp_path: Path) -> Path:
     path = tmp_path / "no_msd.yaml"
     path.write_text(text)
     return path
-
-
-# ---------------------------------------------------------------------------
-# Init tests
-# ---------------------------------------------------------------------------
 
 
 class TestInitCreatesStructure:
@@ -193,16 +183,10 @@ class TestInitValidatesWorkflow:
         assert exc_info.value.code != 0
 
 
-# ---------------------------------------------------------------------------
-# Run tests
-# ---------------------------------------------------------------------------
-
-
 class TestRunBasic:
     @pytest.mark.timeout(120)
     def test_run_mock_one_experiment(self, tmp_path: Path) -> None:
         """run dir --backend mock --max-experiments 1 -> exit 0, 1 log entry."""
-        # Set up project with placeholder scenario
         base = _base_scenario_with_placeholder(tmp_path)
         proj = tmp_path / "project"
         init_args = _make_init_args(base_scenario=base, output=proj)
@@ -211,7 +195,6 @@ class TestRunBasic:
         run_args = _make_run_args(
             project_dir=proj, backend="mock", max_experiments=1, seed=42
         )
-        # Should not raise SystemExit (exit 0)
         autoresearch_run(run_args)
 
         log_path = proj / "experiment_log.jsonl"
@@ -304,11 +287,6 @@ class TestBackendFactory:
         assert backend.base_url == "https://example.invalid"
 
 
-# ---------------------------------------------------------------------------
-# Argparse wiring tests (test that netlab cli.py registers the subcommands)
-# ---------------------------------------------------------------------------
-
-
 class TestArgparseWiring:
     def test_autoresearch_help(self, capsys: pytest.CaptureFixture) -> None:
         """netlab autoresearch --help lists init and run."""
@@ -350,12 +328,12 @@ class TestArgparseWiring:
         assert "--model" in captured.out
         assert "--openai-base-url" in captured.out
         assert "--backend-bin" in captured.out
-        assert "--ngraph-bin" in captured.out
+        assert "--ngraph-bin" not in captured.out
         assert "--max-experiments" in captured.out
         assert "--timeout" in captured.out
         assert "--seed" in captured.out
 
-    def test_build_help_lists_topogen_bin(self, capsys: pytest.CaptureFixture) -> None:
+    def test_build_help_lists_graph_input(self, capsys: pytest.CaptureFixture) -> None:
         import netlab.cli as cli_mod
 
         with pytest.raises(SystemExit) as exc_info:
@@ -370,11 +348,9 @@ class TestArgparseWiring:
 
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "--topogen-bin" in captured.out
+        assert "--graphs-dir" in captured.out
 
-    def test_run_help_lists_binary_overrides(
-        self, capsys: pytest.CaptureFixture
-    ) -> None:
+    def test_run_help_lists_queue_options(self, capsys: pytest.CaptureFixture) -> None:
         import netlab.cli as cli_mod
 
         with pytest.raises(SystemExit) as exc_info:
@@ -389,5 +365,5 @@ class TestArgparseWiring:
 
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "--topogen-bin" in captured.out
-        assert "--ngraph-bin" in captured.out
+        assert "--graphs-dir" in captured.out
+        assert "--ngraph-bin" not in captured.out

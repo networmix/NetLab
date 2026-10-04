@@ -28,7 +28,9 @@ dependencies = [
     "scipy>=1.11",
     "rich>=13.0",
     "ngraph>=0.24.0",
-    "topogen @ git+https://github.com/networmix/TopoGen@main",
+    "topogen @ git+https://github.com/networmix/TopoGen@3bf0fa4aa08604a886421461f7ce36dbd7275121",
+    "pebble>=5.2.0,<6",
+    "pyyaml>=6",
     "cairosvg>=2.7",
 ]
 
@@ -50,7 +52,7 @@ dev = [
     "pandas-stubs",
     # pre-commit
     "pre-commit",
-    # build/publish (optional)
+    # Package build and validation
     "build",
     "twine",
 ]
@@ -60,7 +62,7 @@ addopts = "--cov=./ --cov-report term-missing --benchmark-disable-gc --benchmark
 timeout = 30
 markers = [
     "benchmark: marks tests as performance benchmarks (run with '-m benchmark')",
-    "slow: marks tests that take >30s (ngraph subprocess execution)",
+    "slow: marks simulation and pipeline integration tests",
     "timeout: marks tests with custom timeout (requires pytest-timeout)",
 ]
 
@@ -77,7 +79,7 @@ exclude_lines = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["metrics*", "netlab*"]
+include = ["netlab*"]
 exclude = ["tests*"]
 
 [project.scripts]
@@ -93,7 +95,7 @@ ignore = ["E501"]
 fixable = ["ALL"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["metrics"]
+known-first-party = ["netlab"]
 
 [tool.ruff.format]
 quote-style = "double"

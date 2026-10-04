@@ -4,16 +4,9 @@ from __future__ import annotations
 
 import re
 
-from netlab.autoresearch.scenario_generator import (
-    DcBbScenarioConfig,
-    _build_demands,
-    _build_failure_policy,
-    _build_workflow,
-)
-
-# ---------------------------------------------------------------------------
-# _build_demands tests
-# ---------------------------------------------------------------------------
+from netlab.autoresearch.dcbb_config import DcBbScenarioConfig
+from netlab.autoresearch.dcbb_failures import _build_failure_policy
+from netlab.autoresearch.scenario_generator import _build_demands, _build_workflow
 
 
 class TestBuildDemands:
@@ -98,16 +91,11 @@ class TestBuildDemands:
             assert set(entry.keys()) == expected_keys
 
 
-# ---------------------------------------------------------------------------
-# _build_workflow tests
-# ---------------------------------------------------------------------------
-
-
 class TestBuildWorkflow:
     """Tests for _build_workflow (MSD, per-mode placement, and combined placement)."""
 
     def test_workflow_step_count(self):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         config = DcBbScenarioConfig()
         workflow = _build_workflow(config)
@@ -127,7 +115,7 @@ class TestBuildWorkflow:
         assert msd["demand_set"] == "baseline_traffic_matrix"
 
     def test_per_mode_tmp_steps(self):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         config = DcBbScenarioConfig()
         workflow = _build_workflow(config)
@@ -161,23 +149,18 @@ class TestBuildWorkflow:
             assert step["demand_set"] in demand_names
 
 
-# ---------------------------------------------------------------------------
-# _build_failure_policy tests
-# ---------------------------------------------------------------------------
-
-
 class TestBuildFailurePolicy:
     """Tests for _build_failure_policy (N single-mode + 1 combined)."""
 
     def test_policy_count(self):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         config = DcBbScenarioConfig()
         policy = _build_failure_policy(config)
         assert len(policy) == len(FAILURE_MODE_NAMES) + 1  # N modes + 1 combined
 
     def test_single_mode_policies_have_one_mode(self):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         config = DcBbScenarioConfig()
         policy = _build_failure_policy(config)
@@ -187,7 +170,7 @@ class TestBuildFailurePolicy:
             assert p["modes"][0]["weight"] == 1.0
 
     def test_combined_policy_has_all_modes(self):
-        from netlab.autoresearch.scenario_generator import FAILURE_MODE_NAMES
+        from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
 
         config = DcBbScenarioConfig()
         combined = _build_failure_policy(config)["fm_combined"]

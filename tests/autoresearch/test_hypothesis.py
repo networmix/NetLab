@@ -14,10 +14,6 @@ from netlab.autoresearch.hypothesis import (
     ParamDef,
 )
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 TEMPLATE_YAML = textwrap.dedent("""\
     params:
       link_capacity:
@@ -66,11 +62,6 @@ VALID_PARAMS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Parse valid template
-# ---------------------------------------------------------------------------
-
-
 class TestParseTemplate:
     def test_parse_valid_template(self, template: HypothesisTemplate) -> None:
         """template.params has 4 entries, each with correct type/range/default."""
@@ -101,22 +92,12 @@ class TestParseTemplate:
         assert np_.default == 4
 
 
-# ---------------------------------------------------------------------------
-# Validate in-range
-# ---------------------------------------------------------------------------
-
-
 class TestValidateInRange:
     def test_validate_in_range(self, template: HypothesisTemplate) -> None:
         """Valid params produce no errors."""
         h = Hypothesis(VALID_PARAMS, template)
         errors = h.validate()
         assert errors == []
-
-
-# ---------------------------------------------------------------------------
-# Reject out-of-range
-# ---------------------------------------------------------------------------
 
 
 class TestRejectOutOfRange:
@@ -128,14 +109,8 @@ class TestRejectOutOfRange:
         assert len(errors) == 1
         assert "link_capacity" in errors[0]
         assert "9999" in errors[0]
-        # Should mention the range bounds
         assert "100" in errors[0]
         assert "1000" in errors[0]
-
-
-# ---------------------------------------------------------------------------
-# Reject wrong type
-# ---------------------------------------------------------------------------
 
 
 class TestRejectWrongType:
@@ -149,11 +124,6 @@ class TestRejectWrongType:
         assert "int" in errors[0]
 
 
-# ---------------------------------------------------------------------------
-# Reject unknown param
-# ---------------------------------------------------------------------------
-
-
 class TestRejectUnknownParam:
     def test_reject_unknown_param(self, template: HypothesisTemplate) -> None:
         """Unknown param 'nonexistent' produces error naming it."""
@@ -161,11 +131,6 @@ class TestRejectUnknownParam:
         h = Hypothesis(params, template)
         errors = h.validate()
         assert any("nonexistent" in e for e in errors)
-
-
-# ---------------------------------------------------------------------------
-# Reject missing param
-# ---------------------------------------------------------------------------
 
 
 class TestRejectMissingParam:
@@ -180,11 +145,6 @@ class TestRejectMissingParam:
         h = Hypothesis(params, template)
         errors = h.validate()
         assert any("num_paths" in e for e in errors)
-
-
-# ---------------------------------------------------------------------------
-# Deterministic hash
-# ---------------------------------------------------------------------------
 
 
 class TestDeterministicHash:
@@ -215,10 +175,6 @@ class TestDeterministicHash:
         assert h1.params_hash != h2.params_hash
 
 
-# ---------------------------------------------------------------------------
-# Substitute valid (HypothesisMerger)
-# ---------------------------------------------------------------------------
-
 BASE_SCENARIO = textwrap.dedent("""\
     network:
       links:
@@ -242,15 +198,9 @@ class TestSubstituteValid:
         assert result["network"]["routing"]["policy"] == "SHORTEST_PATHS_ECMP"
 
 
-# ---------------------------------------------------------------------------
-# Reject unreplaced
-# ---------------------------------------------------------------------------
-
-
 class TestRejectUnreplaced:
     def test_reject_unreplaced(self, template_path: Path) -> None:
         """${{missing_param}} not in hypothesis raises error citing missing_param."""
-        # Create a template with only one param
         minimal_yaml = textwrap.dedent("""\
             params:
               link_capacity:
@@ -274,11 +224,6 @@ class TestRejectUnreplaced:
             merger.merge(h)
 
 
-# ---------------------------------------------------------------------------
-# Cross-check: extra placeholder
-# ---------------------------------------------------------------------------
-
-
 class TestCrossCheckExtraPlaceholder:
     def test_extra_placeholder(self, template_path: Path) -> None:
         """Placeholder ${{foo}} not in template produces validation error citing foo."""
@@ -289,11 +234,6 @@ class TestCrossCheckExtraPlaceholder:
         assert any("foo" in e for e in errors)
 
 
-# ---------------------------------------------------------------------------
-# Cross-check: unused param
-# ---------------------------------------------------------------------------
-
-
 class TestCrossCheckUnusedParam:
     def test_unused_param(self, template_path: Path) -> None:
         """Template has 'num_paths' etc. but scenario has no placeholder for them."""
@@ -302,15 +242,9 @@ class TestCrossCheckUnusedParam:
         scenario_text = "cap: ${{link_capacity}}"
         merger = HypothesisMerger(scenario_text, tmpl)
         errors = merger.validate_placeholders()
-        # Should report demand_scale, flow_policy, num_paths as unused
         unused_names = {"demand_scale", "flow_policy", "num_paths"}
         for name in unused_names:
             assert any(name in e for e in errors), f"Expected error about {name}"
-
-
-# ---------------------------------------------------------------------------
-# Collision safety: single-brace is ignored
-# ---------------------------------------------------------------------------
 
 
 class TestCollisionSafety:
@@ -328,11 +262,6 @@ class TestCollisionSafety:
         # YAML treats ${single_brace} as a plain string.
         assert result["env"] == "${single_brace}"
         assert result["capacity"] == 400
-
-
-# ---------------------------------------------------------------------------
-# Edge cases and additional coverage
-# ---------------------------------------------------------------------------
 
 
 class TestParamDefDataclass:
@@ -373,3 +302,17 @@ class TestFloatRangeValidation:
         h = Hypothesis(params, template)
         errors = h.validate()
         assert errors == []
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_nonfinite_hypothesis_is_invalid(tmp_path, value):
+    path = tmp_path / "template.yml"
+    path.write_text("params:\n  x: {type: float, range: [0, 10]}\n")
+    assert HypothesisTemplate(path).validate_hypothesis({"x": value})
+
+
+def test_unknown_parameter_type_is_rejected(tmp_path):
+    path = tmp_path / "template.yml"
+    path.write_text("params:\n  x: {type: arbitrary}\n")
+    with pytest.raises(ValueError, match="unsupported type"):
+        HypothesisTemplate(path)

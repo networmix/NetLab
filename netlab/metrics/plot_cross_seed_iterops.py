@@ -14,16 +14,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-plt.rcParams["figure.dpi"] = 300
-plt.rcParams["savefig.dpi"] = 300
-plt.rcParams["savefig.bbox"] = "tight"
-plt.rcParams["axes.titlesize"] = 13
-plt.rcParams["axes.labelsize"] = 11
-plt.rcParams["legend.fontsize"] = 10
-plt.rcParams["xtick.labelsize"] = 9
-plt.rcParams["ytick.labelsize"] = 9
-
-
 _METRICS = {
     "iters_fail": "Failure iterations",
     "unique_patterns": "Unique patterns",
@@ -58,7 +48,6 @@ def plot_cross_seed_iterops(
     if data.empty:
         return None
 
-    sns.set_theme(style="whitegrid")
     fig, axes = plt.subplots(1, len(_METRICS), figsize=(14.0, 4.5))
     for ax, (column, label) in zip(axes, _METRICS.items(), strict=True):
         samples = data.loc[np.isfinite(data[column]), ["scenario", column]]
