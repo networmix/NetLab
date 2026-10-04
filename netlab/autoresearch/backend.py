@@ -1,12 +1,4 @@
-"""LLM backend abstractions for autoresearch.
-
-Provides:
-- LLMBackend: ABC for single-shot text generation
-- MockBackend: scripted responses for testing
-- ClaudeCLIBackend: subprocess wrapper around `claude -p`
-- CodexCLIBackend: subprocess wrapper around `codex exec`
-- OpenAICompatibleBackend: HTTP client for OpenAI-compatible APIs
-"""
+"""LLM backends for scripted responses, CLI tools, and HTTP APIs."""
 
 from __future__ import annotations
 
@@ -29,11 +21,11 @@ DEFAULT_OPENAI_MODEL = "gpt-4"
 
 
 class LLMBackend(ABC):
-    """Abstract base class for LLM backends."""
+    """Interface for one text-generation request."""
 
     @abstractmethod
     def generate(self, prompt: str, system: str = "") -> str:
-        """Single-shot text generation. Returns response text. Raises on failure."""
+        """Return generated text; raise on failure."""
 
 
 class MockBackend(LLMBackend):
@@ -60,9 +52,11 @@ class ClaudeCLIBackend(LLMBackend):
         self,
         model: str = DEFAULT_CLAUDE_MODEL,
         command: str | None = None,
+        timeout: float = 120,
     ) -> None:
         self.model = model
         self.command = command
+        self.timeout = timeout
 
     def generate(self, prompt: str, system: str = "") -> str:
         # Claude Code headless mode uses -p/--print with the prompt as its value.
@@ -83,7 +77,10 @@ class ClaudeCLIBackend(LLMBackend):
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=self.timeout,
             )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(f"Claude CLI timed out after {self.timeout}s") from exc
         except FileNotFoundError as exc:
             raise RuntimeError(
                 f"Claude CLI executable not found: {executable}"
@@ -96,20 +93,20 @@ class ClaudeCLIBackend(LLMBackend):
 
 
 class CodexCLIBackend(LLMBackend):
-    """Backend that calls the ``codex`` CLI tool via subprocess.
+    """Generate text with ``codex exec`` in ephemeral, read-only mode.
 
-    Uses ``codex exec`` in ephemeral, read-only sandbox mode to perform
-    single-shot text generation. The last agent message is captured via
-    the ``-o`` (output-last-message) flag.
+    Read the response from the file written by ``--output-last-message``.
     """
 
     def __init__(
         self,
         model: str = DEFAULT_CODEX_MODEL,
         command: str | None = None,
+        timeout: float = 120,
     ) -> None:
         self.model = model
         self.command = command
+        self.timeout = timeout
 
     def generate(self, prompt: str, system: str = "") -> str:
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
@@ -143,7 +140,12 @@ class CodexCLIBackend(LLMBackend):
                     capture_output=True,
                     text=True,
                     check=False,
+                    timeout=self.timeout,
                 )
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError(
+                    f"Codex CLI timed out after {self.timeout}s"
+                ) from exc
             except FileNotFoundError as exc:
                 raise RuntimeError(
                     f"Codex CLI executable not found: {executable}"
@@ -159,13 +161,9 @@ class CodexCLIBackend(LLMBackend):
 
 
 class OpenAICompatibleBackend(LLMBackend):
-    """Backend that calls an OpenAI-compatible HTTP API.
+    """Call an OpenAI-compatible HTTP API, retrying 429 and server errors."""
 
-    Uses urllib.request (no third-party deps). Implements retry with
-    exponential backoff for 429 and 5xx errors.
-    """
-
-    # Retry parameters — overridable in tests to keep wall time short.
+    # Tests can override retry limits and delay.
     max_retries: int = 3
     base_delay: float = 2.0  # seconds
 
@@ -176,7 +174,6 @@ class OpenAICompatibleBackend(LLMBackend):
         api_key: str = "",
         timeout: int = 120,
     ) -> None:
-        # Strip trailing slash for consistent URL construction
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.api_key = api_key
@@ -206,17 +203,23 @@ class OpenAICompatibleBackend(LLMBackend):
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     data = json.loads(resp.read().decode())
-                    return data["choices"][0]["message"]["content"]
+                    content = data["choices"][0]["message"]["content"]
+                    if not isinstance(content, str):
+                        raise RuntimeError("Backend response must contain text content")
+                    return content
             except urllib.error.HTTPError as exc:
                 status = exc.code
                 if status == 429:
-                    # Use Retry-After header when present
                     retry_after = (
                         exc.headers.get("Retry-After") if exc.headers else None
                     )
-                    if retry_after is not None:
-                        delay = float(retry_after)
-                    else:
+                    try:
+                        delay = (
+                            min(60.0, max(0.0, float(retry_after)))
+                            if retry_after is not None
+                            else self.base_delay * (2**attempt)
+                        )
+                    except ValueError:
                         delay = self.base_delay * (2**attempt)
                     last_exc = exc
                     if attempt < self.max_retries:

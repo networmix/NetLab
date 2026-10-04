@@ -1,11 +1,10 @@
 # Balanced Sparse: Latin square assignment with one BB connection per plane
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: Each DC connects to 1 BB per plane with Latin square rotation
+# Connections: Each DC connects to 1 BB per plane with Latin square rotation
 #   DC-1,5 → R1@P1, R2@P2, R3@P3, R4@P4
 #   DC-2,6 → R2@P1, R3@P2, R4@P3, R1@P4
 #   DC-3,7 → R3@P1, R4@P2, R1@P3, R2@P4

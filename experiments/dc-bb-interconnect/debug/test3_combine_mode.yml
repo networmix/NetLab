@@ -23,7 +23,7 @@ network:
       pattern: mesh
       capacity: 1000
       cost: 1
-    # BB-A to BB-B (BOTTLENECK)
+    # BB-A to BB-B (bottleneck)
     - source: "SiteA/BB/node/1"
       target: "SiteB/BB/node/1"
       capacity: 100

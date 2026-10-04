@@ -1,7 +1,7 @@
 # Mini DC-BB verification scenario
 #
 # 10 nodes, 2 planes, dual long-haul paths with asymmetric capacity and cost.
-# Designed for hand-verifiable metric computation.
+# Expected results are calculated below.
 #
 # Topology:
 #
@@ -35,7 +35,7 @@
 # Remaining 100 overflows to path_b (cost 212): 2 planes × 50 = 100
 # Baseline cost_distribution: {112: 200, 212: 100}
 #
-# === FAILURE SCENARIOS (at alpha=3, demand=300/direction) ===
+# Failures at alpha=3, demand=300 per direction:
 #
 # fm_lh_path: lose one LH path risk group (2 choices: path_a or path_b)
 #
@@ -53,7 +53,7 @@
 # fm_1x_bb: lose one random BB node (4 choices, equally likely)
 #
 #   Lose any BB node (e.g., bb/abc1/pl1):
-#     That plane loses BOTH cross-site paths (path_a and path_b share
+#     That plane loses both cross-site paths (path_a and path_b share
 #     the node). Remaining: plane 2 only = path_a(100) + path_b(50) = 150.
 #     TE fills path_a first: 100 at cost 112, then path_b: 50 at cost 212.
 #     Placed: 150. Ratio: 150/300 = 1/2

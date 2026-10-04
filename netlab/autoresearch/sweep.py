@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import time
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -14,24 +13,18 @@ from typing import Optional
 import numpy as np
 import yaml
 
-from metrics.bac import BacResult, compute_bac
-from metrics.common import expand_flow_results
-from netlab.autoresearch.scenario_generator import (
-    FAILURE_MODE_NAMES,
-    DcBbScenarioConfig,
-    generate_scenario_with_validation,
-    get_valid_layouts,
-)
-from netlab.autoresearch.scenario_validation import validate_inspect_output
+from netlab.artifacts import ensure_run_identity, package_versions, write_text_atomic
+from netlab.autoresearch.dcbb_config import DcBbScenarioConfig, get_valid_layouts
+from netlab.autoresearch.dcbb_failures import FAILURE_MODE_NAMES
+from netlab.autoresearch.scenario_generator import generate_scenario_with_validation
+from netlab.autoresearch.scenario_validation import validate_scenario_file
 from netlab.autoresearch.structural_analysis import (
     ConfigResult,
     run_structural_analysis,
 )
-from netlab.runtime import require_executable
-
-# ---------------------------------------------------------------------------
-# Result entry — one line per simulation, flat fields, loads into pandas
-# ---------------------------------------------------------------------------
+from netlab.metrics.bac import BacResult, compute_bac
+from netlab.metrics.common import expand_flow_results
+from netlab.simulation import run_simulation
 
 
 @dataclass
@@ -58,26 +51,11 @@ class ResultEntry:
     timestamp: str = ""
 
     def to_dict(self) -> dict:
-        d = {
-            "g_abc1": self.g_abc1,
-            "g_xyz1": self.g_xyz1,
-            "layout_abc1": self.layout_abc1,
-            "layout_xyz1": self.layout_xyz1,
-            "alpha_star": self.alpha_star,
-            "bac_combined": self.bac_combined,
-            "bac_modes": self.bac_modes,
-            "result_dir": self.result_dir,
-            "status": self.status,
-            "error": self.error,
-            "duration_s": self.duration_s,
-            "timestamp": self.timestamp,
-        }
-        return d
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, d: dict) -> "ResultEntry":
-        fields = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
-        return cls(**fields)
+        return cls(**d)
 
 
 @dataclass
@@ -89,14 +67,24 @@ class SweepConfig:
     timeout_s: int = 300
     seed: int = 42
 
+    def __post_init__(self) -> None:
+        if self.failure_iterations < 1 or self.timeout_s <= 0:
+            raise ValueError("failure_iterations and timeout_s must be positive")
 
-# ---------------------------------------------------------------------------
-# Utilities
-# ---------------------------------------------------------------------------
 
-
-def _find_ngraph() -> str:
-    return require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
+def _prepare_sweep(config: SweepConfig, mode: str) -> None:
+    path = config.output_dir / "sweep.json"
+    if not path.exists() and (config.output_dir / "results.jsonl").exists():
+        raise ValueError("Sweep has no provenance; use a new output directory")
+    ensure_run_identity(
+        path,
+        {
+            "mode": mode,
+            "seed": config.seed,
+            "failure_iterations": config.failure_iterations,
+            "packages": package_versions(),
+        },
+    )
 
 
 def _dedup_configs(configs: list[ConfigResult]) -> list[ConfigResult]:
@@ -156,11 +144,6 @@ def _result_dir_name(
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
-
-# ---------------------------------------------------------------------------
-# Metric extraction
-# ---------------------------------------------------------------------------
 
 
 def _node_site(node_path: str) -> str:
@@ -230,9 +213,10 @@ def _bac_summary(bac: BacResult) -> dict:
     values = np.asarray(bac.series.values, dtype=float)
     ratios = values / bac.offered if bac.offered > 0 else values
     return {
-        "auc": round(bac.auc_normalized, 6),
+        "auc": bac.auc_normalized,
         "pct": [
-            round(float(value), 6) for value in np.percentile(ratios, range(1, 101))
+            float(value)
+            for value in np.percentile(ratios, range(1, 101), method="lower")
         ],
     }
 
@@ -261,15 +245,9 @@ def _extract_step_metrics(results_data: dict, step_name: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Core execution
-# ---------------------------------------------------------------------------
-
-
 def _execute_scenario(
     config: DcBbScenarioConfig,
     timeout_s: int,
-    ngraph_bin: str,
     work_dir: Path,
 ) -> dict:
     """Generate scenario, validate, run ngraph, extract all metrics.
@@ -296,76 +274,36 @@ def _execute_scenario(
         return result
 
     scenario_path = work_dir / "scenario.yml"
-    scenario_path.write_text(
-        yaml.dump(scenario, default_flow_style=False, sort_keys=False)
+    write_text_atomic(
+        scenario_path, yaml.dump(scenario, default_flow_style=False, sort_keys=False)
     )
 
-    # Validate
     try:
-        ir = subprocess.run(
-            [ngraph_bin, "inspect", str(scenario_path)],
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-        )
-        if ir.returncode != 0:
-            result.update(
-                status="error",
-                error=f"inspect: {ir.stderr[-300:]}",
-                duration_s=time.time() - t0,
-            )
-            return result
-        ve = validate_inspect_output(ir.stdout, expected)
-        if ve:
-            result.update(
-                status="error",
-                error=f"validation: {'; '.join(ve)}",
-                duration_s=time.time() - t0,
-            )
-            return result
-    except subprocess.TimeoutExpired:
-        result.update(status="timeout", duration_s=time.time() - t0)
-        return result
-
-    # Run
-    try:
-        rr = subprocess.run(
-            [ngraph_bin, "run", str(scenario_path), "-o", str(work_dir)],
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-        )
-        if rr.returncode != 0:
-            result.update(
-                status="crash",
-                error=f"run: {rr.stderr[-300:]}",
-                duration_s=time.time() - t0,
-            )
-            return result
-    except subprocess.TimeoutExpired:
-        result.update(status="timeout", duration_s=time.time() - t0)
-        return result
-
-    # Load results
-    results_path = work_dir / "scenario.results.json"
-    if not results_path.exists():
+        errors = validate_scenario_file(scenario_path, expected)
+        if errors:
+            raise ValueError("; ".join(errors))
+    except (ValueError, OSError) as exc:
         result.update(
-            status="error", error="no results file", duration_s=time.time() - t0
+            status="error", error=f"validation: {exc}", duration_s=time.time() - t0
         )
         return result
-    results_data = json.loads(results_path.read_text())
+    outcome = run_simulation(scenario_path, timeout=timeout_s)
+    if not outcome.success:
+        result.update(
+            status=outcome.status, error=outcome.error, duration_s=time.time() - t0
+        )
+        return result
+    results_data = outcome.results
 
-    # Alpha
     try:
         msd = results_data.get("steps", {}).get("msd_baseline", {}).get("data", {})
-        result["alpha_star"] = float(msd.get("alpha_star", 0))
+        result["alpha_star"] = float(msd["alpha_star"])
     except Exception as e:
         result.update(
             status="error", error=f"alpha_star: {e}", duration_s=time.time() - t0
         )
         return result
 
-    # Per-mode + combined metrics
     try:
         steps = results_data.get("steps", {})
         bac_modes: dict = {}
@@ -383,15 +321,11 @@ def _execute_scenario(
 
         result["bac_modes"] = bac_modes
     except Exception as e:
-        result["error"] = f"bac: {e}"
+        result.update(status="error", error=f"bac: {e}", duration_s=time.time() - t0)
+        return result
 
     result.update(status="success", duration_s=round(time.time() - t0, 1))
     return result
-
-
-# ---------------------------------------------------------------------------
-# Sweep runners
-# ---------------------------------------------------------------------------
 
 
 def run_sweep(
@@ -399,7 +333,9 @@ def run_sweep(
     side: str,
 ) -> list[ResultEntry]:
     """Sweep one side (fix the other at default)."""
-    ngraph_bin = _find_ngraph()
+    if side not in {"abc1", "xyz1"}:
+        raise ValueError("side must be abc1 or xyz1")
+    _prepare_sweep(sweep_config, side)
     output_dir = sweep_config.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     results_jsonl = output_dir / "results.jsonl"
@@ -408,14 +344,11 @@ def run_sweep(
     default = DcBbScenarioConfig(seed=sweep_config.seed)
     bb_rows, bb_cols = default.bb_planes, default.bb_devices_per_plane
 
-    # Load completed
     completed = _load_completed(results_jsonl)
 
-    # Get unique configs for swept side
     analysis = run_structural_analysis(default)
     unique = _dedup_configs(analysis[side].configs)
 
-    # Fixed side notation
     if side == "abc1":
         fixed_layout = default.layout_xyz1
         fixed_g = default.g_xyz1
@@ -459,7 +392,7 @@ def run_sweep(
 
         run_dir = results_dir / dir_name
         run_dir.mkdir(parents=True, exist_ok=True)
-        r = _execute_scenario(sc, sweep_config.timeout_s, ngraph_bin, run_dir)
+        r = _execute_scenario(sc, sweep_config.timeout_s, run_dir)
 
         if side == "abc1":
             entry = _build_entry(cfg.g, nota, fixed_g, fixed_nota, dir_name, r)
@@ -474,7 +407,7 @@ def run_sweep(
 
 def run_cross_sweep(sweep_config: SweepConfig) -> list[ResultEntry]:
     """Sweep all cross-side (ABC1 × XYZ1) combinations."""
-    ngraph_bin = _find_ngraph()
+    _prepare_sweep(sweep_config, "cross")
     output_dir = sweep_config.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     results_jsonl = output_dir / "results.jsonl"
@@ -525,18 +458,13 @@ def run_cross_sweep(sweep_config: SweepConfig) -> list[ResultEntry]:
 
             run_dir = results_dir / dir_name
             run_dir.mkdir(parents=True, exist_ok=True)
-            r = _execute_scenario(sc, sweep_config.timeout_s, ngraph_bin, run_dir)
+            r = _execute_scenario(sc, sweep_config.timeout_s, run_dir)
 
             entry = _build_entry(a_cfg.g, nota_a, x_cfg.g, nota_x, dir_name, r)
             entries.append(entry)
             _append_jsonl(results_jsonl, entry)
 
     return entries
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _build_entry(
@@ -569,18 +497,14 @@ def _load_completed(results_jsonl: Path) -> set[str]:
         for line in results_jsonl.read_text().splitlines():
             if line.strip():
                 data = json.loads(line)
-                completed.add(data.get("result_dir", ""))
+                if data["status"] == "success":
+                    completed.add(data["result_dir"])
     return completed
 
 
 def _append_jsonl(path: Path, entry: ResultEntry) -> None:
-    with open(path, "a") as f:
-        f.write(json.dumps(entry.to_dict()) + "\n")
-
-
-# ---------------------------------------------------------------------------
-# Display
-# ---------------------------------------------------------------------------
+    text = path.read_text() if path.exists() else ""
+    write_text_atomic(path, text + json.dumps(entry.to_dict()) + "\n")
 
 
 def print_results(entries: list[ResultEntry]) -> None:

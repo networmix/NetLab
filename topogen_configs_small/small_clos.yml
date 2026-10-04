@@ -1,7 +1,4 @@
 output:
-  scenario_metadata:
-    title: "Small Test: East Coast, Clos_L16_S4"
-
   formatting:
     json_indent: 2
     yaml_anchors: true
@@ -44,7 +41,6 @@ build:
     alpha_dc_to_pop: 1.2
     beta_intra_pop: 0.8
     flow_placement: EQUAL_BALANCED
-    edge_select: ALL_MIN_COST
     respect_min_base_capacity: true
 
 components:
@@ -52,15 +48,18 @@ components:
     core: CoreRouter
     leaf: LeafRouter
     spine: SpineRouter
-    dc: {}
+    dc: ""
   optics:
-    core|core: 800G-ZR+
-    leaf|leaf: 800G-ZR+
-    core|leaf: 800G-ZR+
-    leaf|dc: 800G-ZR+
-    core|dc: 800G-ZR+
-    leaf|spine: 800G-DR4
-    spine|leaf: 1600G-2xDR4
+    core->core: 800G-ZR+
+    leaf->leaf: 800G-ZR+
+    core->leaf: 800G-ZR+
+    leaf->core: 800G-ZR+
+    leaf->dc: 800G-ZR+
+    core->dc: 800G-ZR+
+    dc->core: 800G-ZR+
+    dc->leaf: 800G-ZR+
+    leaf->spine: 800G-DR4
+    spine->leaf: 1600G-2xDR4
 
 failure_policies:
   assignments:
@@ -126,9 +125,7 @@ highway_processing:
   min_edge_length_km: 0.0
   snap_precision_m: 150.0
   highway_classes: ["S1100"]
-  min_cycle_nodes: 3
   filter_largest_component: true
-  validation_sample_size: 5
 
 corridors:
   k_paths: 1

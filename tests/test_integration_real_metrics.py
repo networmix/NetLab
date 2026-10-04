@@ -7,11 +7,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from metrics.summary import (
+from netlab.metrics.batch import run_metrics
+from netlab.metrics.summary import (
     build_baseline_normalized_table,
     build_project_summary_table,
 )
-from netlab.metrics_cmd import run_metrics
 
 
 def _copy_results_json_tree(src: Path, dst: Path) -> None:
@@ -68,14 +68,12 @@ def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
     out_root = tmp_path / "scenarios_metrics"
     ref_root = data_root / "scenarios_metrics"
 
-    # Compare project-level CSVs (values should match exactly)
     _assert_project_csv_equal(out_root / "project.csv", ref_root / "project.csv")
     _assert_project_csv_equal(
         out_root / "project_baseline_normalized.csv",
         ref_root / "project_baseline_normalized.csv",
     )
 
-    # Spot-check a few per-seed JSON outputs for equality
     ref_alpha = json.loads(
         (ref_root / "small_baseline/seed11/alpha.json").read_text(encoding="utf-8")
     )
@@ -90,10 +88,8 @@ def test_run_metrics_matches_reference_outputs(tmp_path: Path) -> None:
     out_bac = json.loads(
         (out_root / "small_clos/seed12/bac.json").read_text(encoding="utf-8")
     )
-    # Key summary fields must match
     for k in ("auc_normalized",):
         assert float(out_bac.get(k)) == float(ref_bac.get(k))
-    # Normalized BW at probability entries must match
     for p in ("90.0", "95.0", "99.0", "99.9"):
         assert float(out_bac["bw_at_probability_pct"][p]) == float(
             ref_bac["bw_at_probability_pct"][p]
@@ -104,7 +100,6 @@ def test_summary_tables_match_reference() -> None:
     data_root = Path(__file__).resolve().parent / "data"
     ref_root = data_root / "scenarios_metrics"
 
-    # Build tables from the reference metrics dir and compare to the saved CSVs
     df_proj = build_project_summary_table(ref_root).sort_index()
     df_proj_ref = (
         pd.read_csv(ref_root / "project.csv").set_index("scenario").sort_index()
@@ -183,7 +178,6 @@ def test_all_scenario_metrics_match_reference(tmp_path: Path) -> None:
     dst_scen = tmp_path / "scenarios"
     _copy_results_json_tree(src_scen, dst_scen)
 
-    # Generate outputs
     run_metrics(root=dst_scen, no_plots=True, enable_maxflow=False)
 
     out_root = tmp_path / "scenarios_metrics"

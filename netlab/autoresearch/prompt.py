@@ -1,11 +1,4 @@
-"""Prompt construction for autoresearch LLM interactions.
-
-Provides:
-- build_hypothesis_prompt(): assembles system + user prompt for hypothesis generation
-- build_reflection_prompt(): assembles prompt for reflection on recent experiments
-- parse_hypothesis_response(): extracts YAML params from LLM response
-- render_memory_section(): formats research memory for prompt inclusion
-"""
+"""Build research prompts and parse proposed parameters."""
 
 from __future__ import annotations
 
@@ -21,11 +14,6 @@ if TYPE_CHECKING:
 
 class ParseError(Exception):
     """Raised when LLM response cannot be parsed into valid parameters."""
-
-
-# ---------------------------------------------------------------------------
-# Interfaces for the research state included in prompts.
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
@@ -70,10 +58,6 @@ class ResearchMemoryLike(Protocol):
     def strategy(self) -> str: ...
 
 
-# ---------------------------------------------------------------------------
-# Prompt building
-# ---------------------------------------------------------------------------
-
 _YAML_FENCE_RE = re.compile(r"```(?:yaml|YAML)\s*\n(.*?)```", re.DOTALL)
 
 
@@ -110,10 +94,7 @@ def _render_best(best: Optional[LogEntry]) -> str:
 
 
 def render_memory_section(memory: ResearchMemoryLike) -> str:
-    """Render insights + dead_ends + strategy for inclusion in hypothesis prompt.
-
-    Returns empty string if memory is empty (no section headers injected).
-    """
+    """Format insights, rejected approaches, and strategy; omit empty sections."""
     insights = memory.active_insights
     dead_ends = memory.dead_ends
     strategy = memory.strategy
@@ -169,12 +150,6 @@ def build_hypothesis_prompt(
     """
     system_prompt = program_md
 
-    # Build user prompt sections in order:
-    # 1. Parameter space
-    # 2. Memory section (if non-empty)
-    # 3. History
-    # 4. Current best
-    # 5. Instructions
     user_parts: list[str] = []
 
     user_parts.append("## Parameter Space")
@@ -224,7 +199,6 @@ def build_reflection_prompt(
 
     user_parts: list[str] = []
 
-    # Recent experiments
     user_parts.append("## Recent Experiment Results")
     for entry in recent_entries:
         parts = [f"- {entry.exp_id}: status={entry.status}"]
@@ -238,19 +212,16 @@ def build_reflection_prompt(
         user_parts.append(", ".join(parts))
     user_parts.append("")
 
-    # Current memory
     mem_section = render_memory_section(memory)
     if mem_section:
         user_parts.append("## Current Memory")
         user_parts.append(mem_section)
         user_parts.append("")
 
-    # Current best
     user_parts.append("## Current Best")
     user_parts.append(_render_best(best))
     user_parts.append("")
 
-    # Task sections
     user_parts.append("## Tasks")
     user_parts.append(
         "Review the results above and update your research notes. "
@@ -281,19 +252,13 @@ def build_reflection_prompt(
 
 
 def parse_hypothesis_response(response: str) -> dict[str, Any]:
-    """Extract YAML params from LLM response.
+    """Read parameters from a fenced YAML block, or from the whole response.
 
-    Tries:
-    1. Find a ```yaml ... ``` fenced block and parse its content.
-    2. If no fenced block, try to parse the entire response as YAML.
-    3. If both fail, raise ParseError.
-
-    If parsed result has a "params" key, returns the value under "params".
-    Otherwise returns the whole dict.
+    Return the ``params`` mapping when present, otherwise the top-level mapping.
+    Raise ParseError for invalid YAML or a non-mapping value.
     """
     parsed: Any = None
 
-    # Try fenced YAML block first
     match = _YAML_FENCE_RE.search(response)
     if match:
         yaml_text = match.group(1)
@@ -302,7 +267,6 @@ def parse_hypothesis_response(response: str) -> dict[str, Any]:
         except yaml.YAMLError as exc:
             raise ParseError(f"Failed to parse YAML in fenced block: {exc}") from exc
     else:
-        # Try parsing the entire response as YAML
         try:
             parsed = yaml.safe_load(response)
         except yaml.YAMLError as err:

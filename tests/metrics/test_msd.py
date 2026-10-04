@@ -4,7 +4,7 @@ import math
 
 import pytest
 
-from metrics.msd import AlphaResult, compute_alpha_star
+from netlab.metrics.msd import AlphaResult, compute_alpha_star
 
 
 def test_alpha_from_msd_baseline_with_base_total() -> None:

@@ -5,7 +5,12 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from .common import baseline_demand_map, canonical_dc, expand_flow_results
+from .common import (
+    baseline_demand_map,
+    expand_flow_results,
+    pair_totals,
+    require_capacity_pairs,
+)
 
 Pair = Tuple[str, str]
 
@@ -17,21 +22,13 @@ def _collect_per_iteration_matrix(results: dict, step_name: str) -> pd.DataFrame
     by_iter: Dict[str, Dict[str, float]] = {}
     for idx, it in enumerate(fr):
         fid = f"it{idx}"
-        row: Dict[str, float] = {}
-        for rec in it.get("flows", []) or []:
-            s = canonical_dc(rec.get("source", ""))
-            d = canonical_dc(rec.get("destination", ""))
-            if not s or not d or s == d:
-                continue
-            try:
-                val = float(rec.get("placed", 0.0))
-            except Exception:
-                val = 0.0
-            row[f"{s}→{d}"] = val
+        row = {f"{s}→{d}": value for (s, d), value in pair_totals(it, "placed").items()}
         by_iter[fid] = row
     if not by_iter:
         return pd.DataFrame()
-    df = pd.DataFrame.from_dict(by_iter, orient="index").fillna(0.0)
+    df = pd.DataFrame(list(by_iter.values()), index=list(by_iter)).fillna(0.0)
+    demand_pairs = {f"{s}→{d}" for s, d in baseline_demand_map(results)}
+    df = df.reindex(columns=sorted(demand_pairs | set(df.columns)), fill_value=0.0)
     df.index.name = "iteration"
     return df
 
@@ -40,42 +37,39 @@ def _percentiles_per_pair(matrix: pd.DataFrame, probs: List[float]) -> pd.DataFr
     if matrix is None or matrix.empty:
         return pd.DataFrame()
     out = {}
-    # columns are pairs
     for col in matrix.columns:
         series = matrix[col].astype(float)
-        # stepwise lower interpolation to match BAC semantics
+        # Descriptive quantiles use lower ranks; BW@p uses a survival threshold.
         out[col] = [float(series.quantile(p, interpolation="lower")) for p in probs]
     df = pd.DataFrame(
         out,
         index=[f"p{int(p * 10000) / 100 if p < 1 else int(p * 100)}" for p in probs],
     )
-    # transpose to have rows as pairs, columns as tails
     return df.T
 
 
 def compute_pair_matrices(
     results: dict, include_maxflow: bool
 ) -> Tuple[pd.DataFrame, pd.DataFrame, Optional[pd.DataFrame], Optional[pd.DataFrame]]:
-    """
-    Returns (tm_abs, tm_norm, mf_abs, mf_norm), where each is a DataFrame with
-    rows as pairs "s→d" and columns as percentiles (p50,p90,p99,p999,p9999).
-    Normalization uses tm_placement baseline per-pair demand; values are clipped at 1.0 for interpretability.
-    If include_maxflow is False or data missing, mf_* will be None.
+    """Return placement and MaxFlow percentile tables: tm_abs, tm_norm, mf_abs, mf_norm.
+
+    Rows are exact "source→destination" pairs. Columns are p50.0, p90.0, p99.0, p99.9,
+    and p99.99 using NumPy's lower quantile estimator over failures only.
+    Normalized values divide by baseline placement demand and are capped at 1.
+    The MaxFlow tables are None when disabled; enabled analysis requires matching pairs.
     """
     probs = [0.50, 0.90, 0.99, 0.999, 0.9999]
     denom = baseline_demand_map(results)
 
     tm_mat = _collect_per_iteration_matrix(results, "tm_placement")
     tm_abs = _percentiles_per_pair(tm_mat, probs)
-    # normalized
     if not tm_mat.empty and denom:
         norm_vals = tm_mat.copy()
         for col in norm_vals.columns:
-            # parse pair
             try:
                 s, d = col.split("→", 1)
                 den = float(denom.get((s, d), float("nan")))
-            except Exception:
+            except (ValueError, TypeError, KeyError, OSError):
                 den = float("nan")
             if np.isfinite(den) and den > 0.0:
                 norm_vals[col] = (norm_vals[col].astype(float) / den).clip(upper=1.0)
@@ -88,6 +82,7 @@ def compute_pair_matrices(
     mf_abs: Optional[pd.DataFrame] = None
     mf_norm: Optional[pd.DataFrame] = None
     if include_maxflow:
+        require_capacity_pairs(results)
         mf_mat = _collect_per_iteration_matrix(results, "node_to_node_capacity_matrix")
         mf_abs = _percentiles_per_pair(mf_mat, probs)
         if not mf_mat.empty and denom:
@@ -96,7 +91,7 @@ def compute_pair_matrices(
                 try:
                     s, d = col.split("→", 1)
                     den = float(denom.get((s, d), float("nan")))
-                except Exception:
+                except (ValueError, TypeError, KeyError, OSError):
                     den = float("nan")
                 if np.isfinite(den) and den > 0.0:
                     n2[col] = (n2[col].astype(float) / den).clip(upper=1.0)

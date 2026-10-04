@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from metrics.latency import LatencyResult, compute_latency_stretch
+from netlab.metrics.latency import LatencyResult, compute_latency_stretch
 
 
 def _latency_results() -> dict:
@@ -23,26 +23,26 @@ def _latency_results() -> dict:
     # Failure 1 increases costs for both pairs; shares include best-path (equal to baseline min)
     f1_flows = [
         {
-            "source": "metro1/dc1/node",
-            "destination": "metro1/dc2/leaf",
+            "source": "metro1/dc1/r1",
+            "destination": "metro1/dc2/r2",
             "cost_distribution": {"10": 2.5, "12": 2.5},
         },
         {
-            "source": "metro1/dc1/x",
-            "destination": "metro2/dc3/y",
+            "source": "metro1/dc1/r1",
+            "destination": "metro2/dc3/r3",
             "cost_distribution": {"20": 1.0, "30": 1.0},
         },
     ]
     # Failure 2 worse for second pair only
     f2_flows = [
         {
-            "source": "metro1/dc1",
-            "destination": "metro1/dc2",
+            "source": "metro1/dc1/r1",
+            "destination": "metro1/dc2/r2",
             "cost_distribution": {"10": 5.0},
         },
         {
-            "source": "metro1/dc1",
-            "destination": "metro2/dc3",
+            "source": "metro1/dc1/r1",
+            "destination": "metro2/dc3/r3",
             "cost_distribution": {"20": 0.5, "40": 1.5},
         },
     ]
@@ -123,7 +123,6 @@ def test_compute_latency_stretch_correctness() -> None:
 
 def test_latency_requires_baseline_key() -> None:
     res = _latency_results()
-    # Remove the baseline key to trigger the validation error
     del res["steps"]["tm_placement"]["data"]["baseline"]
     with pytest.raises(ValueError, match="baseline dict required"):
         compute_latency_stretch(res)
@@ -180,6 +179,4 @@ def test_latency_occurrence_count_weighting() -> None:
         }
     }
     out = compute_latency_stretch(res)
-    # With 8 copies of stretch=2.0 and 2 copies of stretch=1.0,
-    # median p50 should be 2.0 (not 1.5 as with equal weights)
     assert np.isclose(out.failures["p50"], 2.0)

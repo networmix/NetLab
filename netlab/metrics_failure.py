@@ -6,6 +6,8 @@ import statistics
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from netlab.metrics.common import expand_flow_results, nonnegative_number
+
 
 @dataclass
 class FailureStats:
@@ -63,16 +65,7 @@ def extract_failure_ratios(
     results: dict,
     step_prefix: str = "tm_",
 ) -> Dict[str, List[float]]:
-    """
-    Extract failure ratios from a results JSON.
-
-    Args:
-        results: Loaded results JSON dictionary
-        step_prefix: Prefix for failure analysis steps (default: "tm_")
-
-    Returns:
-        Dict mapping step name to list of overall_ratio values
-    """
+    """Return occurrence-weighted failure ratios, keyed by placement step name."""
     failure_ratios: Dict[str, List[float]] = {}
     steps = results.get("steps", {})
 
@@ -84,8 +77,9 @@ def extract_failure_ratios(
         if not flow_results:
             continue
 
-        # Collect ratios from all iterations
-        ratios = [fr["summary"]["overall_ratio"] for fr in flow_results]
+        ratios = [
+            fr["summary"]["overall_ratio"] for fr in expand_flow_results(flow_results)
+        ]
         failure_ratios[step_name] = ratios
 
     return failure_ratios
@@ -94,21 +88,16 @@ def extract_failure_ratios(
 def compute_failure_stats(
     failure_ratios: Dict[str, List[float]],
 ) -> Dict[str, FailureStats]:
-    """
-    Compute statistics for each failure type.
-
-    Args:
-        failure_ratios: Dict mapping step name to list of ratios
-
-    Returns:
-        Dict mapping step name to FailureStats
-    """
+    """Summarize failure ratios for each placement step."""
     stats: Dict[str, FailureStats] = {}
 
     for step_name, ratios in failure_ratios.items():
         if not ratios:
             continue
 
+        ratios = [nonnegative_number(value, "overall_ratio") for value in ratios]
+        if any(value > 1.0 + 1e-9 for value in ratios):
+            raise ValueError("overall_ratio cannot exceed one")
         stats[step_name] = FailureStats(
             step_name=step_name,
             iterations=len(ratios),
@@ -126,16 +115,12 @@ def find_worst_failures(
     failure_stats: Dict[str, FailureStats],
     tolerance: float = 0.001,
 ) -> Optional[Dict[str, Any]]:
-    """
-    Find the worst failure types (all within tolerance of minimum).
+    """Return all step names within ``tolerance`` of the lowest ratio.
 
-    Args:
-        failure_stats: Dict of failure statistics
-        tolerance: Tolerance for considering failures equal (default: 0.1%)
-
-    Returns:
-        Dict with "types" and "min_ratio", or None if no failures
+    The result has ``types`` and ``min_ratio`` keys, or is None without failures.
+    Tolerance is an absolute ratio difference (default 0.001).
     """
+    nonnegative_number(tolerance, "worst failure tolerance")
     if not failure_stats:
         return None
 
@@ -157,17 +142,7 @@ def analyze_results(
     step_prefix: str = "tm_",
     worst_tolerance: float = 0.001,
 ) -> FailureAnalysisSummary:
-    """
-    Perform complete failure analysis on a results JSON.
-
-    Args:
-        results: Loaded results JSON dictionary
-        step_prefix: Prefix for failure analysis steps
-        worst_tolerance: Tolerance for worst failure detection
-
-    Returns:
-        FailureAnalysisSummary with all statistics
-    """
+    """Summarize failure ratios and identify the worst failure types."""
     ratios = extract_failure_ratios(results, step_prefix)
     stats = compute_failure_stats(ratios)
     worst = find_worst_failures(stats, worst_tolerance)
@@ -181,22 +156,12 @@ def analyze_results(
 def aggregate_failure_metrics(
     metrics_by_seed: List[Dict[str, FailureStats]],
 ) -> Dict[str, AggregatedFailureStats]:
-    """
-    Aggregate failure metrics across multiple seeds.
-
-    Args:
-        metrics_by_seed: List of failure stats dicts (one per seed)
-
-    Returns:
-        Dict mapping step name to aggregated statistics
-    """
-    # Collect all ratios per step
+    """Pool ratios across seeds for each failure step."""
     all_ratios: Dict[str, List[float]] = {}
     for seed_metrics in metrics_by_seed:
         for step_name, stats in seed_metrics.items():
             all_ratios.setdefault(step_name, []).extend(stats.ratios)
 
-    # Compute aggregated stats
     aggregated: Dict[str, AggregatedFailureStats] = {}
     for step_name, ratios in all_ratios.items():
         if not ratios:
@@ -209,38 +174,24 @@ def aggregate_failure_metrics(
             avg_ratio=statistics.mean(ratios),
             max_ratio=max(ratios),
             std_dev=statistics.stdev(ratios) if len(ratios) > 1 else 0,
-            seeds=len(metrics_by_seed),
+            seeds=sum(step_name in seed_metrics for seed_metrics in metrics_by_seed),
         )
 
     return aggregated
 
 
-def extract_alpha_star(results: dict, msd_step: str = "msd") -> Optional[float]:
-    """
-    Extract alpha_star from MSD step results.
-
-    Args:
-        results: Loaded results JSON dictionary
-        msd_step: Name of the MSD step (default: "msd")
-
-    Returns:
-        Alpha star value, or None if not found
-    """
+def extract_alpha_star(
+    results: dict, msd_step: str = "msd_baseline"
+) -> Optional[float]:
+    """Read alpha_star from the named MSD step; return None when absent."""
     steps = results.get("steps", {})
     msd_data = steps.get(msd_step, {}).get("data", {})
-    return msd_data.get("alpha_star")
+    value = msd_data.get("alpha_star")
+    return nonnegative_number(value, "alpha_star") if value is not None else None
 
 
 def extract_network_stats(results: dict) -> Optional[Dict[str, Any]]:
-    """
-    Extract network statistics from results.
-
-    Args:
-        results: Loaded results JSON dictionary
-
-    Returns:
-        Dict with node_count, link_count, total_capacity, or None
-    """
+    """Return node count, link count, and total capacity, or None when absent."""
     steps = results.get("steps", {})
     net_stats = steps.get("network_statistics", {}).get("data", {})
 

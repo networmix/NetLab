@@ -18,10 +18,6 @@ from netlab.autoresearch.prompt import (
     render_memory_section,
 )
 
-# ---------------------------------------------------------------------------
-# Research-memory test doubles
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class StubInsight:
@@ -45,10 +41,6 @@ class StubMemory:
     dead_ends: list[StubDeadEnd] = field(default_factory=list)
     strategy: str = ""
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -77,11 +69,6 @@ def _make_entry(
     )
 
 
-# ---------------------------------------------------------------------------
-# Prompt construction
-# ---------------------------------------------------------------------------
-
-
 class TestPromptStructure:
     """Prompt structure: program.md + template + 5 entries + best."""
 
@@ -106,26 +93,21 @@ class TestPromptStructure:
             best=best,
         )
 
-        # System prompt is program.md
         assert sys_prompt == program_md
 
-        # User prompt contains sections in order
         param_idx = user_prompt.index("Parameter Space")
         history_idx = user_prompt.index("Experiment History")
         best_idx = user_prompt.index("Current Best")
 
         assert param_idx < history_idx < best_idx
 
-        # Parameter space includes types and ranges
         assert "link_capacity (int)" in user_prompt
         assert "range [100.0, 1000.0]" in user_prompt
         assert "flow_policy (enum)" in user_prompt
 
-        # History contains all 5 entries
         for i in range(1, 6):
             assert f"exp_{i:03d}" in user_prompt
 
-        # Best entry with params and score
         assert "exp_005" in user_prompt
         assert "0.5000" in user_prompt
 
@@ -174,18 +156,15 @@ class TestMemorySectionPresent:
 
         section = render_memory_section(memory)
 
-        # Contains Recorded Insights with both insights as bullets
         assert "Recorded Insights" in section
         assert "Higher capacity improves throughput" in section
         assert "ECMP outperforms UCMP on square meshes" in section
 
-        # Contains Known Dead Ends with 3 entries
         assert "Known Dead Ends" in section
         assert "link_capacity=100" in section
         assert "demand_volume=100000" in section
         assert "seed=999" in section
 
-        # Contains strategy
         assert "Your Current Strategy" in section
         assert "Focus on mid-range capacities" in section
 
@@ -325,7 +304,6 @@ class TestCharBudget:
     """
 
     def test_long_history_included_unchanged(self, sample_template: HypothesisTemplate):
-        # Simulate a pre-rendered history string (already truncated by windowed_history)
         long_history = "Summary: Total experiments: 30\n" + "\n".join(
             f"  exp_{i:03d}: status=success, score={i * 0.01:.4f}" for i in range(1, 31)
         )
@@ -336,7 +314,6 @@ class TestCharBudget:
             memory_section="",
             best=_make_entry("exp_030", score=0.30),
         )
-        # History is included verbatim
         assert long_history in user_prompt
 
     def test_truncated_history_included_as_is(
@@ -386,23 +363,18 @@ class TestReflectionPrompt:
             best=best,
         )
 
-        # System prompt is about reflection
         assert "reflect" in sys_prompt.lower()
 
-        # Contains all 5 experiment summaries
         for i in range(1, 6):
             assert f"exp_{i:03d}" in user_prompt
 
-        # Contains current memory contents
         assert "test insight" in user_prompt
         assert "cap=100" in user_prompt
         assert "Try higher capacities" in user_prompt
 
-        # Contains current best
         assert "exp_005" in user_prompt
         assert "0.5000" in user_prompt
 
-        # Contains the 3 task sections
         assert "INSIGHTS" in user_prompt
         assert "DEAD ENDS" in user_prompt
         assert "STRATEGY" in user_prompt
@@ -414,7 +386,6 @@ class TestReflectionPrompt:
             memory=StubMemory(),
             best=recent[0],
         )
-        # Should still have task sections even with empty memory
         assert "INSIGHTS" in user_prompt
         assert "DEAD ENDS" in user_prompt
         assert "STRATEGY" in user_prompt
@@ -460,7 +431,6 @@ class TestEdgeCases:
         assert "Your Research Notes" in section
         assert "Your Current Strategy" in section
         assert "Focus on exploration" in section
-        # Should not have empty insight/dead_end headers
         assert "Recorded Insights" not in section
         assert "Known Dead Ends" not in section
 

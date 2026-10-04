@@ -5,10 +5,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from metrics.summary import (
+from netlab.metrics.paired import holm_adjust, paired_t
+from netlab.metrics.summary import (
     _build_normalized_insights,
-    _holm_adjust,
-    _paired_t_with_ci,
     _print_normalized_insights,
     build_baseline_normalized_table,
     build_project_summary_table,
@@ -51,7 +50,6 @@ def test_build_baseline_normalized_table_has_expected_columns() -> None:
     root = _metrics_root()
     df = build_baseline_normalized_table(root).sort_index()
     assert "baseline" in df.columns
-    # A few key normalized metrics should be present
     for c in ("bw_p99_pct_r", "auc_norm_r", "USD_per_Gbit_offered_r"):
         assert c in df.columns
 
@@ -61,21 +59,7 @@ def test_print_pretty_table_does_not_crash(capsys) -> None:
     df = build_project_summary_table(root)
     print_pretty_table(df, title="Consolidated project metrics")
     out = capsys.readouterr().out
-    # It should print some header or rows
     assert "project" in out or "scenario" in out or "metrics" in out
-
-
-def test_print_pretty_table_without_rich(monkeypatch, capsys) -> None:
-    import metrics.summary as summ
-
-    # Exercise plain-text output without Rich.
-    monkeypatch.setattr(summ, "Console", None)
-    monkeypatch.setattr(summ, "RichTable", None)
-    root = _data_root() / "scenarios_metrics"
-    df = build_project_summary_table(root)
-    print_pretty_table(df, title="Consolidated project metrics")
-    out = capsys.readouterr().out
-    assert "scenario" in out
 
 
 def test_save_project_csv_incremental(tmp_path: Path) -> None:
@@ -94,26 +78,25 @@ def test_save_project_csv_incremental(tmp_path: Path) -> None:
 def test_build_normalized_insights_shape() -> None:
     root = _data_root() / "scenarios_metrics"
     data = _build_normalized_insights(root)
-    # Returns a list of dicts with scenario key
     assert isinstance(data, list)
     if data:
         assert "scenario" in data[0]
 
 
 def test_holm_and_paired_t_helpers() -> None:
-    # _holm_adjust monotonic step-down behavior
+    # Holm adjustment is monotonic in sorted p-values.
     pairs = [(("a", "b"), 0.01), (("a", "c"), 0.02), (("b", "c"), 0.50)]
-    adjusted = _holm_adjust(pairs)
+    adjusted = holm_adjust(pairs)
     assert adjusted[("a", "b")] <= adjusted[("a", "c")] <= adjusted[("b", "c")]
 
-    # _paired_t_with_ci degenerate case (zero variance) and regular case
+    # Check both constant and varying paired differences.
     import numpy as _np
 
     a = _np.array([1.0, 1.0, 1.0, 1.0])
     b = _np.array([0.0, 0.0, 0.0, 0.0])
     import math as _math
 
-    res_det = _paired_t_with_ci(a, b)
+    res_det = paired_t(a, b)
     assert res_det.get("deterministic") is True
     # Degenerate case may yield infinite t; accept inf
     t_det = res_det.get("t_stat", _np.nan)
@@ -121,7 +104,7 @@ def test_holm_and_paired_t_helpers() -> None:
 
     a2 = _np.array([1.0, 2.0, 3.0, 4.0])
     b2 = _np.array([0.5, 2.0, 1.0, 3.5])
-    res = _paired_t_with_ci(a2, b2)
+    res = paired_t(a2, b2)
     assert res.get("deterministic") is False
     assert _np.isfinite(res.get("t_stat", _np.nan))
 
@@ -153,7 +136,6 @@ def test_normalized_table_heuristic_baseline_when_missing_baseline_dir(
     for scen in ("small_clos", "small_dragonfly"):
         src = repo_root / scen
         dst = tmp_path / scen
-        # Copy directory tree
         for p in src.rglob("*"):
             rel = p.relative_to(src)
             target = dst / rel

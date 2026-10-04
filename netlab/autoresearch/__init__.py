@@ -1,1 +1,1 @@
-# Autoresearch framework — autonomous network topology research.
+# LLM-assisted scenario generation and parameter searches.

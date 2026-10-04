@@ -66,9 +66,6 @@ def _make_insight(
     )
 
 
-# ---------- Create insight with 1 exp ----------
-
-
 class TestInsightMinEvidence:
     def test_rejected_with_1_evidence(self, tmp_path: Path) -> None:
         """add_insight with 1 evidence_for is rejected."""
@@ -83,9 +80,6 @@ class TestInsightMinEvidence:
         assert len(mem.active_insights) == 0
 
 
-# ---------- Create insight with 2 exps ----------
-
-
 class TestInsightAccepted:
     def test_accepted_with_2_evidence(self, tmp_path: Path) -> None:
         """add_insight with 2 evidence_for is accepted; confidence == tentative."""
@@ -98,9 +92,6 @@ class TestInsightAccepted:
         assert err is None
         assert len(mem.active_insights) == 1
         assert mem.active_insights[0].confidence == "tentative"
-
-
-# ---------- Confidence upgrade ----------
 
 
 class TestConfidenceUpgrade:
@@ -130,9 +121,6 @@ class TestConfidenceUpgrade:
         assert mem.active_insights[0].confidence == "moderate"
 
 
-# ---------- Confidence strong ----------
-
-
 class TestConfidenceStrong:
     def test_strong_at_5_evidence(self, tmp_path: Path) -> None:
         """Adding a 5th experiment upgrades confidence to strong."""
@@ -147,16 +135,12 @@ class TestConfidenceStrong:
         assert mem.active_insights[0].confidence == "strong"
 
 
-# ---------- 20-entry limit ----------
-
-
 class TestInsightLimit:
     def test_21st_insight_rejected(self, tmp_path: Path) -> None:
         """Attempting to add 21st active insight is rejected."""
         log = _make_log(tmp_path, n=50)
         mem = ResearchMemory(tmp_path / "memory")
 
-        # Add 20 insights
         for i in range(1, 21):
             ins = _make_insight(
                 insight_id=f"ins_{i:03d}",
@@ -168,7 +152,6 @@ class TestInsightLimit:
 
         assert len(mem.active_insights) == 20
 
-        # 21st should be rejected
         ins21 = _make_insight(
             insight_id="ins_021",
             evidence_for=["exp_041", "exp_042"],
@@ -178,9 +161,6 @@ class TestInsightLimit:
         assert err is not None
         assert "limit" in err.lower()
         assert len(mem.active_insights) == 20
-
-
-# ---------- Retire + add ----------
 
 
 class TestRetireAndAdd:
@@ -199,16 +179,13 @@ class TestRetireAndAdd:
 
         assert len(mem.active_insights) == 20
 
-        # Retire one
         mem.retire_insight("ins_001")
         assert len(mem.active_insights) == 19
 
-        # Check retired status
         retired = [ins for ins in mem._insights if ins.id == "ins_001"]
         assert len(retired) == 1
         assert retired[0].status == "retired"
 
-        # Now adding succeeds
         new_ins = _make_insight(
             insight_id="ins_new",
             evidence_for=["exp_041", "exp_042"],
@@ -217,9 +194,6 @@ class TestRetireAndAdd:
         err = mem.add_insight(new_ins, log)
         assert err is None
         assert len(mem.active_insights) == 20
-
-
-# ---------- Contradiction flag ----------
 
 
 class TestContradictionFlag:
@@ -248,9 +222,6 @@ class TestContradictionFlag:
         mem.add_insight(ins, log)
 
         assert mem.active_insights[0].flagged_for_revision is False
-
-
-# ---------- Dead end dedup ----------
 
 
 class TestDeadEndDedup:
@@ -283,9 +254,6 @@ class TestDeadEndDedup:
         assert "exp_002" in mem.dead_ends[0].exp_ids
 
 
-# ---------- Dead end window ----------
-
-
 class TestDeadEndWindow:
     def test_16_dead_ends_keeps_15(self, tmp_path: Path) -> None:
         """Adding 16 dead ends with different lessons => 15 kept, oldest dropped."""
@@ -309,9 +277,6 @@ class TestDeadEndWindow:
         assert "Lesson 16" in lessons
 
 
-# ---------- Strategy line limit ----------
-
-
 class TestStrategyLineLimit:
     def test_40_lines_truncated_to_30(self, tmp_path: Path) -> None:
         """Writing 40-line strategy => stored <= 30 lines."""
@@ -326,9 +291,6 @@ class TestStrategyLineLimit:
         assert stored_lines[-1] == "Line 30"
 
 
-# ---------- Invalid experiment ID ----------
-
-
 class TestInvalidExpId:
     def test_nonexistent_exp_rejected(self, tmp_path: Path) -> None:
         """Insight citing exp_999 not in log is rejected."""
@@ -341,9 +303,6 @@ class TestInvalidExpId:
         assert err is not None
         assert "exp_999" in err
         assert len(mem.active_insights) == 0
-
-
-# ---------- Reflection parse ----------
 
 
 class TestReflectionParse:
@@ -438,9 +397,6 @@ class TestReflectionParse:
         assert len(mem.active_insights) == 0
 
 
-# ---------- Load empty memory ----------
-
-
 class TestLoadEmpty:
     def test_empty_dir(self, tmp_path: Path) -> None:
         """Empty memory dir => all collections empty, no errors."""
@@ -467,9 +423,6 @@ class TestLoadEmpty:
         assert mem.strategy == ""
 
 
-# ---------- Round-trip ----------
-
-
 class TestRoundTrip:
     def test_save_and_reload(self, tmp_path: Path) -> None:
         """Save 3 insights + 5 dead_ends + strategy, reload => all match."""
@@ -477,7 +430,6 @@ class TestRoundTrip:
         mem_dir = tmp_path / "memory"
         mem = ResearchMemory(mem_dir)
 
-        # Add 3 insights
         for i in range(1, 4):
             ins = _make_insight(
                 insight_id=f"ins_{i:03d}",
@@ -487,7 +439,6 @@ class TestRoundTrip:
             err = mem.add_insight(ins, log)
             assert err is None
 
-        # Add 5 dead ends
         for i in range(1, 6):
             de = DeadEnd(
                 id=f"de_{i:03d}",
@@ -499,17 +450,13 @@ class TestRoundTrip:
             )
             mem.add_dead_end(de)
 
-        # Set strategy
         mem.update_strategy("Focus on parameter x.\nAvoid y > 10.")
 
-        # Save
         mem.save()
 
-        # Reload into fresh instance
         mem2 = ResearchMemory(mem_dir)
         mem2.load()
 
-        # Verify insights
         assert len(mem2.active_insights) == 3
         for i, ins in enumerate(mem2.active_insights, start=1):
             assert ins.id == f"ins_{i:03d}"
@@ -517,16 +464,11 @@ class TestRoundTrip:
             assert ins.confidence == "tentative"
             assert ins.status == "active"
 
-        # Verify dead ends
         assert len(mem2.dead_ends) == 5
         for i, de in enumerate(mem2.dead_ends, start=1):
             assert de.lesson == f"Lesson {i}"
 
-        # Verify strategy
         assert mem2.strategy == "Focus on parameter x.\nAvoid y > 10."
-
-
-# ---------- Protocol compliance ----------
 
 
 class TestProtocolCompliance:
@@ -543,15 +485,12 @@ class TestProtocolCompliance:
         mem_dir = tmp_path / "memory"
         mem = ResearchMemory(mem_dir)
 
-        # ResearchMemory satisfies ResearchMemoryLike
         assert isinstance(mem, ResearchMemoryLike)
 
-        # Add an insight and check protocol
         ins = _make_insight()
         mem.add_insight(ins, log)
         assert isinstance(mem.active_insights[0], InsightLike)
 
-        # Add a dead end and check protocol
         de = DeadEnd(
             id="de_001",
             exp_ids=["exp_001"],
@@ -571,10 +510,8 @@ class TestProtocolCompliance:
         mem_dir = tmp_path / "memory"
         mem = ResearchMemory(mem_dir)
 
-        # Empty memory => empty string
         assert render_memory_section(mem) == ""
 
-        # Add data
         ins = _make_insight(claim="Higher x is better")
         mem.add_insight(ins, log)
         mem.update_strategy("Try x > 5.")

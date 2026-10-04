@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 import yaml
 from topogen.config import TopologyConfig
+from topogen.corridors import corridor_risk_name
 from topogen.integrated_graph import save_to_json
 
 pytestmark = [pytest.mark.slow, pytest.mark.timeout(300)]
@@ -52,7 +53,7 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
     shutil.copy2(
         root / "lib/failure_policies.yml", tmp_path / "lib/failure_policies.yml"
     )
-    graph = nx.Graph()
+    graph = nx.MultiGraph()
     coords = [(0.0, 0.0), (100000.0, 0.0), (50000.0, 100000.0)]
     names = ["new-york-jersey-city-newark", "columbus", "washington-arlington"]
     for idx, coord in enumerate(coords):
@@ -60,6 +61,7 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
             coord,
             node_type="metro",
             name=names[idx],
+            name_orig=names[idx],
             metro_id=f"metro_{idx}",
             x=coord[0],
             y=coord[1],
@@ -72,10 +74,11 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
             length_km=100.0,
             capacity=400,
             edge_type="corridor",
-            risk_groups=[f"corridor_risk_{a}_{b}"],
+            geometry=[coords[a], coords[b]],
+            risk_groups=[corridor_risk_name("corridor_risk", names[a], names[b], 0)],
         )
     scenarios = tmp_path / "scenarios"
-    generated = scenarios / "tiny/tiny"
+    generated = tmp_path / "graphs"
     generated.mkdir(parents=True)
     save_to_json(
         graph,
@@ -94,6 +97,8 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
             "7",
             "--scenarios-dir",
             str(scenarios),
+            "--graphs-dir",
+            str(generated),
             "--build-jobs",
             "1",
             "--run-jobs",
@@ -123,3 +128,23 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
     assert run.returncode == 0, run.stdout + run.stderr
     summary = pd.read_csv(tmp_path / "scenarios_metrics/project.csv")
     assert summary["scenario"].tolist() == ["tiny"]
+
+
+def test_missing_graph_invalidates_all_planned_seed_artifacts(tmp_path):
+    from netlab.pipeline import PipelineConfig, run_pipeline
+
+    master = tmp_path / "tiny.yml"
+    master.write_text("{}")
+    output = tmp_path / "out"
+    scenario = output / "tiny/tiny__seed1/tiny__seed1_scenario.yml"
+    scenario.parent.mkdir(parents=True)
+    scenario.write_text("stale input")
+    result = scenario.with_suffix(".results.json")
+    result.write_text('{"stale": true}')
+    outcome = run_pipeline(
+        PipelineConfig([master], [1], output, graphs_dir=tmp_path / "missing")
+    )
+    assert not outcome.success
+    assert "tiny/graph" in outcome.errors
+    assert not result.exists()
+    assert not scenario.exists()

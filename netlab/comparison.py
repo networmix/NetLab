@@ -43,12 +43,7 @@ class ComparisonTableBuilder:
     """
 
     def __init__(self, summaries: Dict[str, dict]):
-        """
-        Initialize with scenario summaries.
-
-        Args:
-            summaries: Dict mapping scenario/topology name to summary dict
-        """
+        """Use summaries keyed by scenario name."""
         self.summaries = summaries
         self.scenarios = list(summaries.keys())
         self.rows: List[Union[TableRow, MetricRowGroup]] = []
@@ -60,17 +55,9 @@ class ComparisonTableBuilder:
         formatter: Optional[Callable[[Any], str]] = None,
         default: str = "?",
     ) -> "ComparisonTableBuilder":
-        """
-        Add a custom row to the table.
+        """Add a row extracted from each summary; return self for chaining.
 
-        Args:
-            label: Row label (first column)
-            extractor: Function to extract value from summary dict
-            formatter: Optional function to format the value
-            default: Default string if value is None
-
-        Returns:
-            self for chaining
+        Use ``default`` when the extracted value is None.
         """
         self.rows.append(TableRow(label, extractor, formatter, default))
         return self
@@ -83,18 +70,10 @@ class ComparisonTableBuilder:
         formatter: Optional[Callable[[Any], str]] = None,
         default: str = "N/A",
     ) -> "ComparisonTableBuilder":
-        """
-        Add rows for all metrics in a key.
+        """Add one row per metric under ``metrics_key``; return self for chaining.
 
-        Args:
-            metrics_key: Key in summary containing metrics dict (e.g., "failure_analysis")
-            metric_field: Field to extract from each metric (e.g., "min_ratio")
-            label_map: Optional mapping from metric names to display labels
-            formatter: Optional function to format values
-            default: Default string if value is None
-
-        Returns:
-            self for chaining
+        Read ``metric_field`` from each metric and use ``label_map`` for display names.
+        Use ``default`` for missing values.
         """
         self.rows.append(
             MetricRowGroup(
@@ -135,15 +114,7 @@ class ComparisonTableBuilder:
         label_width: int = 15,
         transposed: bool = False,
     ) -> None:
-        """
-        Print the comparison table.
-
-        Args:
-            title: Table title
-            min_col_width: Minimum column width
-            label_width: Width for the label column
-            transposed: If True, scenarios are rows and metrics are columns
-        """
+        """Print metrics as rows, or as columns when ``transposed`` is True."""
         if not self.scenarios:
             print("No scenarios to compare.")
             return
@@ -152,23 +123,19 @@ class ComparisonTableBuilder:
             self._print_table_transposed(title, min_col_width)
             return
 
-        # Calculate column width
         col_width = max(min_col_width, max(len(s) for s in self.scenarios))
         total_width = label_width + 3 + len(self.scenarios) * (col_width + 3)
 
-        # Print header
         print("\n" + "=" * total_width)
         print(title)
         print("=" * total_width)
 
-        # Print scenario names header
         print(f"\n{'':>{label_width}}", end="")
         for scenario in self.scenarios:
             print(f"  {scenario:>{col_width}}", end="")
         print()
         print("-" * total_width)
 
-        # Print rows
         for row in self.rows:
             if isinstance(row, TableRow):
                 self._print_row(row, col_width, label_width)
@@ -181,7 +148,6 @@ class ComparisonTableBuilder:
         col_width: int = 10,
     ) -> None:
         """Print table with scenarios as rows, metrics as columns."""
-        # Build column headers and data
         columns: List[tuple[str, Callable[[dict], str]]] = []
 
         for row in self.rows:
@@ -211,25 +177,20 @@ class ComparisonTableBuilder:
                         )
                     )
 
-        # Calculate widths
         scenario_width = max(len(s) for s in self.scenarios) + 2
-        col_width = max(col_width, max(len(c[0]) for c in columns) + 2)
+        col_width = max(col_width, max((len(c[0]) for c in columns), default=0) + 2)
         total_width = scenario_width + len(columns) * col_width
 
-        # Print header
         print(f"\n┌─ {title} ─" + "─" * (total_width - len(title) - 4))
 
-        # Print column headers
         print(f"│ {'Topology':<{scenario_width - 2}}", end="")
         for col_name, _ in columns:
             print(f" {col_name:>{col_width - 1}}", end="")
         print()
         print("├" + "─" * (total_width + 1))
 
-        # Print data rows
         for scenario in self.scenarios:
             summary = self.summaries[scenario]
-            # Shorten scenario name if needed
             short_name = scenario
             if len(short_name) > scenario_width - 2:
                 short_name = "…" + short_name[-(scenario_width - 3) :]
@@ -287,13 +248,7 @@ class ComparisonTableBuilder:
             print()
 
     def to_dict(self) -> dict:
-        """
-        Export comparison data as a dictionary.
-
-        Returns:
-            Dict with scenarios, data per scenario, and metric types
-        """
-        # Collect all failure types
+        """Return scenario names, per-scenario data, and metric types."""
         all_failure_types = set()
         for summary in self.summaries.values():
             all_failure_types.update(summary.get("failure_analysis", {}).keys())
@@ -322,15 +277,7 @@ class ComparisonTableBuilder:
         return comparison
 
     def to_json(self, path: Optional[Path] = None) -> str:
-        """
-        Export comparison data as JSON.
-
-        Args:
-            path: Optional path to write JSON file
-
-        Returns:
-            JSON string
-        """
+        """Return JSON and optionally write it to ``path``."""
         data = self.to_dict()
         json_str = json.dumps(data, indent=2)
         if path:
@@ -339,7 +286,6 @@ class ComparisonTableBuilder:
         return json_str
 
 
-# Common formatters
 def format_percent(value: float) -> str:
     """Format a value as percentage."""
     return f"{value:.2%}"

@@ -147,3 +147,24 @@ def test_step_metrics_preserve_destinations_and_weights():
     assert metrics["flow_bac"]["A>B"]["pct"][49] == 0.0
     assert metrics["flow_bac"]["A>C"]["pct"][49] == 0.5
     assert metrics["failure_stats"]["event_count"] == 2
+
+
+def test_sweep_retries_failed_entries_and_refuses_changed_inputs(tmp_path):
+    import json
+
+    from netlab.autoresearch.sweep import _load_completed, _prepare_sweep
+
+    config = SweepConfig(tmp_path)
+    _prepare_sweep(config, "abc1")
+    records = tmp_path / "results.jsonl"
+    records.write_text(
+        "\n".join(
+            json.dumps({"status": status, "result_dir": status})
+            for status in ["success", "error", "timeout"]
+        )
+    )
+    assert _load_completed(records) == {"success"}
+    _prepare_sweep(config, "abc1")
+    config.seed += 1
+    with pytest.raises(ValueError, match="inputs or dependencies changed"):
+        _prepare_sweep(config, "abc1")

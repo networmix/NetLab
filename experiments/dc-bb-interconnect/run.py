@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-"""DC-BB Interconnect Experiment Runner
-
-Single entry point for running and analyzing DC-BB topology experiments.
-
-Usage:
-    ./run.py                           # Run all, default seeds
-    ./run.py '*dc16x36*'               # Run topologies matching pattern
-    ./run.py '*bb16x4*' '*bb4x4*'     # Multiple patterns
-    ./run.py dc16x36_bb16x4_bb16x4_dc16x36_one_to_one  # Exact name
-    ./run.py --seeds 42:50             # Seed range (42-49)
-    ./run.py --list                    # List available topologies
-    ./run.py --metrics                 # Compute metrics only
-    ./run.py --compare                 # Print comparison table
-"""
+"""Run, compare, and visualize DC-BB experiments. See README.md for commands."""
 
 import argparse
 import json
@@ -95,21 +82,17 @@ class DcBbExperimentRunner(ExperimentRunner):
             seed = int(rf.stem.split("__seed")[1].split("_")[0])
             summary["seeds"].append(seed)
 
-            # Get network statistics (from first seed only)
             if not summary["network"]:
                 net_stats = extract_network_stats(results)
                 if net_stats:
                     summary["network"] = net_stats
 
-                # DC-BB specific: Check BB link distribution
                 self._check_bb_distribution(results, summary)
 
-            # Get alpha_star
             alpha = extract_alpha_star(results)
             if alpha:
                 summary["alpha_star"] = alpha
 
-            # Extract and merge failure metrics
             analysis = analyze_results(results)
             for step_name, stats in analysis.failure_stats.items():
                 if step_name not in summary["failure_analysis"]:
@@ -120,7 +103,6 @@ class DcBbExperimentRunner(ExperimentRunner):
                 summary["failure_analysis"][step_name]["iterations"] += stats.iterations
                 summary["failure_analysis"][step_name]["ratios"].extend(stats.ratios)
 
-        # Compute final statistics
         for step_name, data in summary["failure_analysis"].items():
             ratios = data["ratios"]
             summary["failure_analysis"][step_name] = {
@@ -131,7 +113,6 @@ class DcBbExperimentRunner(ExperimentRunner):
                 "std_dev": statistics.stdev(ratios) if len(ratios) > 1 else 0,
             }
 
-        # Find worst failures
         if summary["failure_analysis"]:
             min_ratio = min(
                 s["min_ratio"] for s in summary["failure_analysis"].values()
@@ -147,12 +128,10 @@ class DcBbExperimentRunner(ExperimentRunner):
                 "min_ratio": min_ratio,
             }
 
-        # Save summary
         summary_file = self.results_dir / scenario / "summary.json"
         with open(summary_file, "w") as f:
             json.dump(summary, f, indent=2)
 
-        # Print summary
         self._print_scenario_summary(summary)
         print(f"\n  Saved: {summary_file}")
 
@@ -208,7 +187,6 @@ class DcBbExperimentRunner(ExperimentRunner):
         if scenarios is None:
             scenarios = self.discover_scenarios()
 
-        # Load summaries
         summaries = {}
         for scenario in scenarios:
             summary_file = self.results_dir / scenario / "summary.json"
@@ -220,10 +198,8 @@ class DcBbExperimentRunner(ExperimentRunner):
             print("No summaries found. Run experiments first.")
             return
 
-        # Build comparison table
         builder = ComparisonTableBuilder(summaries)
 
-        # Add standard rows
         builder.add_row("Network", format_network_stats)
         builder.add_row(
             "Alpha*",
@@ -231,7 +207,6 @@ class DcBbExperimentRunner(ExperimentRunner):
             formatter=lambda v: f"{v:.2f}" if v else "?",
         )
 
-        # Add alpha % of max
         alphas = [
             s.get("alpha_star") for s in summaries.values() if s.get("alpha_star")
         ]
@@ -242,14 +217,12 @@ class DcBbExperimentRunner(ExperimentRunner):
             formatter=lambda v: f"{v / max_alpha * 100:.1f}%" if v else "?",
         )
 
-        # DC-BB specific: BB Even row
         builder.add_row(
             "BB Even",
             lambda s: s.get("network", {}).get("bb_even"),
             formatter=lambda v: "Yes" if v is True else ("No" if v is False else "?"),
         )
 
-        # Add failure metric rows with DC-BB labels
         failure_labels = {
             "tm_dc_bb_link": "DC-BB Link",
             "tm_bb_bb_link": "BB-BB Link",
@@ -265,7 +238,6 @@ class DcBbExperimentRunner(ExperimentRunner):
             formatter=format_percent,
         )
 
-        # Add worst case row
         builder.add_row(
             "Worst",
             lambda s: s.get("worst_failures", {}).get("min_ratio"),
@@ -273,7 +245,6 @@ class DcBbExperimentRunner(ExperimentRunner):
             default="N/A",
         )
 
-        # Print and save (transposed: scenarios as rows for better readability)
         builder.print_table(title="TOPOLOGY COMPARISON", transposed=True)
 
         comparison_file = self.results_dir / "comparison.json"
@@ -285,12 +256,7 @@ class DcBbExperimentRunner(ExperimentRunner):
         scenarios: Optional[List[str]] = None,
         split: bool = False,
     ) -> None:
-        """Generate SVG visualizations for scenarios.
-
-        Args:
-            scenarios: List of scenario names (default: all discovered)
-            split: If True, also generate split view with disconnected components stacked
-        """
+        """Render selected scenarios; optionally stack disconnected components."""
         if scenarios is None:
             scenarios = self.discover_scenarios()
 
@@ -302,7 +268,6 @@ class DcBbExperimentRunner(ExperimentRunner):
                 print(f"  [{scenario}] No results found, skipping")
                 continue
 
-            # Find first results file with build_graph data
             results_file = None
             for seed_dir in sorted(scenario_dir.iterdir()):
                 if not seed_dir.is_dir():
@@ -320,7 +285,6 @@ class DcBbExperimentRunner(ExperimentRunner):
                 print(f"  [{scenario}] No build_graph data found, skipping")
                 continue
 
-            # Generate visualization using DC-BB specific visualizer
             output_path = scenario_dir / "topology.svg"
             try:
                 viz = DcBbVisualizer.from_results(results_file)
@@ -328,7 +292,6 @@ class DcBbExperimentRunner(ExperimentRunner):
                 viz.render_svg(output_path)
                 print(f"  [{scenario}] Generated: {output_path}")
 
-                # Generate split view if requested
                 if split:
                     viz_split = DcBbVisualizer.from_results(results_file)
                     viz_split.layout()
@@ -353,29 +316,19 @@ def parse_seeds(seed_args: List[str]) -> List[int]:
 
 
 def filter_scenarios(patterns: List[str], available: List[str]) -> List[str]:
-    """Filter scenarios by patterns (glob-style with * and ?).
-
-    Args:
-        patterns: List of patterns to match (supports * and ? wildcards)
-        available: List of all available scenario names
-
-    Returns:
-        List of matching scenario names (preserves order, no duplicates)
-    """
+    """Match names or glob patterns, preserving order and removing duplicates."""
     import fnmatch
 
     matched = []
     seen = set()
 
     for pattern in patterns:
-        # Check if pattern contains wildcards
         if "*" in pattern or "?" in pattern:
             for name in available:
                 if fnmatch.fnmatch(name, pattern) and name not in seen:
                     matched.append(name)
                     seen.add(name)
         else:
-            # Exact match
             if pattern in available and pattern not in seen:
                 matched.append(pattern)
                 seen.add(pattern)
@@ -441,7 +394,6 @@ def main():
 
     runner = DcBbExperimentRunner(Path(__file__).parent)
 
-    # List topologies
     if args.list:
         scenarios = runner.discover_scenarios()
         if not scenarios:
@@ -453,10 +405,8 @@ def main():
             print("└" + "─" * 60 + "\n")
         return
 
-    # Parse seeds
     seeds = parse_seeds(args.seeds)
 
-    # Determine which topologies to run
     available = runner.discover_scenarios()
     if not available:
         print("No topologies found. Create topologies in topologies/*/scenario.yml")
@@ -468,7 +418,6 @@ def main():
             print("No topologies matched the pattern(s).")
             print(f"Available: {', '.join(available)}")
             return
-        # Show matched topologies in a nice table
         print(f"\n┌─ Matched {len(scenarios)} topology(ies) ─" + "─" * 40)
         for i, t in enumerate(scenarios, 1):
             print(f"│ {i:>2}. {t}")
@@ -476,7 +425,6 @@ def main():
     else:
         scenarios = available
 
-    # Metrics-only mode (no experiment runs)
     if args.metrics:
         runner.compute_metrics(scenarios)
         runner.generate_comparison(scenarios)
@@ -484,17 +432,14 @@ def main():
             runner.generate_visualizations(scenarios, split=args.split)
         return
 
-    # Compare-only mode (just print existing comparison)
     if args.compare:
         runner.generate_comparison(scenarios)
         return
 
-    # Visualize-only mode (only if no other action flags)
     if args.visualize and not args.force and not args.dry_run:
         runner.generate_visualizations(scenarios, split=args.split)
         return
 
-    # Run experiments
     print(f"Running {len(scenarios)} topology(ies) with seeds {seeds}")
     print("-" * 60)
 
@@ -515,7 +460,6 @@ def main():
                 f"  Summary: {stats['ran']} ran, {stats['cached']} cached, {stats['failed']} failed"
             )
 
-    # Compute metrics after runs (skip if dry-run)
     if not args.dry_run:
         print("\n" + "-" * 60)
         print("Computing metrics...")

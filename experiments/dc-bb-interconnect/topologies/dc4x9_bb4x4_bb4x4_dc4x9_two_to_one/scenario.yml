@@ -1,11 +1,10 @@
 # Two-to-One: Two DC rows share one BB plane (2 planes total)
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 2 planes x 4 nodes = 8 nodes per site
 #   Total: 44 nodes per site, 88 nodes total
 #
-# Pattern: Two DC rows mesh to one BB plane
+# Connections: Two DC rows mesh to one BB plane
 #   DC-1, DC-2 → BB-1 (full mesh)
 #   DC-3, DC-4 → BB-2 (full mesh)
 

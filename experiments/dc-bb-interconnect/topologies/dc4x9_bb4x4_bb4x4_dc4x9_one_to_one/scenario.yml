@@ -1,15 +1,10 @@
 # One-to-One: Each DC row connects to exactly one BB plane
 #
-# Configuration:
 #   DC: 4 rows x 9 nodes = 36 nodes per site
 #   BB: 4 planes x 4 nodes = 16 nodes per site
 #   Total: 52 nodes per site, 104 nodes total
 #
-# Pattern: DC row i meshes to all 4 BB nodes in plane i
-#   DC-1 → BB-1 (full mesh)
-#   DC-2 → BB-2 (full mesh)
-#   DC-3 → BB-3 (full mesh)
-#   DC-4 → BB-4 (full mesh)
+# Connections: DC row i meshes to all 4 BB nodes in plane i
 
 blueprints:
   DC_Row:

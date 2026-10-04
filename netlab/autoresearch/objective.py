@@ -1,13 +1,8 @@
-"""Objective function for autoresearch.
-
-Provides:
-- ObjectiveResult: dataclass holding evaluation outcome (score, status, metrics).
-- ObjectiveFunction: parses objective.yml, extracts metrics from results dicts,
-  checks constraints, and computes a scalar score for ranking hypotheses.
-"""
+"""Extract result metrics, check constraints, and score research candidates."""
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -82,7 +77,6 @@ class ObjectiveFunction:
                 )
             )
 
-        # Validate that primary_metric is defined in metrics
         if self._primary_metric not in self._metrics:
             raise ValueError(
                 f"primary_metric {self._primary_metric!r} not found in metrics definitions"
@@ -98,15 +92,13 @@ class ObjectiveFunction:
         return self._primary_metric
 
     def evaluate(self, results: dict) -> ObjectiveResult:
-        """Extract metrics from ngraph results, check constraints, compute score."""
-        # Extract all defined metrics
+        """Extract metrics and score a candidate; higher scores rank better."""
         all_metrics: dict[str, float] = {}
         for key in self._metrics:
             all_metrics[key] = self.extract_metric(results, key)
 
         primary_value = all_metrics[self._primary_metric]
 
-        # Check constraints
         violated: list[str] = []
         for cdef in self._constraints:
             metric_val = all_metrics.get(cdef.metric)
@@ -118,7 +110,6 @@ class ObjectiveFunction:
             if not check_fn(metric_val, cdef.value):
                 violated.append(cdef.name)
 
-        # Compute score
         if self._direction == "maximize":
             score = primary_value
         else:
@@ -126,7 +117,6 @@ class ObjectiveFunction:
 
         status = "feasible" if not violated else "infeasible"
 
-        # Apply penalty for constraint violations
         if violated:
             score = score - 1e6 * len(violated)
 
@@ -139,11 +129,7 @@ class ObjectiveFunction:
         )
 
     def extract_metric(self, results: dict, key: str) -> float:
-        """Extract a single metric value by navigating the dot-path.
-
-        Raises KeyError if the metric key is not defined or the path
-        does not exist in the results dict.
-        """
+        """Read a configured metric; raise KeyError if its key or result path is missing."""
         if key not in self._metrics:
             raise KeyError(f"Metric {key!r} not defined in objective")
 
@@ -152,10 +138,7 @@ class ObjectiveFunction:
 
 
 def _navigate_dot_path(data: dict, dot_path: str, metric_key: str) -> float:
-    """Walk a dot-separated path through nested dicts.
-
-    Raises KeyError with a descriptive message if any segment is missing.
-    """
+    """Read a dot-separated dictionary path; raise KeyError on a missing segment."""
     parts = dot_path.split(".")
     current: Any = data
     for i, part in enumerate(parts):
@@ -173,4 +156,7 @@ def _navigate_dot_path(data: dict, dot_path: str, metric_key: str) -> float:
             )
         current = current[part]
 
-    return float(current)
+    value = float(current)
+    if not math.isfinite(value):
+        raise ValueError(f"Metric {metric_key!r} must be finite")
+    return value

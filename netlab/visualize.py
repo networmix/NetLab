@@ -11,6 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import networkx as nx
 
+from netlab.artifacts import atomic_path
+
 
 @dataclass
 class EdgeStyle:
@@ -23,37 +25,7 @@ class EdgeStyle:
 
 @dataclass
 class StyleConfig:
-    """
-    Visual styling configuration for graph visualization.
-
-    Attributes:
-        node_radius: Radius of node circles
-        node_spacing: Default spacing between nodes
-        group_padding: Padding around group boxes
-        section_gap: Gap between layout sections
-        canvas_padding: Padding around the canvas edge
-
-        node_colors: Maps attribute values to node colors
-        edge_colors: Maps attribute values to edge colors
-        box_colors: Maps group names to (fill, stroke) tuples
-
-        node_color_attr: Node attribute used for coloring
-        edge_color_attr: Edge attribute used for coloring
-
-        default_node_color: Default node color
-        default_edge_color: Default edge color
-        default_box_fill: Default box fill color
-        default_box_stroke: Default box stroke color
-
-        edge_width: Default edge width
-        edge_opacity: Default edge opacity
-        highlighted_edge_width: Width for highlighted edges
-        highlighted_edge_opacity: Opacity for highlighted edges
-        highlight_edge_types: Set of edge types to highlight
-
-        unconnected_node_stroke: Stroke color for unconnected nodes
-        unconnected_node_stroke_width: Stroke width for unconnected nodes
-    """
+    """Node, edge, group-box, and spacing settings. Lengths use SVG coordinate units."""
 
     # Sizing
     node_radius: float = 8
@@ -90,32 +62,14 @@ class StyleConfig:
 
 
 class GraphVisualizer(ABC):
-    """
-    Base class for graph visualization.
+    """Render a NetworkX graph with subclass-defined positions.
 
-    Provides:
-    - Reusable rendering primitives (draw_node, draw_edge, draw_box)
-    - SVG/PNG generation
-    - Configurable styling via StyleConfig
-
-    Subclasses must implement:
-    - layout(): Compute node positions
-
-    Subclasses may override:
-    - get_node_color(): Custom node coloring logic
-    - get_edge_style(): Custom edge styling logic
-    - get_groups(): Define node groups for box drawing
-    - get_group_style(): Custom group styling logic
+    Implement ``layout``; override color, edge-style, and group hooks as needed.
+    Use ``render_svg`` for SVG and optional PNG output.
     """
 
     def __init__(self, graph: nx.Graph, style: Optional[StyleConfig] = None):
-        """
-        Initialize the visualizer.
-
-        Args:
-            graph: NetworkX graph to visualize
-            style: Optional style configuration
-        """
+        """Use the supplied graph and style, or the default StyleConfig."""
         self.graph = graph
         self.style = style or StyleConfig()
         self.positions: Dict[str, Tuple[float, float]] = {}
@@ -129,17 +83,7 @@ class GraphVisualizer(ABC):
         style: Optional[StyleConfig] = None,
         build_graph_step: str = "build_graph",
     ) -> "GraphVisualizer":
-        """
-        Create visualizer from ngraph results JSON.
-
-        Args:
-            results_path: Path to .results.json file
-            style: Optional style configuration
-            build_graph_step: Name of BuildGraph step in results
-
-        Returns:
-            GraphVisualizer instance
-        """
+        """Load the graph exported by ``build_graph_step`` in a NetGraph result file."""
         with open(results_path) as f:
             results = json.load(f)
 
@@ -154,54 +98,20 @@ class GraphVisualizer(ABC):
 
         return cls(graph, style)
 
-    # --- Abstract method: subclass MUST implement ---
-
     @abstractmethod
     def layout(self) -> Dict[str, Tuple[float, float]]:
-        """
-        Compute node positions.
-
-        Must:
-        - Populate self.positions with {node_id: (x, y)}
-        - Set self.canvas_width and self.canvas_height
-        - Return self.positions
-        """
+        """Set node positions and canvas dimensions; return the position mapping."""
         pass
 
-    # --- Hooks: subclass MAY override ---
-
     def get_node_color(self, node: str, attrs: dict) -> str:
-        """
-        Get color for a node based on style config.
-
-        Override for custom coloring logic.
-
-        Args:
-            node: Node ID
-            attrs: Node attributes
-
-        Returns:
-            Color string (hex or name)
-        """
+        """Choose a node color from its configured attribute; override for custom rules."""
         value = attrs.get(self.style.node_color_attr)
         if value is None:
             return self.style.default_node_color
         return self.style.node_colors.get(str(value), self.style.default_node_color)
 
     def get_edge_style(self, u: str, v: str, data: dict) -> EdgeStyle:
-        """
-        Get style for an edge based on style config.
-
-        Override for custom edge styling logic.
-
-        Args:
-            u: Source node ID
-            v: Target node ID
-            data: Edge attributes
-
-        Returns:
-            EdgeStyle instance
-        """
+        """Choose edge color, width, and opacity from its attributes."""
         edge_type = data.get(self.style.edge_color_attr)
         is_highlighted = edge_type in self.style.highlight_edge_types
 
@@ -225,47 +135,18 @@ class GraphVisualizer(ABC):
         return EdgeStyle(color=color, width=width, opacity=opacity)
 
     def get_groups(self) -> Dict[str, List[str]]:
-        """
-        Return node groups for box drawing.
-
-        Override to enable group box drawing.
-
-        Returns:
-            Dict mapping group name to list of node IDs
-        """
+        """Return group names and their node IDs for boxes; empty by default."""
         return {}
 
     def get_group_style(self, group_name: str) -> Tuple[str, str]:
-        """
-        Get (fill, stroke) colors for a group box.
-
-        Override for custom group styling logic.
-
-        Args:
-            group_name: Name of the group
-
-        Returns:
-            Tuple of (fill_color, stroke_color)
-        """
+        """Return a group box's (fill, stroke) colors."""
         return self.style.box_colors.get(
             group_name, (self.style.default_box_fill, self.style.default_box_stroke)
         )
 
     def get_group_label(self, group_name: str) -> Optional[str]:
-        """
-        Get label text for a group box.
-
-        Override to provide custom labels.
-
-        Args:
-            group_name: Name of the group
-
-        Returns:
-            Label string, or None for no label
-        """
+        """Return the group label, or None to omit it."""
         return group_name
-
-    # --- Rendering ---
 
     def render_svg(
         self,
@@ -273,21 +154,13 @@ class GraphVisualizer(ABC):
         png: bool = True,
         png_scale: int = 2,
     ) -> None:
-        """
-        Render graph to SVG (and optionally PNG).
-
-        Args:
-            output_path: Output SVG path
-            png: Whether to also generate PNG
-            png_scale: Scale factor for PNG (default: 2x)
-        """
+        """Write SVG and optionally a PNG at ``png_scale`` times the canvas size."""
         if not self.positions:
             self.layout()
 
         svg = self._create_svg_root()
         self._draw_background(svg)
 
-        # Create groups for layering
         boxes_group = ET.SubElement(svg, "g", id="boxes")
         links_group = ET.SubElement(svg, "g", id="links")
         nodes_group = ET.SubElement(svg, "g", id="nodes")
@@ -298,11 +171,9 @@ class GraphVisualizer(ABC):
         self._draw_all_edges(links_group)
         self._draw_all_nodes(nodes_group)
 
-        # Write SVG
         self._write_svg(svg, output_path)
         print(f"Generated: {output_path}")
 
-        # Generate PNG if requested
         if png:
             self._write_png(output_path, scale=png_scale)
 
@@ -315,38 +186,23 @@ class GraphVisualizer(ABC):
         png: bool = True,
         png_scale: int = 2,
     ) -> Optional[Path]:
-        """
-        Render split view if multiple disconnected components exist.
+        """Stack disconnected components and render them to SVG, with optional PNG.
 
-        Applies split_disconnected_components() before rendering.
-        Returns None if split wasn't applied (1 component or too many).
-
-        Args:
-            output_path: Output SVG path
-            gap: Vertical gap between stacked components
-            max_components: Skip splitting if more than this many components
-            min_component_size: Ignore components smaller than this
-            png: Whether to also generate PNG
-            png_scale: Scale factor for PNG
-
-        Returns:
-            Path to generated SVG, or None if split wasn't applied
+        Ignore components smaller than ``min_component_size``. Return None when
+        fewer than two or more than ``max_components`` eligible components remain.
         """
         if not self.positions:
             self.layout()
 
-        # Apply split
         num_components = self.split_disconnected_components(
             gap=gap,
             max_components=max_components,
             min_component_size=min_component_size,
         )
 
-        # If no split applied (1 component or too many), return None
         if num_components <= 1:
             return None
 
-        # Render the split view
         self.render_svg(output_path, png=png, png_scale=png_scale)
         return output_path
 
@@ -395,14 +251,12 @@ class GraphVisualizer(ABC):
             )
 
             if label:
-                # Add label above the box
                 label_x = (bounds[0] + bounds[2]) / 2
                 label_y = bounds[1] - 6
                 self.draw_label(labels_group, label_x, label_y, label, stroke)
 
     def _draw_all_edges(self, parent: ET.Element) -> None:
         """Draw all edges, with non-highlighted first."""
-        # Separate highlighted and non-highlighted edges
         highlighted = []
         normal = []
 
@@ -415,15 +269,7 @@ class GraphVisualizer(ABC):
             else:
                 normal.append((u, v, data))
 
-        # Draw normal edges first
-        for u, v, data in normal:
-            style = self.get_edge_style(u, v, data)
-            x1, y1 = self.positions[u]
-            x2, y2 = self.positions[v]
-            self.draw_edge(parent, x1, y1, x2, y2, style)
-
-        # Draw highlighted edges on top
-        for u, v, data in highlighted:
+        for u, v, data in normal + highlighted:
             style = self.get_edge_style(u, v, data)
             x1, y1 = self.positions[u]
             x2, y2 = self.positions[v]
@@ -435,8 +281,7 @@ class GraphVisualizer(ABC):
             attrs = self.graph.nodes[node]
             color = self.get_node_color(node, attrs)
 
-            # Check if node is connected (has any edges)
-            is_connected = len(list(self.graph.edges(node))) > 0
+            is_connected = self.graph.degree[node] > 0
             if is_connected:
                 stroke = "white"
                 stroke_width = 1.0
@@ -452,7 +297,8 @@ class GraphVisualizer(ABC):
         """Write SVG to file."""
         tree = ET.ElementTree(svg)
         ET.indent(tree, space="  ")
-        tree.write(output_path, encoding="unicode", xml_declaration=True)
+        with atomic_path(output_path) as temporary:
+            tree.write(temporary, encoding="unicode", xml_declaration=True)
 
     def _write_png(self, svg_path: Path, scale: int = 2) -> None:
         """Generate PNG from SVG."""
@@ -468,8 +314,6 @@ class GraphVisualizer(ABC):
         cairosvg.svg2png(url=str(svg_path), write_to=str(png_path), scale=scale)
         print(f"Generated: {png_path}")
 
-    # --- Drawing primitives ---
-
     def draw_node(
         self,
         parent: ET.Element,
@@ -480,21 +324,7 @@ class GraphVisualizer(ABC):
         stroke: str = "white",
         stroke_width: float = 1.0,
     ) -> ET.Element:
-        """
-        Draw a node circle.
-
-        Args:
-            parent: Parent SVG element
-            x: X coordinate
-            y: Y coordinate
-            color: Fill color
-            radius: Circle radius (default: style.node_radius)
-            stroke: Stroke color
-            stroke_width: Stroke width
-
-        Returns:
-            The created circle element
-        """
+        """Append and return a circle; default its radius to style.node_radius."""
         if radius is None:
             radius = self.style.node_radius
 
@@ -517,20 +347,7 @@ class GraphVisualizer(ABC):
         y2: float,
         style: EdgeStyle,
     ) -> ET.Element:
-        """
-        Draw an edge line.
-
-        Args:
-            parent: Parent SVG element
-            x1: Start X coordinate
-            y1: Start Y coordinate
-            x2: End X coordinate
-            y2: End Y coordinate
-            style: Edge style configuration
-
-        Returns:
-            The created line element
-        """
+        """Append and return an SVG line with the supplied edge style."""
         attrib = {
             "x1": str(x1),
             "y1": str(y1),
@@ -554,23 +371,7 @@ class GraphVisualizer(ABC):
         rx: float = 6,
         stroke_width: float = 1,
     ) -> ET.Element:
-        """
-        Draw a rounded rectangle box.
-
-        Args:
-            parent: Parent SVG element
-            x: X coordinate
-            y: Y coordinate
-            width: Box width
-            height: Box height
-            fill: Fill color
-            stroke: Stroke color
-            rx: Corner radius
-            stroke_width: Stroke width
-
-        Returns:
-            The created rect element
-        """
+        """Append and return an SVG rectangle with corner radius ``rx``."""
         attrib = {
             "x": str(x),
             "y": str(y),
@@ -593,21 +394,7 @@ class GraphVisualizer(ABC):
         font_size: int = 11,
         font_weight: str = "500",
     ) -> ET.Element:
-        """
-        Draw a text label.
-
-        Args:
-            parent: Parent SVG element
-            x: X coordinate (center)
-            y: Y coordinate
-            text: Label text
-            color: Text color
-            font_size: Font size
-            font_weight: Font weight
-
-        Returns:
-            The created text element
-        """
+        """Append and return a text label centered horizontally at (x, y)."""
         attrib = {
             "x": str(x),
             "y": str(y),
@@ -626,15 +413,9 @@ class GraphVisualizer(ABC):
         nodes: List[str],
         padding: Optional[float] = None,
     ) -> Tuple[float, float, float, float]:
-        """
-        Compute bounding box for positioned nodes.
+        """Return (x_min, y_min, x_max, y_max) for positioned nodes.
 
-        Args:
-            nodes: List of node IDs
-            padding: Padding around nodes (default: node_radius + group_padding/2)
-
-        Returns:
-            Tuple of (x_min, y_min, x_max, y_max)
+        Default padding is node_radius + group_padding / 2.
         """
         if padding is None:
             padding = self.style.node_radius + self.style.group_padding / 2
@@ -658,18 +439,10 @@ class GraphVisualizer(ABC):
         max_components: int = 64,
         min_component_size: int = 2,
     ) -> int:
-        """
-        Vertically stack disconnected components after semantic layout.
+        """Stack eligible components vertically, updating positions and canvas height.
 
-        Modifies self.positions in place and updates self.canvas_height.
-
-        Args:
-            gap: Vertical gap between stacked components
-            max_components: Skip splitting if more than this many components
-            min_component_size: Ignore components smaller than this
-
-        Returns:
-            Number of components found (0 if no split was applied)
+        Ignore components smaller than ``min_component_size``. Return the component
+        count (0 or 1 means no split); return 0 when the limit is exceeded.
         """
         if not self.positions:
             return 0
@@ -680,19 +453,16 @@ class GraphVisualizer(ABC):
         else:
             undirected = self.graph
 
-        # Get components and filter by size
         all_components = list(nx.connected_components(undirected))
         components = [
             comp for comp in all_components if len(comp) >= min_component_size
         ]
 
-        # Skip if only 1 component or too many
         if len(components) <= 1:
             return len(components)
         if len(components) > max_components:
-            return 0  # Signal no split applied due to too many
+            return 0
 
-        # Filter to only positioned nodes
         positioned_components = []
         for comp in components:
             positioned_nodes = [n for n in comp if n in self.positions]
@@ -702,7 +472,6 @@ class GraphVisualizer(ABC):
         if len(positioned_components) <= 1:
             return len(positioned_components)
 
-        # Compute bounding box for each component and sort by min-y
         component_bounds = []
         for nodes in positioned_components:
             ys = [self.positions[n][1] for n in nodes]
@@ -720,30 +489,27 @@ class GraphVisualizer(ABC):
                 }
             )
 
-        # Sort by min-y (top-most component first)
         component_bounds.sort(key=lambda c: c["min_y"])
 
-        # Stack components vertically
         current_y = self.style.canvas_padding
         for comp_info in component_bounds:
-            # Calculate offset to move this component
             y_offset = current_y - comp_info["min_y"] + self.style.node_radius
 
-            # Apply offset to all nodes in this component
             for node in comp_info["nodes"]:
                 x, y = self.positions[node]
                 self.positions[node] = (x, y + y_offset)
 
-            # Move current_y to below this component
             current_y += comp_info["height"] + gap + self.style.node_radius * 2
 
-        # Update canvas height
-        self.canvas_height = current_y + self.style.canvas_padding
+        self.canvas_height = (
+            max(
+                current_y,
+                max(y for _, y in self.positions.values()) + self.style.node_radius,
+            )
+            + self.style.canvas_padding
+        )
 
         return len(positioned_components)
-
-
-# --- Layout helper functions ---
 
 
 def layout_row(
@@ -753,19 +519,7 @@ def layout_row(
     spacing: float,
     sort_key: Optional[Callable[[str], Any]] = None,
 ) -> Dict[str, Tuple[float, float]]:
-    """
-    Position nodes in a horizontal row.
-
-    Args:
-        nodes: List of node IDs
-        start_x: Starting X coordinate
-        y: Y coordinate for all nodes
-        spacing: Spacing between nodes
-        sort_key: Optional function to sort nodes
-
-    Returns:
-        Dict mapping node ID to (x, y) position
-    """
+    """Return node positions in a horizontal row, optionally ordered by ``sort_key``."""
     if sort_key:
         nodes = sorted(nodes, key=sort_key)
     return {node: (start_x + i * spacing, y) for i, node in enumerate(nodes)}
@@ -778,19 +532,7 @@ def layout_column(
     spacing: float,
     sort_key: Optional[Callable[[str], Any]] = None,
 ) -> Dict[str, Tuple[float, float]]:
-    """
-    Position nodes in a vertical column.
-
-    Args:
-        nodes: List of node IDs
-        x: X coordinate for all nodes
-        start_y: Starting Y coordinate
-        spacing: Spacing between nodes
-        sort_key: Optional function to sort nodes
-
-    Returns:
-        Dict mapping node ID to (x, y) position
-    """
+    """Return node positions in a vertical column, optionally ordered by ``sort_key``."""
     if sort_key:
         nodes = sorted(nodes, key=sort_key)
     return {node: (x, start_y + i * spacing) for i, node in enumerate(nodes)}
@@ -805,21 +547,9 @@ def layout_grid(
     spacing_y: float,
     sort_key: Optional[Callable[[str], Any]] = None,
 ) -> Dict[str, Tuple[float, float]]:
-    """
-    Position nodes in a grid.
-
-    Args:
-        nodes: List of node IDs
-        start_x: Starting X coordinate
-        start_y: Starting Y coordinate
-        cols: Number of columns
-        spacing_x: Horizontal spacing
-        spacing_y: Vertical spacing
-        sort_key: Optional function to sort nodes
-
-    Returns:
-        Dict mapping node ID to (x, y) position
-    """
+    """Return node positions in a grid with ``cols`` columns and the supplied spacing."""
+    if cols < 1:
+        raise ValueError("cols must be positive")
     if sort_key:
         nodes = sorted(nodes, key=sort_key)
     positions = {}
@@ -832,15 +562,7 @@ def layout_grid(
 def merge_layouts(
     *layouts: Dict[str, Tuple[float, float]],
 ) -> Dict[str, Tuple[float, float]]:
-    """
-    Merge multiple position dictionaries.
-
-    Args:
-        layouts: Position dictionaries to merge
-
-    Returns:
-        Combined position dictionary
-    """
+    """Merge position mappings; later mappings override duplicate node IDs."""
     result = {}
     for layout in layouts:
         result.update(layout)

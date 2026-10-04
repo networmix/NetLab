@@ -1,24 +1,15 @@
-"""Post-expansion validation for generated DC-BB scenarios.
-
-Validates that the expanded network (after ngraph DSL processing)
-matches the expected structure derived from config parameters.
-
-Two validation levels:
-  Level 1: Parse ngraph inspect output for total node/link counts.
-  Level 2: Load via Scenario.from_yaml(), verify per-layer counts
-           and mesh-group membership.
-"""
+"""Check expanded DC-BB node counts, link counts, and layer membership."""
 
 from __future__ import annotations
 
 import re
-import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
-from netlab.runtime import require_executable
+from ngraph.model.network import Network
+from ngraph.scenario import Scenario
 
 
 @dataclass
@@ -70,10 +61,7 @@ def compute_expected_counts(
     g_abc1: int = 64,
     g_xyz1: int = 64,
 ) -> ExpectedCounts:
-    """Compute expected post-expansion counts from config parameters.
-
-    These are the counts ngraph inspect should report after DSL expansion.
-    """
+    """Calculate expected node and link counts from the grid dimensions."""
     # Nodes
     abc1_rsw = abc1_pods
     abc1_fsw = abc1_pods * abc1_planes
@@ -100,17 +88,25 @@ def compute_expected_counts(
     # Links
     bb_total = bb_planes * bb_devices_per_plane
 
-    rsw_fsw_abc1 = abc1_pods * abc1_planes  # each RSW → 8 FSW
-    fsw_ssw_abc1 = abc1_pods * abc1_planes * abc1_ssw_per_plane  # each FSW → 36 SSW
-    ssw_fadu = abc1_planes * abc1_ssw_per_plane * abc1_hgrids  # each SSW → 16 FADU
+    rsw_fsw_abc1 = abc1_pods * abc1_planes  # One FSW per plane for each RSW.
+    fsw_ssw_abc1 = (
+        abc1_pods * abc1_planes * abc1_ssw_per_plane
+    )  # Each FSW connects to every SSW in its plane.
+    ssw_fadu = (
+        abc1_planes * abc1_ssw_per_plane * abc1_hgrids
+    )  # One FADU per horizontal grid for each SSW.
     dc_bb_abc1 = abc1_fadu * (bb_total // g_abc1)  # each FADU → k_dc BB devices
     bb_cross_site = (
         bb_planes * bb_devices_per_plane**2 * 2
-    )  # 4×4 mesh × 2 paths per plane
+    )  # Two full meshes between sites per plane.
     dc_bb_xyz1 = xyz1_xsw * (bb_total // g_xyz1)  # each XSW → k_dc BB devices
-    ssw_xsw = xyz1_ssw_per_megapod * xyz1_xsw_per_plane  # each SSW → 64 XSW
-    fsw_ssw_xyz1 = xyz1_fsw_per_megapod * xyz1_ssw_per_megapod  # each FSW → 24 SSW
-    rsw_fsw_xyz1 = xyz1_fsw_per_megapod  # 1 RSW → 32 FSW
+    ssw_xsw = (
+        xyz1_ssw_per_megapod * xyz1_xsw_per_plane
+    )  # Each SSW connects to every XSW in its plane.
+    fsw_ssw_xyz1 = (
+        xyz1_fsw_per_megapod * xyz1_ssw_per_megapod
+    )  # Full mesh between FSW and SSW.
+    rsw_fsw_xyz1 = xyz1_fsw_per_megapod  # One RSW connects to every FSW.
 
     links = (
         rsw_fsw_abc1
@@ -139,62 +135,14 @@ def compute_expected_counts(
     )
 
 
-def validate_inspect_output(inspect_stdout: str, expected: ExpectedCounts) -> list[str]:
-    """Parse ngraph inspect output and compare against expected counts.
-
-    Returns list of error messages. Empty = valid.
-    """
-    errors = []
-
-    # Parse "Total Nodes: N"
-    m = re.search(r"Total Nodes:\s*([\d,]+)", inspect_stdout)
-    if m:
-        actual_nodes = int(m.group(1).replace(",", ""))
-        if actual_nodes != expected.nodes:
-            errors.append(
-                f"Node count mismatch: expected {expected.nodes}, got {actual_nodes}"
-            )
-    else:
-        errors.append("Could not parse 'Total Nodes' from inspect output")
-
-    # Parse "Total Links: N"
-    m = re.search(r"Total Links:\s*([\d,]+)", inspect_stdout)
-    if m:
-        actual_links = int(m.group(1).replace(",", ""))
-        if actual_links != expected.links:
-            errors.append(
-                f"Link count mismatch: expected {expected.links}, got {actual_links}"
-            )
-    else:
-        errors.append("Could not parse 'Total Links' from inspect output")
-
-    return errors
-
-
-def validate_scenario_file(
-    scenario_path: Path,
-    expected: ExpectedCounts,
-    ngraph_bin: str | None = None,
-) -> list[str]:
-    """Run ngraph inspect and validate against expected counts.
-
-    Level 1 validation: fast, uses ngraph CLI.
-    """
-    ngraph_bin = ngraph_bin or require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
-    result = subprocess.run(
-        [ngraph_bin, "inspect", str(scenario_path)],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    if result.returncode != 0:
-        return [f"ngraph inspect failed: {result.stderr[-500:]}"]
-
-    return validate_inspect_output(result.stdout, expected)
+def validate_scenario_file(scenario_path: Path, expected: ExpectedCounts) -> list[str]:
+    """Load via NetGraph's API and validate counts and layer membership."""
+    network = Scenario.from_yaml(scenario_path.read_text(encoding="utf-8")).network
+    return validate_expanded_network(network, expected)
 
 
 def validate_expanded_network(
-    network: Any,
+    network: Network,
     expected: ExpectedCounts,
 ) -> list[str]:
     """Validate an expanded Network object against expected counts.
@@ -204,19 +152,16 @@ def validate_expanded_network(
     """
     errors = []
 
-    # Node count
     if len(network.nodes) != expected.nodes:
         errors.append(
             f"Node count: expected {expected.nodes}, got {len(network.nodes)}"
         )
 
-    # Link count
     if len(network.links) != expected.links:
         errors.append(
             f"Link count: expected {expected.links}, got {len(network.links)}"
         )
 
-    # Classify links by layer using source/target node names
     layer_counts: Counter = Counter()
     for link in network.links.values():
         src, tgt = link.source, link.target
@@ -265,7 +210,6 @@ def validate_expanded_network(
         if actual != exp_count:
             errors.append(f"Layer {layer_name}: expected {exp_count}, got {actual}")
 
-    # Check for unknown link types
     for key, count in layer_counts.items():
         if key.startswith("unknown_"):
             errors.append(f"Unexpected link type: {key} ({count} links)")
@@ -274,18 +218,13 @@ def validate_expanded_network(
 
 
 def validate_no_cross_group_links(
-    network: Any,
+    network: Network,
 ) -> list[str]:
-    """Verify no DC-BB link connects nodes in different mesh groups.
-
-    Checks that the mesh group encoded in node paths matches between
-    source and target of every DC-BB link.
-    """
+    """Check that each DC-BB link joins nodes in the same mesh group."""
     errors = []
     for _link_id, link in network.links.items():
         if link.attrs.get("link_type") != "dc_bb":
             continue
-        # Extract mesh group from source and target paths
         src_mg = _extract_mg(link.source)
         tgt_mg = _extract_mg(link.target)
         if src_mg is None or tgt_mg is None:

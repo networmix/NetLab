@@ -1,6 +1,6 @@
 """Plot pooled bandwidth availability across seeds.
 
-Samples are normalized by baseline delivery and capped at 100%. Pooling gives
+Samples are normalized by baseline delivery without clipping. Pooling gives
 each sample equal weight, so seeds with more iterations contribute more weight.
 With at least three seeds, the plot includes an IQR band of per-seed curves.
 """
@@ -16,51 +16,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-plt.rcParams["figure.dpi"] = 300
-plt.rcParams["savefig.dpi"] = 300
-plt.rcParams["figure.figsize"] = (8.0, 5.0)
-plt.rcParams["savefig.bbox"] = "tight"
-plt.rcParams["axes.titlesize"] = 13
-plt.rcParams["axes.labelsize"] = 11
-plt.rcParams["legend.fontsize"] = 10
-plt.rcParams["xtick.labelsize"] = 9
-plt.rcParams["ytick.labelsize"] = 9
-
-
-def _availability_curve_from_samples(
-    samples: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
-    xs = np.asarray(samples, dtype=float)
-    xs = xs[np.isfinite(xs)]
-    if xs.size == 0:
-        return np.array([], dtype=float), np.array([], dtype=float)
-    xs_sorted = np.sort(xs)
-    cdf = np.arange(1, xs_sorted.size + 1, dtype=float) / float(xs_sorted.size)
-    availability = 1.0 - cdf
-    return xs_sorted, availability
+from .distributions import availability_curve, curve_on_grid
 
 
 def _seed_availability_on_grid(samples: np.ndarray, grid_pct: np.ndarray) -> np.ndarray:
-    """Compute seed availability on a fixed x-grid (percent)."""
-    xs, a = _availability_curve_from_samples(samples)
-    if xs.size == 0:
-        return np.full_like(grid_pct, fill_value=np.nan, dtype=float)
-    # xs already in percent; step-post interpolation
-    # For each grid x, availability is a(x) at the largest xs <= x
-    return np.interp(grid_pct, xs, a, left=a[0], right=a[-1])
+    return curve_on_grid(*availability_curve(samples), grid_pct)
 
 
 def _load_seed_bac(seed_dir: Path) -> Tuple[np.ndarray, float]:
     """Return (normalized_samples_pct, offered) for a single seed.
 
-    Normalized samples are min(delivered/offered, 1.0) * 100.
+    Normalized samples are delivered/offered * 100.
     """
     p = seed_dir / "bac.json"
     if not p.exists():
         return np.array([], dtype=float), float("nan")
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except (ValueError, TypeError, KeyError, OSError):
         return np.array([], dtype=float), float("nan")
     offered = float(data.get("offered", float("nan")))
     series = data.get("series", []) or []
@@ -69,12 +42,12 @@ def _load_seed_bac(seed_dir: Path) -> Tuple[np.ndarray, float]:
         try:
             vv = float(v)
             vals.append(vv)
-        except Exception:
+        except (ValueError, TypeError, KeyError, OSError):
             continue
     arr = np.asarray(vals, dtype=float)
     if not (math.isfinite(offered) and offered > 0.0) or arr.size == 0:
         return np.array([], dtype=float), float("nan")
-    norm = np.minimum(arr / offered, 1.0) * 100.0
+    norm = (arr / offered) * 100.0
     return norm, offered
 
 
@@ -95,31 +68,36 @@ def plot_cross_seed_bac(
     if not scen_dirs:
         return None
 
-    sns.set_theme(style="whitegrid")
     fig, ax = plt.subplots()
     palette = sns.color_palette("tab10", n_colors=len(scen_dirs))
 
+    max_pct = 100.0
+    plotted = False
     for i, sd in enumerate(scen_dirs):
-        # Gather seeds
         seed_dirs = sorted([p for p in sd.glob("seed*") if p.is_dir()])
         pooled: List[float] = []
-        seed_curves: List[np.ndarray] = []
-        grid = np.linspace(0.0, 100.0, 401)
+        seed_samples: List[np.ndarray] = []
         for sdir in seed_dirs:
             samples_pct, _off = _load_seed_bac(sdir)
             if samples_pct.size == 0:
                 continue
             pooled.extend(samples_pct.tolist())
-            seed_curves.append(_seed_availability_on_grid(samples_pct, grid))
+            seed_samples.append(samples_pct)
 
         if not pooled:
             continue
+        max_pct = max(max_pct, max(pooled))
+        plotted = True
         color = palette[i % len(palette)]
         pooled_arr = np.asarray(pooled, dtype=float)
-        x_sorted, a_sorted = _availability_curve_from_samples(pooled_arr)
-        # Plot pooled curve
+        grid = np.unique(np.r_[0.0, pooled_arr, max(100.0, max(pooled))])
+        seed_curves = [
+            _seed_availability_on_grid(samples, grid) for samples in seed_samples
+        ]
+        x_sorted = grid
+        a_sorted = curve_on_grid(*availability_curve(pooled_arr), grid)
         ax.step(
-            x_sorted, a_sorted, where="post", label=sd.name, color=color, linewidth=2.0
+            x_sorted, a_sorted, where="pre", label=sd.name, color=color, linewidth=2.0
         )
 
         # IQR band across seeds on the common grid
@@ -127,14 +105,18 @@ def plot_cross_seed_bac(
             mat = np.vstack(seed_curves)
             q25 = np.nanpercentile(mat, 25, axis=0)
             q75 = np.nanpercentile(mat, 75, axis=0)
-            ax.fill_between(grid, q25, q75, color=color, alpha=0.12, linewidth=0)
-        # Overlay per-seed curves lightly to show distribution
+            ax.fill_between(
+                grid, q25, q75, step="pre", color=color, alpha=0.12, linewidth=0
+            )
         for sc in seed_curves:
-            ax.step(grid, sc, where="post", color=color, alpha=0.12, linewidth=0.6)
+            ax.step(grid, sc, where="pre", color=color, alpha=0.12, linewidth=0.6)
 
+    if not plotted:
+        plt.close(fig)
+        return None
     ax.set_xlabel("Delivered bandwidth (% of offered)")
     ax.set_ylabel("Availability  (≥ x)")
-    ax.set_xlim(0.0, 100.0)
+    ax.set_xlim(0.0, max_pct)
     ax.set_ylim(0.0, 1.0)
     ax.legend(title="Scenario", loc="lower right", frameon=True)
     ax.set_title("Cross-seed Bandwidth–Availability Curves")

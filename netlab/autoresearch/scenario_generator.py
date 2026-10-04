@@ -1,288 +1,26 @@
-"""Generate DC-BB scenarios with NetGraph expansion and mesh patterns.
-
-The configuration defines device grids, mesh groups, failure policies, and
-workflow settings. Expected expanded counts are available for validation.
-"""
+"""Build DC-BB scenario dictionaries from grid, mesh, and failure settings."""
 
 from __future__ import annotations
-
-import math
-from dataclasses import dataclass
 
 from netlab.autoresearch.scenario_validation import (
     ExpectedCounts,
     compute_expected_counts,
 )
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class DcBbScenarioConfig:
-    """Configuration for DC-BB scenario generation."""
-
-    # ABC1 (DCType1) parameters
-    abc1_hgrids: int = 16
-    abc1_fadu_per_hgrid: int = 36
-    abc1_planes: int = 8
-    abc1_ssw_per_plane: int = 36
-    abc1_pods_per_building: int = 96
-    abc1_buildings: int = 5
-    abc1_rsw_per_pod: int = 48
-
-    # XYZ1 (DCTypeF) parameters
-    xyz1_xsw_planes: int = 24
-    xyz1_xsw_per_plane: int = 64
-    xyz1_ssw_per_megapod: int = 24
-    xyz1_fsw_per_megapod: int = 32
-    xyz1_megapods: int = 72
-
-    # Backbone parameters
-    bb_planes: int = 64
-    bb_devices_per_plane: int = 4
-
-    # Link capacities
-    dc_bb_link_capacity: float = 400.0
-    bb_bb_link_capacity: float = 800.0
-
-    # DC-BB interconnect parameters (what autoresearch varies)
-    g_abc1: int = 64
-    g_xyz1: int = 64
-    layout_abc1: tuple = (16, 4, 16, 4)
-    layout_xyz1: tuple = (16, 4, 16, 4)
-
-    # Workflow parameters
-    seed: int = 42
-    msd_resolution: float = 0.01
-    failure_iterations: int = 200
-
-
-# ---------------------------------------------------------------------------
-# Mesh group assignments
-# ---------------------------------------------------------------------------
-
-
-def _compute_mesh_groups(
-    dc_rows: int,
-    dc_cols: int,
-    bb_rows: int,
-    bb_cols: int,
-    g: int,
-    layout: tuple[int, int, int, int],
-) -> list[tuple[list[tuple[int, int]], list[tuple[int, int]]]]:
-    """Compute mesh group assignments for DC and BB device grids.
-
-    Partitions a dc_rows x dc_cols grid of DC devices and a
-    bb_rows x bb_cols grid of BB devices into G groups. Each group
-    is a contiguous rectangular block in both the DC and BB grids.
-    """
-    gr_dc, gc_dc, gr_bb, gc_bb = layout
-
-    if gr_dc * gc_dc != g:
-        raise ValueError(
-            f"DC layout {gr_dc}x{gc_dc}={gr_dc * gc_dc} does not match G={g}"
-        )
-    if gr_bb * gc_bb != g:
-        raise ValueError(
-            f"BB layout {gr_bb}x{gc_bb}={gr_bb * gc_bb} does not match G={g}"
-        )
-    if dc_rows % gr_dc != 0:
-        raise ValueError(f"dc_rows={dc_rows} not divisible by gr_dc={gr_dc}")
-    if dc_cols % gc_dc != 0:
-        raise ValueError(f"dc_cols={dc_cols} not divisible by gc_dc={gc_dc}")
-    if bb_rows % gr_bb != 0:
-        raise ValueError(f"bb_rows={bb_rows} not divisible by gr_bb={gr_bb}")
-    if bb_cols % gc_bb != 0:
-        raise ValueError(f"bb_cols={bb_cols} not divisible by gc_bb={gc_bb}")
-
-    dc_block_rows = dc_rows // gr_dc
-    dc_block_cols = dc_cols // gc_dc
-    bb_block_rows = bb_rows // gr_bb
-    bb_block_cols = bb_cols // gc_bb
-
-    groups: list[tuple[list[tuple[int, int]], list[tuple[int, int]]]] = []
-    for group_id in range(g):
-        gi = group_id // gc_dc
-        gj = group_id % gc_dc
-        dc_devs: list[tuple[int, int]] = []
-        for r in range(gi * dc_block_rows, (gi + 1) * dc_block_rows):
-            for c in range(gj * dc_block_cols, (gj + 1) * dc_block_cols):
-                dc_devs.append((r, c))
-
-        bi = group_id // gc_bb
-        bj = group_id % gc_bb
-        bb_devs: list[tuple[int, int]] = []
-        for r in range(bi * bb_block_rows, (bi + 1) * bb_block_rows):
-            for c in range(bj * bb_block_cols, (bj + 1) * bb_block_cols):
-                bb_devs.append((r, c))
-
-        groups.append((dc_devs, bb_devs))
-
-    return groups
-
-
-# ---------------------------------------------------------------------------
-# G-value and layout utilities
-# ---------------------------------------------------------------------------
-
-
-def get_viable_g_values(
-    dc_total: int, bb_total: int, dc_ports: int, bb_ports: int
-) -> list[int]:
-    """Return sorted list of viable G values given device counts and port limits."""
-    g_common = math.gcd(dc_total, bb_total)
-    viable: list[int] = []
-    for candidate in _divisors(g_common):
-        k_dc = bb_total // candidate
-        k_bb = dc_total // candidate
-        if k_dc <= dc_ports and k_bb <= bb_ports:
-            viable.append(candidate)
-    return sorted(viable)
-
-
-def _divisors(n: int) -> list[int]:
-    """Return all positive divisors of n in ascending order."""
-    if n <= 0:
-        return []
-    divs: list[int] = []
-    for i in range(1, int(math.isqrt(n)) + 1):
-        if n % i == 0:
-            divs.append(i)
-            if i != n // i:
-                divs.append(n // i)
-    return sorted(divs)
-
-
-def get_valid_layouts(
-    g: int,
-    dc_rows: int,
-    dc_cols: int,
-    bb_rows: int,
-    bb_cols: int,
-) -> list[tuple[int, int, int, int]]:
-    """Return all valid (gr_dc, gc_dc, gr_bb, gc_bb) factorizations for G."""
-    dc_facts = _factorizations(g, dc_rows, dc_cols)
-    bb_facts = _factorizations(g, bb_rows, bb_cols)
-    layouts: list[tuple[int, int, int, int]] = []
-    for gr_dc, gc_dc in dc_facts:
-        for gr_bb, gc_bb in bb_facts:
-            layouts.append((gr_dc, gc_dc, gr_bb, gc_bb))
-    return sorted(layouts)
-
-
-def _factorizations(g: int, rows: int, cols: int) -> list[tuple[int, int]]:
-    """Return all (gr, gc) where gr*gc == g, rows%gr == 0, cols%gc == 0."""
-    results: list[tuple[int, int]] = []
-    for gr in _divisors(g):
-        gc = g // gr
-        if rows % gr == 0 and cols % gc == 0:
-            results.append((gr, gc))
-    return results
-
-
-def validate_layout(
-    g: int,
-    layout: tuple[int, int, int, int],
-    dc_rows: int,
-    dc_cols: int,
-    bb_rows: int,
-    bb_cols: int,
-) -> bool:
-    """Check if a layout is valid for the given dimensions."""
-    gr_dc, gc_dc, gr_bb, gc_bb = layout
-    return (
-        gr_dc * gc_dc == g
-        and gr_bb * gc_bb == g
-        and dc_rows % gr_dc == 0
-        and dc_cols % gc_dc == 0
-        and bb_rows % gr_bb == 0
-        and bb_cols % gc_bb == 0
-    )
-
-
-# ---------------------------------------------------------------------------
-# Config validation
-# ---------------------------------------------------------------------------
-
-
-def validate_config(config: DcBbScenarioConfig) -> list[str]:
-    """Validate a DcBbScenarioConfig for consistency and feasibility."""
-    errors: list[str] = []
-    bb_total = config.bb_planes * config.bb_devices_per_plane
-
-    abc1_dc_total = config.abc1_hgrids * config.abc1_fadu_per_hgrid
-    viable_g_abc1 = get_viable_g_values(
-        abc1_dc_total, bb_total, 16, config.abc1_fadu_per_hgrid
-    )
-    if config.g_abc1 not in viable_g_abc1:
-        errors.append(
-            f"g_abc1={config.g_abc1} is not viable; viable values: {viable_g_abc1}"
-        )
-
-    xyz1_dc_total = config.xyz1_xsw_per_plane * config.xyz1_xsw_planes
-    viable_g_xyz1 = get_viable_g_values(
-        xyz1_dc_total, bb_total, 4, config.xyz1_xsw_planes
-    )
-    if config.g_xyz1 not in viable_g_xyz1:
-        errors.append(
-            f"g_xyz1={config.g_xyz1} is not viable; viable values: {viable_g_xyz1}"
-        )
-
-    if not validate_layout(
-        config.g_abc1,
-        config.layout_abc1,
-        config.abc1_hgrids,
-        config.abc1_fadu_per_hgrid,
-        config.bb_planes,
-        config.bb_devices_per_plane,
-    ):
-        errors.append(
-            f"layout_abc1={config.layout_abc1} is not valid for g_abc1={config.g_abc1}, "
-            f"dc={config.abc1_hgrids}x{config.abc1_fadu_per_hgrid}, "
-            f"bb={config.bb_planes}x{config.bb_devices_per_plane}"
-        )
-
-    if not validate_layout(
-        config.g_xyz1,
-        config.layout_xyz1,
-        config.xyz1_xsw_per_plane,
-        config.xyz1_xsw_planes,
-        config.bb_planes,
-        config.bb_devices_per_plane,
-    ):
-        errors.append(
-            f"layout_xyz1={config.layout_xyz1} is not valid for g_xyz1={config.g_xyz1}, "
-            f"dc={config.xyz1_xsw_per_plane}x{config.xyz1_xsw_planes}, "
-            f"bb={config.bb_planes}x{config.bb_devices_per_plane}"
-        )
-
-    k_fadu = bb_total // config.g_abc1 if config.g_abc1 > 0 else bb_total
-    if k_fadu > 16:
-        errors.append(
-            f"Port constraint violated: k_fadu={k_fadu} > 16 (G_abc1={config.g_abc1})"
-        )
-    k_xsw = bb_total // config.g_xyz1 if config.g_xyz1 > 0 else bb_total
-    if k_xsw > 4:
-        errors.append(
-            f"Port constraint violated: k_xsw={k_xsw} > 4 (G_xyz1={config.g_xyz1})"
-        )
-
-    return errors
-
-
-# ---------------------------------------------------------------------------
-# Node builder (DSL-idiomatic: brackets for Clos, explicit for mesh groups)
-# ---------------------------------------------------------------------------
+from .dcbb_config import DcBbScenarioConfig, _compute_mesh_groups, validate_config
+from .dcbb_failures import (
+    FAILURE_MODE_NAMES,
+    _build_failure_policy,
+    _build_link_rules,
+    _build_risk_groups,
+)
 
 
 def _build_nodes(config: DcBbScenarioConfig) -> dict[str, dict]:
-    """Build network.nodes dict.
+    """Build node definitions with mesh groups encoded in device paths.
 
-    Uses '/' separators as word boundaries (pl1/ cannot match pl10/).
-    Internal Clos nodes use bracket expansion. Mesh-group-dependent
-    nodes (FADU, XSW, BB) created explicitly with mg{G} in path.
+    Slashes prevent plane-prefix collisions (``pl1/`` cannot match ``pl10/``).
+    Clos nodes use bracket expansion; FADU, XSW, and BB nodes are explicit.
     """
     nodes: dict[str, dict] = {}
 
@@ -376,11 +114,6 @@ def _build_nodes(config: DcBbScenarioConfig) -> dict[str, dict]:
     return nodes
 
 
-# ---------------------------------------------------------------------------
-# Internal Clos links (DSL expand + mesh patterns)
-# ---------------------------------------------------------------------------
-
-
 def _build_internal_links(config: DcBbScenarioConfig) -> list[dict]:
     """Build internal Clos links with expansion and mesh patterns."""
     links: list[dict] = []
@@ -471,11 +204,6 @@ def _build_internal_links(config: DcBbScenarioConfig) -> list[dict]:
     return links
 
 
-# ---------------------------------------------------------------------------
-# DC-BB mesh group links (DSL expand + mesh per group)
-# ---------------------------------------------------------------------------
-
-
 def _build_dc_bb_links(config: DcBbScenarioConfig) -> list[dict]:
     """Build DC-BB links: one expand+mesh definition per mesh group."""
     links: list[dict] = []
@@ -509,11 +237,6 @@ def _build_dc_bb_links(config: DcBbScenarioConfig) -> list[dict]:
     return links
 
 
-# ---------------------------------------------------------------------------
-# BB cross-site links (dual paths, per-plane mesh)
-# ---------------------------------------------------------------------------
-
-
 def _build_bb_cross_site_links(config: DcBbScenarioConfig) -> list[dict]:
     """Build BB cross-site links: per-plane mesh, dual paths via attrs tag."""
     links: list[dict] = []
@@ -533,299 +256,6 @@ def _build_bb_cross_site_links(config: DcBbScenarioConfig) -> list[dict]:
         )
 
     return links
-
-
-# ---------------------------------------------------------------------------
-# Link rules for risk group assignment
-# ---------------------------------------------------------------------------
-
-
-def _build_link_rules(config: DcBbScenarioConfig) -> list[dict]:
-    """Build link_rules for risk group assignment on DC-BB and cross-site links."""
-    rules: list[dict] = []
-    ppg = 4
-
-    # DC-BB risk groups
-    for side in ["abc1", "xyz1"]:
-        dc_prefix = "abc1/fadu/" if side == "abc1" else "xyz1/xsw/"
-        for pl in range(1, config.bb_planes + 1):
-            pg = (pl - 1) // ppg + 1
-            for dv in range(1, config.bb_devices_per_plane + 1):
-                rules.append(
-                    {
-                        "source": dc_prefix,
-                        "target": f"bb/{side}/.*/pl{pl}/dv{dv}$",
-                        "risk_groups": [
-                            f"plane_{pl}_site_{side}",
-                            f"plane_group_{pg}",
-                            f"pg_{pg}_idx_{dv}_{side}",
-                        ],
-                    }
-                )
-
-    # BB cross-site risk groups
-    for pl in range(1, config.bb_planes + 1):
-        pg = (pl - 1) // ppg + 1
-        for da in range(1, config.bb_devices_per_plane + 1):
-            for dx in range(1, config.bb_devices_per_plane + 1):
-                for path_label in ["a", "b"]:
-                    rules.append(
-                        {
-                            "source": f"bb/abc1/.*/pl{pl}/dv{da}$",
-                            "target": f"bb/xyz1/.*/pl{pl}/dv{dx}$",
-                            "link_match": {
-                                "conditions": [
-                                    {"attr": "path", "op": "==", "value": path_label}
-                                ],
-                            },
-                            "risk_groups": [
-                                f"path_{path_label}",
-                                f"plane_{pl}_site_abc1",
-                                f"plane_{pl}_site_xyz1",
-                                f"plane_group_{pg}",
-                                f"pg_{pg}_idx_{da}_abc1",
-                                f"pg_{pg}_idx_{dx}_xyz1",
-                            ],
-                        }
-                    )
-
-    return rules
-
-
-# ---------------------------------------------------------------------------
-# Risk groups
-# ---------------------------------------------------------------------------
-
-
-def _build_risk_groups(config: DcBbScenarioConfig) -> list[dict]:
-    """Define long-haul path, plane, plane-group, and device-index risk groups."""
-    groups: list[dict] = []
-
-    groups.append({"name": "path_a", "attrs": {"type": "long_haul_path"}})
-    groups.append({"name": "path_b", "attrs": {"type": "long_haul_path"}})
-
-    for g in range(1, config.bb_planes // 4 + 1):
-        groups.append(
-            {
-                "name": f"plane_group_{g}",
-                "attrs": {
-                    "type": "plane_group",
-                    "planes": list(range((g - 1) * 4 + 1, g * 4 + 1)),
-                },
-            }
-        )
-
-    for pl in range(1, config.bb_planes + 1):
-        for site in ["abc1", "xyz1"]:
-            groups.append(
-                {
-                    "name": f"plane_{pl}_site_{site}",
-                    "attrs": {"type": "plane_site", "plane": pl, "site": site},
-                }
-            )
-
-    for g in range(1, config.bb_planes // 4 + 1):
-        for d in range(1, config.bb_devices_per_plane + 1):
-            for site in ["abc1", "xyz1"]:
-                groups.append(
-                    {
-                        "name": f"pg_{g}_idx_{d}_{site}",
-                        "attrs": {"type": "device_index_across_planes"},
-                    }
-                )
-
-    return groups
-
-
-# ---------------------------------------------------------------------------
-# Failure policy
-# ---------------------------------------------------------------------------
-
-
-# Condition shorthands
-def _RG(typ: str) -> list[dict[str, str]]:
-    return [{"attr": "type", "op": "==", "value": typ}]
-
-
-_BB = [{"attr": "role", "op": "==", "value": "bb"}]
-_DCBB = [{"attr": "link_type", "op": "==", "value": "dc_bb"}]
-_XSITE = [{"attr": "link_type", "op": "==", "value": "bb_cross_site"}]
-
-# Failure modes: (name, rule_dict)
-# Three categories:
-#   1. Correlated (risk-group-based) — shared infrastructure events
-#   2. Fixed-count — choose N devices/groups per iteration
-#   3. Availability-based — independent per-entity probability
-_FAILURE_MODES = [
-    # --- Correlated single failures ---
-    (
-        "lh_path",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 1,
-            "match": {"conditions": _RG("long_haul_path")},
-        },
-    ),
-    (
-        "plane_group",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 1,
-            "match": {"conditions": _RG("plane_group")},
-        },
-    ),
-    (
-        "plane_site",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 1,
-            "match": {"conditions": _RG("plane_site")},
-        },
-    ),
-    (
-        "dev_index",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 1,
-            "match": {"conditions": _RG("device_index_across_planes")},
-        },
-    ),
-    # --- Correlated scaled failures (stress test) ---
-    (
-        "2x_plane_site",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 2,
-            "match": {"conditions": _RG("plane_site")},
-        },
-    ),
-    (
-        "4x_plane_site",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 4,
-            "match": {"conditions": _RG("plane_site")},
-        },
-    ),
-    (
-        "2x_plane_group",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 2,
-            "match": {"conditions": _RG("plane_group")},
-        },
-    ),
-    (
-        "2x_dev_index",
-        {
-            "scope": "risk_group",
-            "mode": "choice",
-            "count": 2,
-            "match": {"conditions": _RG("device_index_across_planes")},
-        },
-    ),
-    # --- Fixed-count BB device failures ---
-    (
-        "1x_bb",
-        {"scope": "node", "mode": "choice", "count": 1, "match": {"conditions": _BB}},
-    ),
-    (
-        "2x_bb",
-        {"scope": "node", "mode": "choice", "count": 2, "match": {"conditions": _BB}},
-    ),
-    (
-        "4x_bb",
-        {"scope": "node", "mode": "choice", "count": 4, "match": {"conditions": _BB}},
-    ),
-    (
-        "8x_bb",
-        {"scope": "node", "mode": "choice", "count": 8, "match": {"conditions": _BB}},
-    ),
-    # --- Availability-based (independent per-entity) ---
-    (
-        "bb_avail_2pct",
-        {
-            "scope": "node",
-            "mode": "random",
-            "probability": 0.02,
-            "match": {"conditions": _BB},
-        },
-    ),
-    (
-        "bb_avail_5pct",
-        {
-            "scope": "node",
-            "mode": "random",
-            "probability": 0.05,
-            "match": {"conditions": _BB},
-        },
-    ),
-    (
-        "bb_avail_10pct",
-        {
-            "scope": "node",
-            "mode": "random",
-            "probability": 0.10,
-            "match": {"conditions": _BB},
-        },
-    ),
-    (
-        "dcbb_avail",
-        {
-            "scope": "link",
-            "mode": "random",
-            "probability": 0.01,
-            "match": {"conditions": _DCBB},
-        },
-    ),
-    (
-        "xsite_avail",
-        {
-            "scope": "link",
-            "mode": "random",
-            "probability": 0.01,
-            "match": {"conditions": _XSITE},
-        },
-    ),
-]
-
-FAILURE_MODE_NAMES = [name for name, _ in _FAILURE_MODES]
-
-
-def _build_failure_policy(config: DcBbScenarioConfig) -> dict:
-    """Build failure policies: one per mode + one combined (equal weight).
-
-    Each single-mode policy runs that failure type exclusively.
-    The combined policy samples all modes with equal probability.
-    """
-    policies: dict = {}
-
-    for name, rule in _FAILURE_MODES:
-        policies[f"fm_{name}"] = {
-            "modes": [{"weight": 1.0, "rules": [dict(rule)]}],
-        }
-
-    w = 1.0 / len(_FAILURE_MODES)
-    policies["fm_combined"] = {
-        "attrs": {
-            "description": f"All {len(_FAILURE_MODES)} failure modes, equal weight"
-        },
-        "modes": [{"weight": w, "rules": [dict(rule)]} for _, rule in _FAILURE_MODES],
-    }
-
-    return policies
-
-
-# ---------------------------------------------------------------------------
-# Demands (with $ anchors)
-# ---------------------------------------------------------------------------
 
 
 def _build_demands(config: DcBbScenarioConfig) -> dict:
@@ -851,11 +281,6 @@ def _build_demands(config: DcBbScenarioConfig) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Workflow
-# ---------------------------------------------------------------------------
-
-
 def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
     """Build MSD, one placement step per failure mode, and a combined placement step."""
     steps: list[dict] = [
@@ -868,7 +293,6 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
         },
     ]
 
-    # One TMP per single-mode policy
     for name in FAILURE_MODE_NAMES:
         steps.append(
             {
@@ -884,7 +308,6 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
             }
         )
 
-    # Combined TMP
     steps.append(
         {
             "type": "TrafficMatrixPlacement",
@@ -900,11 +323,6 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
     )
 
     return steps
-
-
-# ---------------------------------------------------------------------------
-# Main generator
-# ---------------------------------------------------------------------------
 
 
 def generate_scenario(config: DcBbScenarioConfig) -> dict:
@@ -937,10 +355,7 @@ def generate_scenario(config: DcBbScenarioConfig) -> dict:
 def generate_scenario_with_validation(
     config: DcBbScenarioConfig,
 ) -> tuple[dict, ExpectedCounts]:
-    """Generate scenario and return expected counts for validation.
-
-    Use this when you need to validate the expanded graph.
-    """
+    """Return a scenario and the expected counts for its expanded network."""
     scenario = generate_scenario(config)
     expected = compute_expected_counts(
         abc1_pods=config.abc1_pods_per_building,
@@ -958,3 +373,13 @@ def generate_scenario_with_validation(
         g_xyz1=config.g_xyz1,
     )
     return scenario, expected
+
+
+def generate_from_parameters(**params) -> dict:
+    """DC-BB research adapter: decode the documented grid-factorization strings."""
+    for name in ("layout_abc1", "layout_xyz1"):
+        if name in params and isinstance(params[name], str):
+            params[name] = tuple(
+                int(part) for part in params[name].replace("x", "_").split("_")
+            )
+    return generate_scenario(DcBbScenarioConfig(**params))

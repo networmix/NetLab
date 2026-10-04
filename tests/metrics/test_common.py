@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from metrics.common import baseline_demand_map, canonical_dc, expand_flow_results
+from netlab.metrics.common import baseline_demand_map, expand_flow_results
 
 
 @pytest.mark.parametrize("count", [None, 0, -1, True, "1", 1.5])
@@ -38,22 +38,6 @@ def test_expand_flow_results_empty() -> None:
     assert expand_flow_results([]) == []
 
 
-def test_canonical_dc_full_path() -> None:
-    assert canonical_dc("metro1/dc1/rack/node") == "metro1/dc1"
-
-
-def test_canonical_dc_already_canonical() -> None:
-    assert canonical_dc("metro1/dc1") == "metro1/dc1"
-
-
-def test_canonical_dc_single_component() -> None:
-    assert canonical_dc("metro1") == "metro1"
-
-
-def test_canonical_dc_empty() -> None:
-    assert canonical_dc("") == ""
-
-
 def test_baseline_demand_map_basic() -> None:
     results = {
         "steps": {
@@ -78,4 +62,4 @@ def test_baseline_demand_map_basic() -> None:
         }
     }
     dm = baseline_demand_map(results)
-    assert dm == {("m1/d1", "m2/d2"): 100.0}
+    assert dm == {("m1/d1/r1", "m2/d2/r2"): 100.0}

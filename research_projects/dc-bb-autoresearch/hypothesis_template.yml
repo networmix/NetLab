@@ -1,8 +1,8 @@
 params:
   g_abc1:
     type: enum
-    values: ["16", "32", "64"]
-    default: "16"
+    values: [16, 32, 64]
+    default: 16
     description: >
       Mesh group count for ABC1 (FADU) <-> BB.
       G=16: k_dc=16 BB/FADU, 9,216 links. Only G that passes feasibility (>=75% retention).
@@ -11,8 +11,8 @@ params:
 
   g_xyz1:
     type: enum
-    values: ["64", "128", "256"]
-    default: "64"
+    values: [64, 128, 256]
+    default: 64
     description: >
       Mesh group count for XYZ1 (XSW) <-> BB.
       G=64: k_dc=4, 6,144 links. Uses all 4 available XSW ports.

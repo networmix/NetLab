@@ -1,28 +1,40 @@
 from __future__ import annotations
 
-import math
-
 import numpy as np
+import pytest
+from scipy import stats
 
-from metrics.paired import paired_normal_test_holm, paired_wilcoxon_sign
-
-
-def test_paired_normal_test_holm_known_values() -> None:
-    # Construct small dataset with known mean and std
-    a = np.array([2.0, 3.0, 4.0, 5.0, 6.0])
-    b = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-    # Differences d = [1,1,1,1,1] => mean=1, sd=0; z=inf; p=0
-    res = paired_normal_test_holm(a, b)
-    assert math.isinf(res["t_stat"]) or res["t_stat"] > 1e6
-    assert res["p"] == 0.0 and res["p_adj"] == 0.0
-    assert res["n"] == 5
+from netlab.metrics.paired import holm_adjust, paired_t
 
 
-def test_paired_wilcoxon_sign_symmetric_case() -> None:
-    # Differences: [1, -1, 1, -1, 1, -1, 1, -1, 1, -1] => equal positives and negatives
-    a = np.array([2, 0, 2, 0, 2, 0, 2, 0, 2, 0], dtype=float)
-    b = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1], dtype=float)
-    res = paired_wilcoxon_sign(a, b)
-    assert res["n"] == 10
-    assert math.isclose(res["z"], 0.0, abs_tol=1e-9)
-    assert math.isclose(res["p"], 1.0, rel_tol=0.0, abs_tol=1e-12)
+def test_matches_scipy_and_has_correct_sign():
+    a = np.array([2.0, 3.0, 5.0, 4.0, 7.0])
+    b = np.array([1.0, 3.0, 2.0, 5.0, 2.0])
+    expected = stats.ttest_rel(a, b)
+    actual = paired_t(a, b)
+    assert actual["t_stat"] == pytest.approx(expected.statistic)
+    assert actual["p"] == pytest.approx(expected.pvalue)
+    assert actual["ci_low"] == pytest.approx(expected.confidence_interval().low)
+    assert paired_t(np.zeros(5), np.ones(5))["t_stat"] == -float("inf")
+
+
+def test_holm_excludes_missing_tests():
+    adjusted = holm_adjust([("a", 0.01), ("b", 0.04), ("missing", float("nan"))])
+    assert adjusted["a"] == 0.02
+    assert adjusted["b"] == 0.04
+    assert np.isnan(adjusted["missing"])
+
+
+def test_rejects_unpaired_shapes():
+    with pytest.raises(ValueError):
+        paired_t(np.ones(3), np.ones(4))
+
+
+def test_inference_does_not_change_with_measurement_units():
+    a = np.array([1.0, 2.0, 4.0, 8.0])
+    b = np.zeros(4)
+    original = paired_t(a, b)
+    scaled = paired_t(a * 1e-15, b)
+    assert scaled["p"] == pytest.approx(original["p"])
+    assert scaled["t_stat"] == pytest.approx(original["t_stat"])
+    assert not scaled["deterministic"]

@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from .common import nonnegative_number
+
 
 @dataclass
 class CostPowerResult:
@@ -46,14 +48,25 @@ class CostPowerResult:
 
 def compute_cost_power(
     results: dict,
-    offered_at_alpha1: Optional[float] = None,
+    offered_demand: Optional[float] = None,
     reliable_at_p999: Optional[float] = None,
 ) -> CostPowerResult:
     cp = results.get("steps", {}).get("cost_power", {}).get("data", {}) or {}
     levels = cp.get("levels", {}) or {}
-    root = (levels.get("0") or [{}])[0]
-    capex_total = float(root.get("capex_total", 0.0))
-    power_total = float(root.get("power_total_watts", 0.0))
+    roots = levels.get("0", [])
+    if roots and (not isinstance(roots, list) or len(roots) != 1):
+        raise ValueError("cost_power requires exactly one root total")
+    root = roots[0] if roots else {}
+    capex_total = (
+        nonnegative_number(root["capex_total"], "capex_total")
+        if "capex_total" in root
+        else float("nan")
+    )
+    power_total = (
+        nonnegative_number(root["power_total_watts"], "power_total_watts")
+        if "power_total_watts" in root
+        else float("nan")
+    )
 
     level1 = levels.get("1", []) or []
     df = (
@@ -73,14 +86,14 @@ def compute_cost_power(
     def safe_div(num, den):
         try:
             den = float(den)
-            if den > 0:
+            if np.isfinite(num) and np.isfinite(den) and den > 0:
                 return float(num) / den
-        except Exception:
+        except (ValueError, TypeError, KeyError, OSError):
             pass
         return None
 
-    usd_per_offered = safe_div(capex_total, offered_at_alpha1)
-    w_per_offered = safe_div(power_total, offered_at_alpha1)
+    usd_per_offered = safe_div(capex_total, offered_demand)
+    w_per_offered = safe_div(power_total, offered_demand)
 
     usd_per_p999 = safe_div(capex_total, reliable_at_p999)
     w_per_p999 = safe_div(power_total, reliable_at_p999)
@@ -97,7 +110,9 @@ def compute_cost_power(
 
 
 def plot_cost_power(cp: CostPowerResult, save_to: Optional[Path] = None) -> None:
-    plt.figure()
+    if not (np.isfinite(cp.capex_total) and np.isfinite(cp.power_total_w)):
+        return
+    plt.figure(figsize=(8, 5), dpi=300)
     bars = {
         "CapEx (USD)": cp.capex_total,
         "Power (W)": cp.power_total_w,
@@ -110,5 +125,5 @@ def plot_cost_power(cp: CostPowerResult, save_to: Optional[Path] = None) -> None
         plt.text(i, v, f"{v:,.0f}", ha="center", va="bottom", fontsize=8, rotation=0)
     if save_to is not None:
         save_to.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_to)
+        plt.savefig(save_to, dpi=300, bbox_inches="tight")
     plt.close()

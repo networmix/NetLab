@@ -15,9 +15,9 @@ Regenerate from an environment installed with the dependencies declared in
 venv/bin/python dev/regenerate_fixtures.py
 ```
 
-The script builds `topogen_configs_small` from the four cached integrated graphs,
+The script builds `topogen_configs_small` from the four cached corridor MultiGraphs,
 executes NetGraph, and computes the metrics. It also runs the mini DC-BB and
-square-mesh scenarios. All commands finish successfully before the fixtures are
+square-mesh scenarios. All API tasks finish successfully before the fixtures are
 replaced. Logs, the previous fixtures, and the recorded provenance are saved
 under `build/fixture-regeneration/`. Installed sources must be released versions
 or clean Git revisions; the script refuses editable checkouts with uncommitted
@@ -30,5 +30,9 @@ The metrics weight each failure pattern by its `occurrence_count`. Timing values
 record execution duration and are not performance assertions.
 
 Current fixtures were generated with Python 3.13, `ngraph==0.24.0` and
-`netgraph-core==0.10.0` from PyPI, and TopoGen commit
-`f06f563f5947eadb63544915624a53ccff45bb0d` from `main`.
+`netgraph-core==0.11.0` from PyPI, and TopoGen commit
+`3bf0fa4aa08604a886421461f7ce36dbd7275121`.
+
+The cached geography uses corridor MultiGraphs. BAC curves store unique thresholds
+and inclusive `P(delivered >= threshold)` values; sample quantiles use all
+occurrence-weighted draws.

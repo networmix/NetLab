@@ -2,29 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
-import pytest
 
 from netlab.autoresearch.backend import MockBackend
 from netlab.autoresearch.hypothesis_manager import HypothesisManager
 
-
-def _find_ngraph() -> str:
-    import shutil
-
-    path = shutil.which("ngraph")
-    if path is None:
-        venv_bin = Path(sys.executable).parent / "ngraph"
-        if venv_bin.exists():
-            path = str(venv_bin)
-    if path is None:
-        pytest.skip("ngraph binary not found")
-    return path
-
-
-# Valid scenario that passes generation loop
 VALID_SCENARIO = """\
 seed: 42
 network:
@@ -67,7 +49,6 @@ class TestHypothesisManager:
         manager = HypothesisManager(
             project_dir=tmp_path,
             backend=backend,
-            ngraph_bin=_find_ngraph(),
         )
 
         cycle = manager.run_cycle("Two nodes connected by a 100 Gbps link")
@@ -78,7 +59,6 @@ class TestHypothesisManager:
         assert cycle.analysis is not None
         assert cycle.analysis.complete
 
-        # Check persistence
         assert (tmp_path / "cycles" / "001" / "hypothesis.yml").exists()
         assert (tmp_path / "cycles" / "001" / "scenario.yml").exists()
         assert (tmp_path / "cycles" / "001" / "metrics_report.md").exists()
@@ -87,36 +67,34 @@ class TestHypothesisManager:
         assert (tmp_path / "cycles" / "001" / "status.yml").exists()
         assert (tmp_path / "cycle_log.jsonl").exists()
 
-        # Metrics report includes calculated capacity and bandwidth.
         report = (tmp_path / "cycles" / "001" / "metrics_report.md").read_text()
         assert "alpha_star" in report
 
-        # Next hypothesis is persisted
         next_h = (tmp_path / "cycles" / "001" / "next_hypothesis.md").read_text()
         assert "parallel link" in next_h
 
-    def test_generation_failure_records_dead_end(self, tmp_path: Path) -> None:
-        """Failed generation marks hypothesis as dead end."""
+    def test_generation_failure_does_not_poison_hypothesis(
+        self, tmp_path: Path
+    ) -> None:
+        """Failed generation permits another attempt at the same hypothesis."""
         backend = MockBackend(["not valid yaml {{"] * 20)
         manager = HypothesisManager(
             project_dir=tmp_path,
             backend=backend,
-            ngraph_bin=_find_ngraph(),
         )
 
         cycle = manager.run_cycle("Impossible topology idea")
         assert cycle.status == "generation_failed"
-        assert (tmp_path / "dead_ends.jsonl").exists()
+        assert not (tmp_path / "dead_ends.jsonl").exists()
 
-        # Second attempt with same hypothesis is skipped
+        # Second attempt can succeed after the generation error
         backend2 = MockBackend([VALID_SCENARIO, INTERPRETATION, NEXT_HYPOTHESIS])
         manager2 = HypothesisManager(
             project_dir=tmp_path,
             backend=backend2,
-            ngraph_bin=_find_ngraph(),
         )
         cycle2 = manager2.run_cycle("Impossible topology idea")
-        assert cycle2.status == "skipped"
+        assert cycle2.status == "analyzed"
 
     def test_cycle_id_increments(self, tmp_path: Path) -> None:
         """Each cycle gets a unique incrementing ID."""
@@ -133,7 +111,6 @@ class TestHypothesisManager:
         manager = HypothesisManager(
             project_dir=tmp_path,
             backend=backend,
-            ngraph_bin=_find_ngraph(),
         )
 
         c1 = manager.run_cycle("First hypothesis")

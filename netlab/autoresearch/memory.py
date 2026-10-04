@@ -1,4 +1,4 @@
-"""Research memory: persistent insights, dead ends, and strategy for autoresearch."""
+"""Store research insights, rejected approaches, and strategy between experiments."""
 
 from __future__ import annotations
 
@@ -8,8 +8,9 @@ import re
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
+from netlab.artifacts import write_text_atomic
 from netlab.autoresearch.experiment_log import ExperimentLog
 
 logger = logging.getLogger(__name__)
@@ -63,39 +64,6 @@ class DeadEnd:
     lesson: str = ""
 
 
-def _insight_to_dict(ins: Insight) -> dict[str, Any]:
-    return asdict(ins)
-
-
-def _dict_to_insight(d: dict[str, Any]) -> Insight:
-    return Insight(
-        id=d["id"],
-        created_at_exp=d["created_at_exp"],
-        updated_at_exp=d["updated_at_exp"],
-        claim=d["claim"],
-        evidence_for=d.get("evidence_for", []),
-        evidence_against=d.get("evidence_against", []),
-        confidence=d.get("confidence", "tentative"),
-        status=d.get("status", "active"),
-        flagged_for_revision=d.get("flagged_for_revision", False),
-    )
-
-
-def _dead_end_to_dict(de: DeadEnd) -> dict[str, Any]:
-    return asdict(de)
-
-
-def _dict_to_dead_end(d: dict[str, Any]) -> DeadEnd:
-    return DeadEnd(
-        id=d["id"],
-        exp_ids=d.get("exp_ids", []),
-        params_summary=d.get("params_summary", ""),
-        failure_type=d.get("failure_type", "other"),
-        reason=d.get("reason", ""),
-        lesson=d.get("lesson", ""),
-    )
-
-
 class ResearchMemory:
     """Persistent research memory backed by JSONL and markdown files.
 
@@ -111,17 +79,15 @@ class ResearchMemory:
         self._dead_ends: list[DeadEnd] = []
         self._strategy: str = ""
 
-    # ---- Persistence ----
-
     def load(self) -> None:
         """Load all memory files from disk. Missing files are treated as empty."""
         self._dir.mkdir(parents=True, exist_ok=True)
 
         self._insights = self._load_jsonl(
-            self._dir / "insights.jsonl", _dict_to_insight
+            self._dir / "insights.jsonl", lambda d: Insight(**d)
         )
         self._dead_ends = self._load_jsonl(
-            self._dir / "dead_ends.jsonl", _dict_to_dead_end
+            self._dir / "dead_ends.jsonl", lambda d: DeadEnd(**d)
         )
 
         strategy_path = self._dir / "strategy.md"
@@ -134,13 +100,11 @@ class ResearchMemory:
         """Write all memory to disk."""
         self._dir.mkdir(parents=True, exist_ok=True)
 
-        self._save_jsonl(self._dir / "insights.jsonl", self._insights, _insight_to_dict)
-        self._save_jsonl(
-            self._dir / "dead_ends.jsonl", self._dead_ends, _dead_end_to_dict
-        )
+        self._save_jsonl(self._dir / "insights.jsonl", self._insights, asdict)
+        self._save_jsonl(self._dir / "dead_ends.jsonl", self._dead_ends, asdict)
 
         strategy_path = self._dir / "strategy.md"
-        strategy_path.write_text(self._strategy, encoding="utf-8")
+        write_text_atomic(strategy_path, self._strategy)
 
     @staticmethod
     def _load_jsonl(path: Path, converter) -> list:
@@ -160,21 +124,17 @@ class ResearchMemory:
     @staticmethod
     def _save_jsonl(path: Path, items: list, converter) -> None:
         lines = [json.dumps(converter(item), separators=(",", ":")) for item in items]
-        path.write_text("\n".join(lines) + "\n" if lines else "", encoding="utf-8")
-
-    # ---- Insights ----
+        write_text_atomic(path, "\n".join(lines) + "\n" if lines else "")
 
     @property
     def active_insights(self) -> list[Insight]:
         return [ins for ins in self._insights if ins.status == "active"]
 
     def add_insight(self, insight: Insight, log: ExperimentLog) -> Optional[str]:
-        """Add an insight. Returns error message string if rejected, None on success.
+        """Add an insight; return an error message on rejection, otherwise None.
 
-        Rejection reasons:
-        - Fewer than 2 evidence_for entries
-        - Active insight limit (20) exceeded
-        - evidence_for or evidence_against contain exp IDs not in the log
+        Require two supporting experiments, known experiment IDs, and fewer than
+        20 active insights.
         """
         if len(insight.evidence_for) < MIN_EVIDENCE_FOR:
             return (
@@ -185,7 +145,6 @@ class ResearchMemory:
         if len(self.active_insights) >= MAX_ACTIVE_INSIGHTS:
             return f"Insight rejected: active insight limit of {MAX_ACTIVE_INSIGHTS} reached"
 
-        # Validate experiment IDs
         entries = log.load()
         valid_ids = {e.exp_id for e in entries}
         all_cited = set(insight.evidence_for) | set(insight.evidence_against)
@@ -195,7 +154,6 @@ class ResearchMemory:
                 f"Insight rejected: experiment IDs not found in log: {sorted(invalid)}"
             )
 
-        # Set confidence from evidence count
         insight.confidence = _compute_confidence(len(insight.evidence_for))
         insight.flagged_for_revision = _should_flag(
             insight.evidence_for, insight.evidence_against
@@ -205,16 +163,19 @@ class ResearchMemory:
         return None
 
     def update_insight(self, insight_id: str, updates: dict) -> None:
-        """Update fields on an existing insight.
-
-        After update, recalculates confidence and flagged_for_revision.
-        """
+        """Update an insight and recalculate its confidence and revision flag."""
         for ins in self._insights:
             if ins.id == insight_id:
                 for key, value in updates.items():
-                    if hasattr(ins, key):
-                        setattr(ins, key, value)
-                # Recalculate derived fields
+                    if key not in {
+                        "claim",
+                        "evidence_for",
+                        "evidence_against",
+                        "status",
+                        "updated_at_exp",
+                    }:
+                        raise ValueError(f"Cannot update insight field {key!r}")
+                    setattr(ins, key, value)
                 ins.confidence = _compute_confidence(len(ins.evidence_for))
                 ins.flagged_for_revision = _should_flag(
                     ins.evidence_for, ins.evidence_against
@@ -229,8 +190,6 @@ class ResearchMemory:
                 ins.status = "retired"
                 return
         logger.warning("Insight %s not found for retirement", insight_id)
-
-    # ---- Dead Ends ----
 
     @property
     def dead_ends(self) -> list[DeadEnd]:
@@ -248,11 +207,8 @@ class ResearchMemory:
 
         self._dead_ends.append(dead_end)
 
-        # Enforce sliding window: drop oldest if over limit
         if len(self._dead_ends) > MAX_DEAD_ENDS:
             self._dead_ends = self._dead_ends[-MAX_DEAD_ENDS:]
-
-    # ---- Strategy ----
 
     @property
     def strategy(self) -> str:
@@ -264,8 +220,6 @@ class ResearchMemory:
         if len(lines) > MAX_STRATEGY_LINES:
             lines = lines[:MAX_STRATEGY_LINES]
         self._strategy = "\n".join(lines)
-
-    # ---- Reflection parsing ----
 
     def parse_reflection_output(
         self, response: str, log: ExperimentLog
@@ -286,7 +240,6 @@ class ResearchMemory:
 
         Returns error string on failure, None on success.
         """
-        # Extract JSON block
         json_match = re.search(r"```json\s*\n(.*?)```", response, re.DOTALL)
         if not json_match:
             return "Reflection parse failed: no ```json``` block found"
@@ -302,11 +255,9 @@ class ResearchMemory:
 
         errors: list[str] = []
 
-        # Process retirements first
         for insight_id in data.get("retire_insights", []):
             self.retire_insight(insight_id)
 
-        # Process insights
         exp_counter = max((ins.created_at_exp for ins in self._insights), default=0)
 
         for ins_data in data.get("insights", []):
@@ -336,13 +287,11 @@ class ResearchMemory:
             if err:
                 errors.append(err)
 
-        # Process dead ends
         for de_data in data.get("dead_ends", []):
             if not isinstance(de_data, dict):
                 errors.append(f"Skipped non-dict dead_end: {de_data!r}")
                 continue
 
-            # Extract exp_ids from the dead_end data, defaulting to empty
             exp_ids = de_data.get("exp_ids", [])
 
             dead_end = DeadEnd(

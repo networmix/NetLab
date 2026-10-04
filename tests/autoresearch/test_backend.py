@@ -19,10 +19,6 @@ from netlab.autoresearch.backend import (
     OpenAICompatibleBackend,
 )
 
-# ---------------------------------------------------------------------------
-# Helpers for mock HTTP server
-# ---------------------------------------------------------------------------
-
 
 def _make_handler(responses: list[tuple[int, dict | str, dict[str, str] | None]]):
     """Create a handler class that returns responses in sequence.
@@ -95,14 +91,9 @@ def _start_server(handler_class) -> tuple[HTTPServer, int, threading.Thread]:
     return server, port, thread
 
 
-# ---------------------------------------------------------------------------
-# MockBackend tests
-# ---------------------------------------------------------------------------
-
-
 class TestMockBackend:
     def test_returns_scripted_responses(self):
-        """Mock returns scripted: 3 scripted responses returned in order."""
+        """Return scripted responses in order."""
         backend = MockBackend(["alpha", "beta", "gamma"])
         assert backend.generate("p1") == "alpha"
         assert backend.generate("p2", system="s2") == "beta"
@@ -116,21 +107,16 @@ class TestMockBackend:
         assert backend.calls == [("hello", "sys"), ("world", "")]
 
     def test_exhausted_raises_stopiteration(self):
-        """Mock exhausted: call beyond scripted list raises StopIteration."""
+        """Raise StopIteration after the last scripted response."""
         backend = MockBackend(["only_one"])
         backend.generate("p1")
         with pytest.raises(StopIteration):
             backend.generate("p2")
 
     def test_is_llm_backend_subclass(self):
-        """MockBackend is a proper LLMBackend subclass."""
+        """MockBackend implements the backend interface."""
         assert issubclass(MockBackend, LLMBackend)
         assert isinstance(MockBackend([]), LLMBackend)
-
-
-# ---------------------------------------------------------------------------
-# ClaudeCLIBackend tests
-# ---------------------------------------------------------------------------
 
 
 class TestClaudeCLIBackend:
@@ -197,11 +183,6 @@ class TestClaudeCLIBackend:
 
     def test_is_llm_backend_subclass(self):
         assert issubclass(ClaudeCLIBackend, LLMBackend)
-
-
-# ---------------------------------------------------------------------------
-# CodexCLIBackend tests
-# ---------------------------------------------------------------------------
 
 
 class TestCodexCLIBackend:
@@ -295,11 +276,6 @@ class TestCodexCLIBackend:
                 backend.generate("prompt")
 
 
-# ---------------------------------------------------------------------------
-# OpenAICompatibleBackend tests
-# ---------------------------------------------------------------------------
-
-
 class TestOpenAICompatibleBackend:
     def test_request_format(self):
         """OpenAI request format: POST to /v1/chat/completions with correct body."""
@@ -330,7 +306,7 @@ class TestOpenAICompatibleBackend:
             server.shutdown()
 
     def test_parses_response(self):
-        """OpenAI parses response: extracts content from choices."""
+        """Read response text from the first choice."""
         handler_cls, _, _ = _make_handler(
             [
                 (200, {"choices": [{"message": {"content": "hello"}}]}, None),
@@ -415,12 +391,7 @@ class TestOpenAICompatibleBackend:
             base_url="http://127.0.0.1:1",  # nothing listening
             model="m",
         )
-        # base_delay=1.0: delays are 1.0, 2.0, 4.0 = 7.0 total
-        # But we need total >= 3s and to stay under the 30s pytest timeout.
-        # Use base_delay=1.0 with max_retries=3 (4 attempts).
-        # Delays: 1.0 + 2.0 = 3.0 at minimum (3 sleeps before 4th attempt fails).
-        # Actually with max_retries=3: attempts 0,1,2,3. Sleeps after 0,1,2 = 1+2+4=7s. Too long.
-        # Use base_delay=0.5: 0.5 + 1.0 + 2.0 = 3.5s >= 3s, under 30s timeout.
+        # Backoff totals 0.5 + 1 + 2 = 3.5s, within the 30s test timeout.
         backend.base_delay = 0.5
         backend.max_retries = 3
 
@@ -473,3 +444,17 @@ class TestOpenAICompatibleBackend:
 
     def test_is_llm_backend_subclass(self):
         assert issubclass(OpenAICompatibleBackend, LLMBackend)
+
+
+@pytest.mark.parametrize("backend_class", [ClaudeCLIBackend, CodexCLIBackend])
+def test_cli_backend_has_a_deadline(backend_class):
+    import subprocess
+
+    backend = backend_class(command="/test/llm", timeout=3)
+    with patch(
+        "netlab.autoresearch.backend.subprocess.run",
+        side_effect=subprocess.TimeoutExpired("llm", 3),
+    ) as run:
+        with pytest.raises(RuntimeError, match="timed out"):
+            backend.generate("prompt")
+    assert run.call_args.kwargs["timeout"] == 3

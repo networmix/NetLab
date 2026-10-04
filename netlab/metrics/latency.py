@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .common import canonical_dc, get_tm_baseline_and_failures
+from .common import get_tm_baseline_and_failures, nonnegative_number
 
 
 @dataclass
@@ -46,18 +46,21 @@ def _baseline_cost_per_pair_tm(baseline: dict) -> Dict[Tuple[str, str], float]:
     """
     per_pair: Dict[Tuple[str, str], float] = {}
     for rec in baseline.get("flows", []) or []:
-        s = canonical_dc(rec.get("source", ""))
-        d = canonical_dc(rec.get("destination", ""))
+        s = rec.get("source", "")
+        d = rec.get("destination", "")
         if not s or not d or s == d:
             continue
         cdist = rec.get("cost_distribution", {}) or {}
         if not cdist:
             continue
-        try:
-            min_cost = min([float(k) for k, v in cdist.items() if float(v) > 0.0])
-            per_pair[(s, d)] = min_cost
-        except Exception:
-            continue
+        costs = [
+            nonnegative_number(k, "cost")
+            for k, v in cdist.items()
+            if nonnegative_number(v, "volume") > 0
+        ]
+        if costs:
+            pair = (s, d)
+            per_pair[pair] = min(per_pair.get(pair, float("inf")), min(costs))
     return per_pair
 
 
@@ -67,40 +70,39 @@ def compute_latency_stretch(
     baseline, fr = get_tm_baseline_and_failures(results, step_name)
 
     base_cost = _baseline_cost_per_pair_tm(baseline)
-    if not base_cost:
-        return LatencyResult(baseline={}, failures={}, derived={})
 
     def _iter_metrics(it: dict) -> Dict[str, float]:
         flows = it.get("flows", []) or []
         vals: list[float] = []
         wts: list[float] = []
         best_wts: float = 0.0
+        delivered = 0.0
         for rec in flows:
-            s = canonical_dc(rec.get("source", ""))
-            d = canonical_dc(rec.get("destination", ""))
+            s = rec.get("source", "")
+            d = rec.get("destination", "")
             if not s or not d or s == d:
                 continue
+            delivered += nonnegative_number(
+                rec.get("placed", sum(rec.get("cost_distribution", {}).values())),
+                "placed",
+            )
             denom = base_cost.get((s, d), None)
             if denom is None or denom <= 0:
                 continue
             cdist = rec.get("cost_distribution", {}) or {}
             for k, v in cdist.items():
-                try:
-                    c = float(k)
-                    vol = float(v)
-                except Exception:
-                    continue
+                c = nonnegative_number(k, "cost")
+                vol = nonnegative_number(v, "volume")
                 if vol <= 0:
                     continue
                 stretch = c / float(denom)
                 vals.append(stretch)
                 wts.append(vol)
-                if abs(c - float(denom)) <= max(
-                    1e-6, 1e-9 * max(abs(c), abs(float(denom)), 1.0)
-                ):
+                if abs(c - float(denom)) <= 1e-9 * max(abs(c), abs(float(denom))):
                     best_wts += vol
+        coverage = sum(wts) / delivered if delivered > 0 else float("nan")
         if not vals:
-            return {}
+            return {"reference_coverage": coverage}
         arr = np.asarray(vals, dtype=float)
         w = np.asarray(wts, dtype=float)
         order = np.argsort(arr)
@@ -133,6 +135,7 @@ def compute_latency_stretch(
         else:
             wes = float("nan")
         return {
+            "reference_coverage": coverage,
             "p50": wq(0.50),
             "p95": wq(0.95),
             "p99": wq(0.99),
@@ -146,21 +149,27 @@ def compute_latency_stretch(
 
     failure_metrics: Dict[str, list[float]] = {
         k: []
-        for k in ("p50", "p95", "p99", "SLO_1_2", "SLO_1_5", "best_path_share", "WES")
+        for k in (
+            "p50",
+            "p95",
+            "p99",
+            "SLO_1_2",
+            "SLO_1_5",
+            "best_path_share",
+            "WES",
+            "reference_coverage",
+        )
     }
     for it in fr:
         m = _iter_metrics(it)
-        if not m:
-            continue
         for k in failure_metrics.keys():
             v = float(m.get(k, float("nan")))
-            if np.isfinite(v):
-                failure_metrics[k].append(v)
+            failure_metrics[k].append(v)
     failures = {}
     for k, series in failure_metrics.items():
         failures[k] = (
             float(np.nanmedian(np.asarray(series, dtype=float)))
-            if series
+            if any(np.isfinite(series))
             else float("nan")
         )
 
@@ -240,7 +249,9 @@ def plot_latency(lt: LatencyResult, save_to: Optional[Path] = None) -> None:
         ]
     )
     tidy = data.melt(id_vars="group", var_name="tail", value_name="stretch").dropna()
-    plt.figure()
+    if tidy.empty:
+        return
+    plt.figure(figsize=(8, 5), dpi=300)
     sns.barplot(data=tidy, x="tail", y="stretch", hue="group")
     plt.axhline(1.0, linestyle="--", linewidth=0.8)
     plt.xlabel("Tail")
@@ -249,5 +260,5 @@ def plot_latency(lt: LatencyResult, save_to: Optional[Path] = None) -> None:
     plt.grid(True, linestyle=":", linewidth=0.5)
     if save_to is not None:
         save_to.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(save_to)
+        plt.savefig(save_to, dpi=300, bbox_inches="tight")
     plt.close()

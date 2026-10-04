@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from metrics.iterops import compute_iter_ops
+from netlab.metrics.iterops import compute_iter_ops
 
 
 def _iterops_fixture() -> dict:

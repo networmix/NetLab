@@ -11,14 +11,13 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
         step_names: Placement steps to analyze. If omitted, select steps with
             baseline and failure flow records.
     """
-    from metrics.bac import compute_bac
-    from metrics.common import flow_occurrence_count
-    from metrics.latency import compute_latency_stretch
-    from metrics.msd import compute_alpha_star
+    from netlab.metrics.bac import compute_bac
+    from netlab.metrics.common import flow_occurrence_count
+    from netlab.metrics.latency import compute_latency_stretch
+    from netlab.metrics.msd import compute_alpha_star
 
     lines: list[str] = ["# Metrics Report\n"]
 
-    # Alpha / MSD
     try:
         alpha = compute_alpha_star(results)
         lines.append("## Capacity")
@@ -27,14 +26,12 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
         if alpha.base_total_demand > 0:
             lines.append(f"- base_total_demand: {alpha.base_total_demand}")
         lines.append("")
-    except (ValueError, KeyError):
-        pass
+    except (ValueError, KeyError) as exc:
+        lines.append(f"- Capacity unavailable: {exc}")
 
-    # Detect TMP steps
     if step_names is None:
         step_names = _detect_tmp_steps(results)
 
-    # BAC + Latency per step
     for step_name in step_names:
         step_data = results.get("steps", {}).get(step_name, {}).get("data", {})
         if not step_data or not step_data.get("flow_results"):
@@ -42,14 +39,12 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
 
         lines.append(f"## {step_name}\n")
 
-        # Iteration counts
         fr = step_data.get("flow_results", [])
         n_patterns = len(fr)
         n_iters = sum(flow_occurrence_count(f) for f in fr)
         lines.append(f"- failure iterations: {n_iters}")
         lines.append(f"- unique patterns: {n_patterns}")
 
-        # Baseline
         baseline = step_data.get("baseline", {})
         if baseline:
             s = baseline.get("summary", {})
@@ -57,7 +52,6 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
                 f"- baseline: placed={s.get('total_placed')}, demand={s.get('total_demand')}, ratio={s.get('overall_ratio')}"
             )
 
-        # Per-pattern summary
         lines.append("- failure patterns:")
         for _idx, f in enumerate(fr):
             s = f.get("summary", {})
@@ -73,7 +67,6 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
                 f"excluded: {excl_str}"
             )
 
-        # BAC
         try:
             bac = compute_bac(results, step_name=step_name)
             lines.append("")
@@ -91,8 +84,8 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
                     lines.append(
                         f"  - {label}: AUC={pf.auc_normalized:.4f}, offered={pf.offered}"
                     )
-        except (ValueError, KeyError):
-            pass
+        except (ValueError, KeyError) as exc:
+            lines.append(f"- Metric unavailable: {exc}")
 
         try:
             lat = compute_latency_stretch(results, step_name)
@@ -112,8 +105,8 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
                     wes_d = lat.derived.get("WES_delta")
                     if wes_d is not None:
                         lines.append(f"- WES delta: {wes_d:.4f}")
-        except (ValueError, KeyError):
-            pass
+        except (ValueError, KeyError) as exc:
+            lines.append(f"- Metric unavailable: {exc}")
 
         lines.append("")
 

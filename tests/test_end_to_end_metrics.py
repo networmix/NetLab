@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from metrics.bac import compute_bac
-from metrics.latency import compute_latency_stretch
-from metrics.matrixdump import compute_pair_matrices
-from metrics.msd import compute_alpha_star
-from metrics.sps import compute_sps
+from netlab.metrics.bac import compute_bac
+from netlab.metrics.latency import compute_latency_stretch
+from netlab.metrics.matrixdump import compute_pair_matrices
+from netlab.metrics.msd import compute_alpha_star
+from netlab.metrics.sps import compute_sps
 
 
 def _make_results_payload() -> dict:

@@ -1,16 +1,9 @@
-"""AutoResearch runner: core experiment loop.
-
-Provides:
-- RunConfig: dataclass holding all runner configuration.
-- AutoResearchRunner: init validation, main loop, subprocess execution,
-  circuit breaker, resume detection, deduplication.
-"""
+"""Generate, simulate, and score research candidates with resumable experiment logs."""
 
 from __future__ import annotations
 
-import json
+import inspect
 import logging
-import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -19,12 +12,19 @@ from typing import Optional
 
 import yaml
 
+from netlab.artifacts import (
+    fingerprint,
+    package_versions,
+    sha256_file,
+    write_text_atomic,
+)
 from netlab.autoresearch.backend import LLMBackend
 from netlab.autoresearch.experiment_log import ExperimentLog, LogEntry
 from netlab.autoresearch.hypothesis import (
     Hypothesis,
     HypothesisMerger,
     HypothesisTemplate,
+    validate_template_workflow,
 )
 from netlab.autoresearch.memory import ResearchMemory
 from netlab.autoresearch.objective import ObjectiveFunction
@@ -35,21 +35,15 @@ from netlab.autoresearch.prompt import (
     parse_hypothesis_response,
     render_memory_section,
 )
-from netlab.runtime import require_executable
+from netlab.simulation import run_simulation
 
 logger = logging.getLogger(__name__)
-
-
-def _default_ngraph_bin() -> str:
-    """Resolve ngraph binary from explicit env, PATH, or current interpreter venv."""
-    return require_executable("ngraph", env_var="NETLAB_NGRAPH_BIN")
 
 
 @dataclass
 class RunConfig:
     project_dir: Path
     backend: LLMBackend
-    ngraph_bin: str | None = None
     max_experiments: int = 50
     timeout_s: int = 600
     seed: int = 42
@@ -61,15 +55,20 @@ class AutoResearchRunner:
     """Runs the autoresearch experiment loop."""
 
     def __init__(self, config: RunConfig) -> None:
+        for name in (
+            "timeout_s",
+            "circuit_breaker_threshold",
+            "reflection_interval",
+        ):
+            if getattr(config, name) < 1:
+                raise ValueError(f"{name} must be positive")
+        if config.max_experiments < 0:
+            raise ValueError("max_experiments must be nonnegative")
         self._config = config
         self._project_dir = Path(config.project_dir)
         self._status = "initialized"
         self._ngraph_call_count = 0
 
-        # Resolve ngraph binary path (overridable for testing)
-        self._ngraph_bin = config.ngraph_bin or _default_ngraph_bin()
-
-        # Load project files
         self._program_md = (self._project_dir / "program.md").read_text(
             encoding="utf-8"
         )
@@ -79,7 +78,6 @@ class AutoResearchRunner:
         )
         self._objective = ObjectiveFunction(self._project_dir / "objective.yml")
 
-        # Detect generation mode from config.yml
         config_path = self._project_dir / "config.yml"
         if config_path.exists():
             with open(config_path) as f:
@@ -96,15 +94,12 @@ class AutoResearchRunner:
             self._generator_function = ""
             self._config_class = ""
 
-        # Mode-specific initialization
         if self._generation_mode == "template":
             base_scenario_path = self._project_dir / "base_scenario.yml"
             self._base_scenario_text = base_scenario_path.read_text(encoding="utf-8")
 
-            # Validate base scenario has MSD workflow step
-            self._validate_workflow()
+            validate_template_workflow(self._base_scenario_text)
 
-            # Create merger and validate placeholders
             self._merger = HypothesisMerger(self._base_scenario_text, self._template)
             placeholder_errors = self._merger.validate_placeholders()
             if placeholder_errors:
@@ -121,52 +116,48 @@ class AutoResearchRunner:
         else:
             raise ValueError(f"Unknown generation_mode: {self._generation_mode}")
 
-        # Set up experiment log and results dir
-        self._log = ExperimentLog(
-            self._project_dir, direction=self._objective.direction
+        self._log = ExperimentLog(self._project_dir)
+        inputs = {
+            name: sha256_file(self._project_dir / name)
+            for name in (
+                "program.md",
+                "hypothesis_template.yml",
+                "objective.yml",
+                "base_scenario.yml",
+                "config.yml",
+            )
+            if (self._project_dir / name).exists()
+        }
+        for name, obj in (
+            ("generator", self._generator_fn),
+            ("config_class", self._config_class_ref),
+        ):
+            if obj is not None:
+                source = inspect.getsourcefile(obj)
+                if source is None:
+                    raise ValueError(f"Cannot fingerprint {name}")
+                inputs[name] = sha256_file(Path(source))
+        identity = fingerprint(
+            {"inputs": inputs, "seed": config.seed, "packages": package_versions()}
         )
+        previous = self._log.config_hash()
+        if previous != identity and (previous is not None or self._log.load()):
+            raise ValueError(
+                "Research inputs or dependencies changed, or the log has no provenance. Use a new project directory."
+            )
+        if previous is None:
+            self._log.write_config_hash(identity)
         self._results_dir = self._project_dir / "results"
         self._results_dir.mkdir(parents=True, exist_ok=True)
 
-        # Research memory
         memory_dir = self._project_dir / "memory"
         memory_dir.mkdir(parents=True, exist_ok=True)
         self._memory = ResearchMemory(memory_dir)
         self._memory.load()
 
-        # State for tracking best
         self._best_entry: Optional[LogEntry] = None
         self._experiments_run = 0
         self._successful_since_reflection = 0
-
-    def _validate_workflow(self) -> None:
-        """Validate that the base scenario has a MaximumSupportedDemand workflow step."""
-        scenario_data = yaml.safe_load(self._base_scenario_text)
-        workflow = scenario_data.get("workflow", [])
-
-        has_msd = False
-        if isinstance(workflow, list):
-            for step in workflow:
-                if (
-                    isinstance(step, dict)
-                    and step.get("type") == "MaximumSupportedDemand"
-                ):
-                    has_msd = True
-                    break
-        elif isinstance(workflow, dict):
-            for _step_name, step_data in workflow.items():
-                if (
-                    isinstance(step_data, dict)
-                    and step_data.get("type") == "MaximumSupportedDemand"
-                ):
-                    has_msd = True
-                    break
-
-        if not has_msd:
-            raise ValueError(
-                "Base scenario must have a MaximumSupportedDemand workflow step. "
-                "No step with type 'MaximumSupportedDemand' found in workflow."
-            )
 
     def _load_generator(self):
         """Dynamically load the generator function from the configured module."""
@@ -190,26 +181,7 @@ class AutoResearchRunner:
         assert self._generator_fn is not None, "generator_fn not loaded"
         params = hypothesis.params
         if self._config_class_ref is not None:
-            import dataclasses
-
-            field_types = {
-                f.name: f.type for f in dataclasses.fields(self._config_class_ref)
-            }
-            config_kwargs = {}
-            for key, value in params.items():
-                # Handle layout tuples encoded as strings (e.g. "16x4_16x4")
-                if key.startswith("layout_") and isinstance(value, str):
-                    parts = value.replace("x", ",").replace("_", ",").split(",")
-                    value = tuple(int(p) for p in parts)
-                # Coerce string enum values to the target field type
-                elif isinstance(value, str) and key in field_types:
-                    ft = field_types[key]
-                    if ft == "int" or ft is int:
-                        value = int(value)
-                    elif ft == "float" or ft is float:
-                        value = float(value)
-                config_kwargs[key] = value
-            config = self._config_class_ref(**config_kwargs)
+            config = self._config_class_ref(**params)
             return self._generator_fn(config)
         else:
             return self._generator_fn(**params)
@@ -220,16 +192,17 @@ class AutoResearchRunner:
 
     @property
     def ngraph_call_count(self) -> int:
-        """Number of actual ngraph subprocess invocations (for testing)."""
+        """Number of uncached simulation attempts."""
         return self._ngraph_call_count
 
     def run(self) -> None:
         """Execute the main research loop."""
         self._status = "running"
 
-        # Load existing history and re-derive best
         entries = self._log.load()
         self._best_entry = self._log.best_entry()
+        if self._best_entry is not None:
+            self._write_best_hypothesis(self._best_entry)
 
         if entries:
             logger.info("Resuming from experiment %d", len(entries))
@@ -241,16 +214,12 @@ class AutoResearchRunner:
             ):
                 self._run_reflection(entries)
 
-        # Build set of known param hashes for deduplication
         seen_hashes: dict[str, LogEntry] = {}
         for entry in entries:
-            if entry.params_hash:
+            if entry.params_hash and entry.status in {"success", "cached"}:
                 seen_hashes[entry.params_hash] = entry
 
-        # Main loop
         while self._experiments_run < self._config.max_experiments:
-            # Check circuit breaker from log tail
-            # Reload entries each iteration to get fresh consecutive_failures count
             consecutive_fails = self._log.consecutive_failures()
             if consecutive_fails >= self._config.circuit_breaker_threshold:
                 self._status = "circuit_breaker"
@@ -260,10 +229,8 @@ class AutoResearchRunner:
                 )
                 return
 
-            # Determine experiment ID
             exp_id = self._log.next_experiment_id()
 
-            # Build prompt
             history_text = self._log.windowed_history()
             system_prompt, user_prompt = build_hypothesis_prompt(
                 program_md=self._program_md,
@@ -273,7 +240,6 @@ class AutoResearchRunner:
                 best=self._best_entry,
             )
 
-            # Call LLM backend
             try:
                 response = self._config.backend.generate(user_prompt, system_prompt)
             except Exception as exc:
@@ -285,7 +251,6 @@ class AutoResearchRunner:
                 self._experiments_run += 1
                 continue
 
-            # Parse response
             try:
                 params = parse_hypothesis_response(response)
             except ParseError as exc:
@@ -297,7 +262,6 @@ class AutoResearchRunner:
                 self._experiments_run += 1
                 continue
 
-            # Create hypothesis and validate
             hypothesis = Hypothesis(params, self._template)
             validation_errors = hypothesis.validate()
             if validation_errors:
@@ -306,26 +270,25 @@ class AutoResearchRunner:
                     status="invalid_hypothesis",
                     error_detail="; ".join(validation_errors),
                     params=params,
-                    params_hash=hypothesis.params_hash,
                 )
                 self._experiments_run += 1
                 continue
 
-            # Deduplication check
-            if hypothesis.params_hash in seen_hashes:
+            if hypothesis.params_hash in seen_hashes and seen_hashes[
+                hypothesis.params_hash
+            ].status in {"success", "cached"}:
                 cached_entry = seen_hashes[hypothesis.params_hash]
                 self._log_cached_entry(exp_id, hypothesis, cached_entry)
                 self._experiments_run += 1
                 continue
 
-            # Generate scenario
             try:
                 if self._generation_mode == "template":
                     assert self._merger is not None
                     scenario_dict = self._merger.merge(hypothesis)
-                else:  # programmatic
+                else:
                     scenario_dict = self._generate_programmatic(hypothesis)
-            except (ValueError, Exception) as exc:
+            except Exception as exc:
                 self._log_error_entry(
                     exp_id=exp_id,
                     status="generation_error",
@@ -336,30 +299,29 @@ class AutoResearchRunner:
                 self._experiments_run += 1
                 continue
 
-            # Inject seed
             scenario_dict["seed"] = self._config.seed
 
-            # Write scenario to results/exp_NNN/scenario.yml
             exp_dir = self._results_dir / exp_id
             exp_dir.mkdir(parents=True, exist_ok=True)
             scenario_path = exp_dir / "scenario.yml"
-            with open(scenario_path, "w") as f:
-                yaml.dump(scenario_dict, f, default_flow_style=False)
+            write_text_atomic(scenario_path, yaml.safe_dump(scenario_dict))
 
-            # Execute ngraph
             start_time = time.monotonic()
-            run_result = self._execute_ngraph(scenario_path, exp_dir)
+            self._ngraph_call_count += 1
+            run_result = run_simulation(scenario_path, timeout=self._config.timeout_s)
             execution_time = time.monotonic() - start_time
 
-            if run_result["status"] != "success":
+            if not run_result.success:
                 entry = LogEntry(
                     exp_id=exp_id,
                     params=hypothesis.params,
                     params_hash=hypothesis.params_hash,
-                    status=run_result["status"],
+                    status="timeout_no_result"
+                    if run_result.status == "timeout"
+                    else "crash",
                     metrics=None,
                     objective_score=None,
-                    error_detail=run_result.get("error_detail"),
+                    error_detail=run_result.error,
                     execution_time_s=round(execution_time, 2),
                     seed=self._config.seed,
                     timestamp=_now_iso(),
@@ -369,30 +331,8 @@ class AutoResearchRunner:
                 self._experiments_run += 1
                 continue
 
-            # Load results and evaluate
-            results_path = exp_dir / "scenario.results.json"
-            try:
-                with open(results_path) as f:
-                    results_data = json.load(f)
-            except (FileNotFoundError, json.JSONDecodeError) as exc:
-                entry = LogEntry(
-                    exp_id=exp_id,
-                    params=hypothesis.params,
-                    params_hash=hypothesis.params_hash,
-                    status="crash",
-                    metrics=None,
-                    objective_score=None,
-                    error_detail=f"Failed to load results: {exc}",
-                    execution_time_s=round(execution_time, 2),
-                    seed=self._config.seed,
-                    timestamp=_now_iso(),
-                )
-                self._log.append(entry)
-                seen_hashes[hypothesis.params_hash] = entry
-                self._experiments_run += 1
-                continue
+            results_data = run_result.results
 
-            # Evaluate with objective function
             try:
                 obj_result = self._objective.evaluate(results_data)
             except (KeyError, ValueError) as exc:
@@ -416,7 +356,7 @@ class AutoResearchRunner:
             # Compute BAC and merge into metrics (non-fatal on failure)
             all_metrics = dict(obj_result.all_metrics)
             try:
-                from metrics.bac import compute_bac
+                from netlab.metrics.bac import compute_bac
 
                 # Try tm_combined first (per-mode workflow), fall back to tm_placement
                 step = (
@@ -425,18 +365,16 @@ class AutoResearchRunner:
                     else "tm_placement"
                 )
                 bac = compute_bac(results_data, step_name=step)
-                all_metrics["bac_auc"] = round(bac.auc_normalized, 6)
-                if 0.99 in bac.quantiles_pct:
-                    all_metrics["bac_p99"] = round(bac.quantiles_pct[0.99], 6)
-            except Exception:
-                pass  # BAC extraction is best-effort
+                all_metrics["bac_auc"] = bac.auc_normalized
+                all_metrics["bw_p99_pct"] = bac.bw_at_probability_pct[99.0]
+            except (ValueError, KeyError) as exc:
+                logger.warning("BAC unavailable: %s", exc)
 
-            # Log success
             entry = LogEntry(
                 exp_id=exp_id,
                 params=hypothesis.params,
                 params_hash=hypothesis.params_hash,
-                status="success",
+                status="success" if obj_result.status == "feasible" else "infeasible",
                 metrics=all_metrics,
                 objective_score=obj_result.score,
                 error_detail=None,
@@ -447,20 +385,11 @@ class AutoResearchRunner:
             self._log.append(entry)
             seen_hashes[hypothesis.params_hash] = entry
 
-            # Update best
             prev_best = self._best_entry
-            if (
+            if obj_result.status == "feasible" and (
                 self._best_entry is None
-                or (
-                    self._objective.direction == "maximize"
-                    and obj_result.score
-                    > (self._best_entry.objective_score or float("-inf"))
-                )
-                or (
-                    self._objective.direction == "minimize"
-                    and obj_result.score
-                    < (self._best_entry.objective_score or float("inf"))
-                )
+                or self._best_entry.objective_score is None
+                or obj_result.score > self._best_entry.objective_score
             ):
                 self._best_entry = entry
                 self._write_best_hypothesis(entry)
@@ -468,7 +397,6 @@ class AutoResearchRunner:
             self._experiments_run += 1
             self._successful_since_reflection += 1
 
-            # Trigger reflection on interval or when a previous best is superseded
             new_best_superseded = prev_best is not None and self._best_entry is entry
             if (
                 new_best_superseded
@@ -483,7 +411,6 @@ class AutoResearchRunner:
     def _run_reflection(self, all_entries: list[LogEntry]) -> None:
         """Run a reflection cycle. Non-fatal: logs warnings on any failure."""
         try:
-            # Use last reflection_interval entries as recent context
             recent = all_entries[-self._config.reflection_interval :]
             system_prompt, user_prompt = build_reflection_prompt(
                 recent_entries=recent,
@@ -498,51 +425,6 @@ class AutoResearchRunner:
             logger.info("Reflection completed successfully")
         except Exception as exc:
             logger.warning("Reflection failed (non-fatal): %s", exc)
-
-    def _execute_ngraph(self, scenario_path: Path, exp_dir: Path) -> dict:
-        """Run ngraph inspect + run as subprocess. Returns status dict."""
-        ngraph_bin = self._ngraph_bin
-
-        # Run inspect first
-        try:
-            inspect_result = subprocess.run(
-                [ngraph_bin, "inspect", str(scenario_path)],
-                capture_output=True,
-                text=True,
-                timeout=self._config.timeout_s,
-            )
-            if inspect_result.returncode != 0:
-                stderr = inspect_result.stderr
-                if stderr and len(stderr) > 500:
-                    stderr = stderr[-500:]
-                return {
-                    "status": "crash",
-                    "error_detail": f"ngraph inspect failed: {stderr}",
-                }
-        except subprocess.TimeoutExpired:
-            return {"status": "timeout_no_result"}
-
-        # Run the scenario
-        self._ngraph_call_count += 1
-        try:
-            run_result = subprocess.run(
-                [ngraph_bin, "run", str(scenario_path), "-o", str(exp_dir)],
-                capture_output=True,
-                text=True,
-                timeout=self._config.timeout_s,
-            )
-            if run_result.returncode != 0:
-                stderr = run_result.stderr
-                if stderr and len(stderr) > 500:
-                    stderr = stderr[-500:]
-                return {
-                    "status": "crash",
-                    "error_detail": f"ngraph run failed: {stderr}",
-                }
-        except subprocess.TimeoutExpired:
-            return {"status": "timeout_no_result"}
-
-        return {"status": "success"}
 
     def _log_error_entry(
         self,
@@ -597,8 +479,9 @@ class AutoResearchRunner:
             "metrics": entry.metrics,
         }
         best_path = self._project_dir / "best_hypothesis.yml"
-        with open(best_path, "w") as f:
-            yaml.dump(best_data, f, default_flow_style=False)
+        write_text_atomic(
+            best_path, yaml.safe_dump(best_data, default_flow_style=False)
+        )
 
 
 def _now_iso() -> str:

@@ -1,179 +1,147 @@
 # NetLab
 
 NetLab builds and runs [NetGraph](https://github.com/networmix/NetGraph) scenarios
-and analyzes their results. It computes bandwidth availability, latency stretch,
-capacity, and cost metrics. Its autoresearch tools use an LLM to propose scenarios
-and interpret simulation results.
+and compares bandwidth availability, latency stretch, capacity, and cost.
+It also supports parameter sweeps and LLM-assisted topology experiments.
 
-## Installation
+## Install
 
-Requires Python 3.11+ and Git. Dependencies: `ngraph >= 0.24.0` (which brings
-`netgraph-core >= 0.10.0`) and [TopoGen](https://github.com/networmix/TopoGen),
-installed from its `main` branch. NetLab is not published on PyPI.
+Requires Python 3.11+ and Git. NetGraph, TopoGen, and the other dependencies are
+installed automatically; exact requirements are in [pyproject.toml](pyproject.toml).
 
 ```bash
 pip install git+https://github.com/networmix/NetLab
 ```
 
-For development:
+For the examples below, clone the repository and install the development environment:
 
 ```bash
-git clone --recurse-submodules https://github.com/networmix/NetLab
+git clone https://github.com/networmix/NetLab
 cd NetLab
 make dev
 source venv/bin/activate
 ```
 
-`make dev` installs the package, development dependencies, and pre-commit hooks.
-The `.claude/skills` submodule provides the NetGraph DSL reference that
-autoresearch uses as its generation prompt; without it a short built-in summary
-is used.
+## Run scenarios
 
-## Scenarios
-
-`netlab run` builds one scenario per TopoGen master configuration and seed, then
-runs `ngraph inspect` and `ngraph run` on each:
+This example uses a small, checked-in graph and needs no external geographic data:
 
 ```bash
-# Build scenarios from topogen_configs/ for two seeds and simulate them
-netlab run --seeds 11 12
-
-# Use another configuration directory and output root
-netlab run topogen_configs_small --seeds 11 12 --scenarios-dir scenarios
-
-# Build the TopoGen masters only
-netlab build topogen_configs_small
+netlab run topogen_configs_small/small_baseline.yml --seeds 11 12 \
+  --graphs-dir tests/data/scenarios/small_baseline/small_baseline \
+  --scenarios-dir scenarios
+netlab metrics scenarios/
 ```
 
-Outputs go under `scenarios/` by default: the master scenario per configuration,
-one `<name>__seed<N>/` directory per seed with the scenario YAML, results JSON,
-and inspect and run logs, plus `_run_summaries/*.tsv` and `provenance.json`.
-`--force` rebuilds and reruns everything; `--force-run` repeats only the NetGraph
-runs. `--topogen-bin` and `--ngraph-bin` select executables; by default NetLab
-uses `$NETLAB_TOPOGEN_BIN` and `$NETLAB_NGRAPH_BIN`, then `PATH`, then the current
-Python environment. The command exits with a nonzero status when any inspect or
-run step fails.
+Scenario YAML and results are saved under
+`scenarios/<master>/<master>__seed<N>/`. Metrics, tables, and figures go into
+`scenarios_metrics/`; start with `project.csv` and `BAC.png`.
 
-`topogen_configs/` holds the full-size masters and `topogen_configs_small/` the
-reduced variants used for the test fixtures. Both select workflow and
-failure-policy templates from `lib/` by name.
-
-## Metrics
+To generate geography from source data, omit `--graphs-dir`:
 
 ```bash
-# Analyze all scenarios in a directory
-netlab metrics scenarios/
+netlab run topogen_configs_small --seeds 11 12
+netlab build topogen_configs_small --seeds 11 12   # Build without simulating
+```
 
-# Compute metrics without plots
+Source datasets and `lib/` are resolved from the working directory. Full-size
+configurations are in `topogen_configs/`; reduced versions are in
+`topogen_configs_small/`. Supplied graphs must be corridor MultiGraphs named
+`<master>_integrated_graph.json`.
+
+- `--build-jobs` and `--run-jobs` set process concurrency.
+- `--build-timeout` sets a deadline per graph/build task; `--run-timeout` defaults
+  to 600 seconds per simulation. Deadlines start when a task begins executing.
+- `--force-run` reruns simulations. `--force` also regenerates geography, unless
+  supplied through `--graphs-dir`.
+
+Scenario assembly runs every time. Cached results are reused only when scenario,
+package, and result hashes match. Failed tasks return a nonzero CLI status;
+independent tasks continue. Each run writes provenance, batch summaries, and
+`.run.json` outcomes alongside its artifacts.
+
+## Analyze results
+
+```bash
 netlab metrics scenarios/ --no-plots
-
-# Select scenarios
 netlab metrics scenarios/ --only small_clos,small_dragonfly
-
-# Print summary tables and render cross-seed figures from existing CSVs
-netlab metrics scenarios/ --summary
-
-# Paired t-tests between two scenarios
+netlab metrics scenarios/ --summary    # Read saved tables and render figures
 netlab test scenarios/ small_baseline small_clos
 ```
 
-Results are written next to the input root as `scenarios_metrics/`. The metrics
-CLI expects workflow steps named `msd_baseline` (`MaximumSupportedDemand`),
-`tm_placement` (`TrafficMatrixPlacement` with flow details), and
-`network_statistics` (`NetworkStats`). `--enable-maxflow` also requires
-`node_to_node_capacity_matrix` (`MaxFlow` with flow details).
+An analysis replaces the complete `scenarios_metrics/` report, including when
+`--only` selects a subset. A failed analysis keeps the previous report.
 
-MSD demand records use `source`, `target`, and `volume`; flow records use `source`,
-`destination`, and `demand`. Each failure pattern requires a positive integer
-`occurrence_count`, which weights that pattern in the metrics.
+The metrics CLI requires workflow steps named `msd_baseline`
+(`MaximumSupportedDemand`), `tm_placement` (`TrafficMatrixPlacement` with flow
+details), and `network_statistics` (`NetworkStats`). `--enable-maxflow` adds
+pairwise capacity analysis and requires `node_to_node_capacity_matrix`.
 
-| Metric | Measures |
-|--------|----------|
-| BAC | Distribution of delivered bandwidth, normalized by baseline delivery; aggregate and per direction. |
-| Latency stretch | Path cost relative to the least-cost path carrying baseline traffic for that pair, weighted by delivered volume. |
-| Alpha (MSD) | Demand multiplier found by the configured capacity search. |
-| SPS | Demand-weighted pairwise max-flow capacity under failures; each pair is evaluated independently. |
-| Cost/power | Capital cost and power per unit of offered or reliable bandwidth. |
-| Iteration statistics | Failure iterations, distinct failure patterns, and execution time. |
+See [metrics.md](metrics.md) for metric definitions, required fields, aggregation
+rules, and output files. BAC describes the sampled failure experiment; latency
+stretch describes delivered traffic relative to its baseline path cost.
 
-See [metrics.md](metrics.md) for formulas, aggregation rules, and output files.
+## Python API
 
-### Python API
+```python
+from pathlib import Path
+from netlab.simulation import run_simulation
+
+if __name__ == "__main__":
+    outcome = run_simulation(Path("scenario.yml"), timeout=60)
+    print(outcome.status, outcome.error)
+```
+
+`run_simulation` uses a local process queue and saves successful results.
+Use `simulate(yaml_text)` for synchronous execution or `inspect_scenario(yaml_text)`
+to validate and count model objects. Scripts using the process queue need the
+`__main__` guard. See [the architecture notes](dev/ARCHITECTURE.md) for batch APIs.
+
+Metrics can also be computed directly from a result dictionary:
 
 ```python
 import json
-
-from metrics.bac import compute_bac
-from metrics.latency import compute_latency_stretch
-from metrics.msd import compute_alpha_star
+from netlab.metrics.bac import compute_bac
+from netlab.metrics.latency import compute_latency_stretch
+from netlab.metrics.msd import compute_alpha_star
 
 with open("scenario.results.json") as f:
     results = json.load(f)
 
-alpha = compute_alpha_star(results)
-bac = compute_bac(results, step_name="tm_placement")
-latency = compute_latency_stretch(results)
-
-print(f"alpha_star: {alpha.alpha_star}")
-print(f"BAC AUC: {bac.auc_normalized:.4f}")
-for direction, flow in bac.per_flow.items():
-    print(f"{direction}: AUC={flow.auc_normalized:.4f}")
-print(f"failure p99 stretch: {latency.failures.get('p99')}")
+print(compute_alpha_star(results).alpha_star)
+print(compute_bac(results, step_name="tm_placement").auc_normalized)
+print(compute_latency_stretch(results).failures.get("p99"))
 ```
 
 ## Autoresearch
 
-The hypothesis API asks an LLM to write a scenario, checks it with `ngraph inspect`,
-and runs the simulation. Failed candidates are retried with error feedback.
-NetLab then computes metrics and asks the LLM to interpret them and suggest the
-next experiment.
-
-```python
-import sys
-from pathlib import Path
-
-from netlab.autoresearch.backend import ClaudeCLIBackend
-from netlab.autoresearch.hypothesis_manager import HypothesisManager
-
-manager = HypothesisManager(
-    project_dir=Path("research"),
-    backend=ClaudeCLIBackend(model="sonnet"),
-    ngraph_bin=str(Path(sys.executable).parent / "ngraph"),
-)
-cycle = manager.run_cycle("""
-Two sites, three backbone planes, 100 Gbps cross-site per plane.
-Internal links: 500 Gbps. Backbone nodes have role: bb.
-Demands: 100 Gbps each direction using ECMP.
-Failures: one random backbone node per iteration, 20 iterations.
-""")
-print(cycle.status)
-if cycle.analysis is not None:
-    print(cycle.analysis.metrics_report)
-    print(cycle.analysis.interpretation)
-    print(cycle.analysis.next_hypothesis)
-```
-
-Cycle artifacts are saved under `research/cycles/`. Successful cycles include the
-scenario, simulation results, metrics report, and interpretation. Each cycle
-records its hypothesis and status: `analyzed`, `analysis_incomplete`,
-`generation_failed`, or `skipped`. `cycle_log.jsonl` records the cycle summaries.
-LLM interpretations and suggested experiments should be assessed against the
-saved metrics and scenario.
-
-The CLI also supports parameterized projects and DC-BB sweeps. Backends are
-`mock` (default), `claude-cli`, `codex-cli`, and `openai`:
+Create a parameterized project, review its templates, then run experiments:
 
 ```bash
 netlab autoresearch init --base-scenario scenario.yml --output project/
 netlab autoresearch run project/ --backend claude-cli --model sonnet
+```
 
+Backends are `mock` (default), `claude-cli`, `codex-cli`, and `openai`.
+`HypothesisManager` also accepts a free-text hypothesis: it generates and simulates
+a scenario, computes metrics, and requests an interpretation and next experiment.
+Cycle artifacts are saved under `<project>/cycles/` for review.
+
+DC-BB layout studies have dedicated commands:
+
+```bash
 netlab autoresearch structural-analysis --output layouts.json
 netlab autoresearch sweep abc1 --output-dir results/
 netlab autoresearch cross-sweep --output-dir results/
 ```
 
-The DC-BB study inputs live in `research_projects/dc-bb-autoresearch/`; standalone
-topology experiments live in `experiments/dc-bb-interconnect/`.
+Research logs are tied to the inputs, seed, and installed dependencies. Use a new
+output directory when these change, and one writer per project. Successful sweep
+entries are skipped on resume; failed entries are retried. Scores rank higher as
+better, and infeasible candidates cannot become best.
+
+Study inputs: [DC-BB research](research_projects/dc-bb-autoresearch/program.md).
+Standalone experiments: [DC-BB interconnect](experiments/dc-bb-interconnect/README.md).
 
 ## Development
 
@@ -182,39 +150,28 @@ make check-ci   # Formatting, lint, type checks, and tests
 make check      # Apply pre-commit fixes, then run tests and lint
 make test       # Tests with coverage
 make lint       # Formatting, lint, and type checks
-make qt         # Tests excluding benchmarks, without coverage
 ```
 
-The test suite includes TopoGen → NetGraph → metrics pipeline checks on a tiny
-cached geography; they need no Census data. [tests/data/README.md](tests/data/README.md)
-describes the checked-in fixtures and how to regenerate them.
+The tests include TopoGen → NetGraph → metrics runs using cached geography.
+See [fixture regeneration](tests/data/README.md) and
+[metric verification](dev/METRICS_VERIFICATION.md).
 
-### Superset workspaces
-
-`.superset/config.json` configures [Superset](https://docs.superset.sh/setup-teardown-scripts)
-workspaces. Setup checks out the skills submodule, creates a `venv`, installs
-`.[dev]`, verifies imports, and copies missing untracked `.env` and `.env.*` files
-from the root checkout. The Run button executes `make check-ci`. There is no dev
-server, so teardown is a no-op and no ports are allocated. The same steps run
-manually:
+Superset setup creates a `venv`, installs `.[dev]`, and copies missing untracked
+`.env` files from the root checkout. Its Run button executes `make check-ci`.
+To run setup manually:
 
 ```bash
 SUPERSET_ROOT_PATH=/path/to/NetLab bash .superset/workspace.sh setup
-bash .superset/workspace.sh check
 ```
 
-### Test local NetGraph sources
+To test local upstream checkouts:
 
 ```bash
 bash dev/check_ngraph_integration.sh ~/ws/NetGraph ~/ws/NetGraph-Core ~/ws/TopoGen
 ```
 
-The script builds a Core wheel, installs the selected NetGraph and TopoGen
-checkouts in a temporary environment, and runs lint, type checks, and the full
-test suite against them. Commits, source fingerprints, dependencies, wheel hashes,
-and results are saved under `build/ngraph-integration/`. The gate fails if a
-checkout changes during the run. Normal installs use the dependencies declared in
-`pyproject.toml`.
+This builds Core and runs all checks in a temporary environment. Source revisions,
+dependency versions, and results are saved under `build/ngraph-integration/`.
 
 ## License
 

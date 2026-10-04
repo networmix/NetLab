@@ -18,9 +18,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from metrics.bac import compute_bac
-from metrics.latency import compute_latency_stretch
-from metrics.msd import compute_alpha_star
+from netlab.metrics.bac import compute_bac
+from netlab.metrics.latency import compute_latency_stretch
+from netlab.metrics.msd import compute_alpha_star
 
 
 @pytest.fixture(scope="module")
@@ -38,17 +38,11 @@ def results(tmp_path_factory) -> dict:
         return json.load(f)
 
 
-# ── Alpha / MSD ──────────────────────────────────────────────────────
-
-
 def test_alpha_star(results: dict) -> None:
     """alpha_star = total_cross_site_capacity / demand = 300/100 = 3.0."""
     alpha = compute_alpha_star(results)
     assert alpha.alpha_star == 3.0
     assert alpha.source == "msd_baseline"
-
-
-# ── BAC: tm_lh_path ─────────────────────────────────────────────────
 
 
 def test_bac_lh_path_offered(results: dict) -> None:
@@ -67,9 +61,6 @@ def test_bac_lh_path_auc(results: dict) -> None:
     """AUC = (1.0 + 5×(200/600) + 5×(400/600)) / 11 = 6/11."""
     bac = compute_bac(results, step_name="tm_lh_path")
     assert np.isclose(bac.auc_normalized, 6.0 / 11.0)
-
-
-# ── Per-direction BAC: tm_lh_path ────────────────────────────────────
 
 
 def test_bac_lh_path_per_flow_keys(results: dict) -> None:
@@ -95,9 +86,6 @@ def test_bac_lh_path_per_flow_symmetric(results: dict) -> None:
         assert np.isclose(pf.auc_normalized, 6.0 / 11.0)
 
 
-# ── BAC: tm_1x_bb ───────────────────────────────────────────────────
-
-
 def test_bac_1x_bb_series_length(results: dict) -> None:
     """1 baseline + 20 failure iterations."""
     bac = compute_bac(results, step_name="tm_1x_bb")
@@ -110,12 +98,9 @@ def test_bac_1x_bb_auc(results: dict) -> None:
     assert np.isclose(bac.auc_normalized, 11.0 / 21.0)
 
 
-# ── Latency: tm_lh_path ─────────────────────────────────────────────
-
-
 @pytest.fixture
 def latency_lh(results: dict) -> dict:
-    """Latency uses hardcoded 'tm_placement' step name — remap."""
+    """Map tm_lh_path to the latency reader's tm_placement step."""
     return {"steps": {"tm_placement": results["steps"]["tm_lh_path"]}}
 
 
@@ -153,9 +138,6 @@ def test_latency_lh_failures_wes(latency_lh: dict) -> None:
     lat = compute_latency_stretch(latency_lh)
     expected = (0.0 + (212.0 / 112.0 - 1.0)) / 2.0
     assert np.isclose(lat.failures["WES"], expected)
-
-
-# ── Latency: tm_1x_bb ───────────────────────────────────────────────
 
 
 @pytest.fixture

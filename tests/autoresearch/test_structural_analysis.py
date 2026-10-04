@@ -17,10 +17,6 @@ from netlab.autoresearch.structural_analysis import (
     save_results,
 )
 
-# ---------------------------------------------------------------------------
-# FailureFingerprint
-# ---------------------------------------------------------------------------
-
 
 class TestFailureFingerprint:
     def test_worst_feasibility_excludes_plane_group(self):
@@ -36,11 +32,6 @@ class TestFailureFingerprint:
     def test_best_retention(self):
         fp = FailureFingerprint(plane_site=0.25, plane_group=1.0)
         assert fp.best_retention == 0.75
-
-
-# ---------------------------------------------------------------------------
-# _compute_failure_fingerprint
-# ---------------------------------------------------------------------------
 
 
 class TestComputeFingerprint:
@@ -99,20 +90,10 @@ class TestComputeFingerprint:
         assert fp.worst_feasibility == 0.0
 
 
-# ---------------------------------------------------------------------------
-# _block_notation
-# ---------------------------------------------------------------------------
-
-
 class TestBlockNotation:
     def test_format(self):
         assert _block_notation(4, 9, 16, 1) == "4rx9c <> 16rx1c"
         assert _block_notation(1, 9, 4, 1) == "1rx9c <> 4rx1c"
-
-
-# ---------------------------------------------------------------------------
-# analyze_side
-# ---------------------------------------------------------------------------
 
 
 class TestAnalyzeSide:
@@ -182,7 +163,6 @@ class TestAnalyzeSide:
             bb_ports=64,
         )
         g64 = [c for c in result.configs if c.g == 64]
-        # Find the 4rx1c BB block config
         best = [c for c in g64 if c.bb_block_rows == 4 and c.bb_block_cols == 1]
         assert len(best) > 0
         for c in best:
@@ -201,12 +181,8 @@ class TestAnalyzeSide:
             bb_ports=36,
         )
         g_values = [c.g for c in result.configs]
-        # Within the list, G should be non-increasing
         for i in range(1, len(g_values)):
-            assert (
-                g_values[i] <= g_values[i - 1] or True
-            )  # sorted by G desc, then layout
-        # First G should be the largest
+            assert g_values[i] <= g_values[i - 1] or True
         assert g_values[0] >= g_values[-1]
 
     def test_k_dc_correct(self):
@@ -222,11 +198,6 @@ class TestAnalyzeSide:
         for c in result.configs:
             expected_k = (64 * 4) // c.g
             assert c.k_dc == expected_k
-
-
-# ---------------------------------------------------------------------------
-# run_structural_analysis
-# ---------------------------------------------------------------------------
 
 
 class TestRunStructuralAnalysis:
@@ -246,11 +217,6 @@ class TestRunStructuralAnalysis:
         assert len(xyz1_feasible) == 0
 
 
-# ---------------------------------------------------------------------------
-# save_results
-# ---------------------------------------------------------------------------
-
-
 class TestSaveResults:
     def test_roundtrip(self):
         results = run_structural_analysis()
@@ -261,7 +227,6 @@ class TestSaveResults:
         assert "abc1" in data
         assert "xyz1" in data
         assert len(data["abc1"]["configs"]) > 0
-        # Check structure
         c = data["abc1"]["configs"][0]
         assert "g" in c
         assert "layout" in c

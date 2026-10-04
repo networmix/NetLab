@@ -52,21 +52,3 @@ def require_executable(
         f"{label} executable not found. Set it explicitly{env_hint}, "
         f"put '{name}' on PATH, or install it in the current Python environment."
     )
-
-
-def resolve_invoke(
-    name: str,
-    *,
-    explicit: str | None = None,
-    env_var: str | None = None,
-    python_module: str | None = None,
-) -> list[str] | None:
-    """Resolve a command invocation, optionally falling back to ``sys.executable -m``."""
-    resolved = resolve_executable(name, explicit=explicit, env_var=env_var)
-    if resolved is not None:
-        return [resolved]
-
-    if python_module and sys.executable:
-        return [sys.executable, "-m", python_module]
-
-    return None

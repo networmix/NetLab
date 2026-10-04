@@ -9,32 +9,13 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-plt.rcParams["figure.dpi"] = 300
-plt.rcParams["savefig.dpi"] = 300
-plt.rcParams["figure.figsize"] = (8.0, 5.0)
-plt.rcParams["savefig.bbox"] = "tight"
-plt.rcParams["axes.titlesize"] = 13
-plt.rcParams["axes.labelsize"] = 11
-plt.rcParams["legend.fontsize"] = 10
-plt.rcParams["xtick.labelsize"] = 9
-plt.rcParams["ytick.labelsize"] = 9
-
-
-def _availability_curve(samples: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    xs = np.asarray(samples, dtype=float)
-    xs = xs[np.isfinite(xs)]
-    if xs.size == 0:
-        return np.array([], dtype=float), np.array([], dtype=float)
-    xs_sorted = np.sort(xs)
-    cdf = np.arange(1, xs_sorted.size + 1, dtype=float) / float(xs_sorted.size)
-    avail = 1.0 - cdf
-    return xs_sorted, avail
+from .distributions import availability_curve, curve_on_grid
 
 
 def _load_seed_latency(seed_dir: Path, metric: str) -> np.ndarray:
@@ -43,7 +24,7 @@ def _load_seed_latency(seed_dir: Path, metric: str) -> np.ndarray:
         return np.array([], dtype=float)
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except (ValueError, TypeError, KeyError, OSError):
         return np.array([], dtype=float)
     per_it = (data.get("per_iteration") or {}).get(metric)
     if not isinstance(per_it, list):
@@ -54,7 +35,7 @@ def _load_seed_latency(seed_dir: Path, metric: str) -> np.ndarray:
             vv = float(v)
             if math.isfinite(vv):
                 vals.append(vv)
-        except Exception:
+        except (ValueError, TypeError, KeyError, OSError):
             continue
     return np.asarray(vals, dtype=float)
 
@@ -76,42 +57,51 @@ def plot_cross_seed_latency(
         scen_dirs = [p for p in scen_dirs if p.name in only_set]
     if not scen_dirs:
         return None
-    sns.set_theme(style="whitegrid")
     fig, ax = plt.subplots()
     palette = sns.color_palette("tab10", n_colors=len(scen_dirs))
 
+    plotted = False
     for i, sd in enumerate(scen_dirs):
         seed_dirs = sorted([p for p in sd.glob("seed*") if p.is_dir()])
         pooled: List[float] = []
-        grid = np.linspace(1.0, 5.0, 401)  # typical latency stretch range
-        seed_curves: List[np.ndarray] = []
+        seed_samples: List[np.ndarray] = []
         for sdir in seed_dirs:
             arr = _load_seed_latency(sdir, metric)
             if arr.size == 0:
                 continue
             pooled.extend(arr.tolist())
-            xs, a = _availability_curve(arr)
-            # interpolate availability on common grid
-            agrid = np.interp(grid, xs, a, left=a[0], right=a[-1])
-            seed_curves.append(agrid)
+            seed_samples.append(arr)
         if not pooled:
             continue
+        plotted = True
         color = palette[i % len(palette)]
-        x_sorted, a_sorted = _availability_curve(np.asarray(pooled, dtype=float))
+        grid = np.unique(np.r_[0.0, pooled, max(5.0, max(pooled))])
+        seed_curves = [
+            curve_on_grid(*availability_curve(samples), grid)
+            for samples in seed_samples
+        ]
+        x_sorted = grid
+        a_sorted = curve_on_grid(
+            *availability_curve(np.asarray(pooled, dtype=float)), grid
+        )
         ax.step(
-            x_sorted, a_sorted, where="post", label=sd.name, color=color, linewidth=2.0
+            x_sorted, a_sorted, where="pre", label=sd.name, color=color, linewidth=2.0
         )
         if len(seed_curves) >= 3:
             mat = np.vstack(seed_curves)
             q25 = np.nanpercentile(mat, 25, axis=0)
             q75 = np.nanpercentile(mat, 75, axis=0)
-            ax.fill_between(grid, q25, q75, color=color, alpha=0.12, linewidth=0)
-        # Overlay per-seed curves lightly to show distribution
+            ax.fill_between(
+                grid, q25, q75, step="pre", color=color, alpha=0.12, linewidth=0
+            )
         for sc in seed_curves:
-            ax.step(grid, sc, where="post", color=color, alpha=0.12, linewidth=0.6)
+            ax.step(grid, sc, where="pre", color=color, alpha=0.12, linewidth=0.6)
 
+    if not plotted:
+        plt.close(fig)
+        return None
     ax.set_xlabel("Latency stretch (× baseline)")
-    ax.set_ylabel("Exceedance probability (stretch > x)")
+    ax.set_ylabel("Exceedance probability (stretch ≥ x)")
     ax.set_ylim(0.0, 1.0)
     ax.legend(title="Scenario", loc="lower right", frameon=True)
     ax.set_title(f"Cross-seed latency exceedance (metric={metric})")
