@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-25
+
+### Changed
+
+- **Dependencies**: Require `ngraph>=0.24.1,<0.25.0` and use TopoGen 0.5.1 to stay on the supported NetGraph API.
+
 ## [0.4.0] - 2026-10-04
 
 ### Changed
