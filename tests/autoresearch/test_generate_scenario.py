@@ -7,9 +7,41 @@ import yaml
 
 from netlab.autoresearch.dcbb_config import DcBbScenarioConfig, validate_config
 from netlab.autoresearch.scenario_generator import (
+    generate_from_parameters,
     generate_scenario,
     generate_scenario_with_validation,
 )
+
+
+@pytest.mark.parametrize("programmatic", [False, True])
+def test_workflow_randomness_follows_run_seed(programmatic):
+    """Both generator entry points honor the scenario's final run seed."""
+    from ngraph.utils.seed_manager import SeedManager
+    from ngraph.workflow.parse import build_workflow_steps
+
+    def resolve(run_seed):
+        if programmatic:
+            scenario = generate_from_parameters()
+            # The runner supplies --seed after generating the hypothesis.
+            scenario["seed"] = run_seed
+        else:
+            scenario = generate_scenario(DcBbScenarioConfig(seed=run_seed))
+        seeds = SeedManager(scenario["seed"])
+        steps = build_workflow_steps(
+            scenario["workflow"],
+            derive_seed=lambda name: seeds.derive_seed("workflow_step", name),
+        )
+        actual = {step.name: step.seed for step in steps}
+        expected = {
+            step.name: seeds.derive_seed("workflow_step", step.name) for step in steps
+        }
+        assert actual == expected
+        return actual
+
+    first = resolve(7)
+    assert resolve(7) == first
+    second = resolve(42)
+    assert all(first[name] != second[name] for name in first)
 
 
 class TestValidateConfig:

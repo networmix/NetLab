@@ -72,6 +72,7 @@ class DcBbExperimentRunner(ExperimentRunner):
             "seeds": [],
             "network": {},
             "alpha_star": None,
+            "alpha_star_by_seed": {},
             "failure_analysis": {},
         }
 
@@ -90,8 +91,7 @@ class DcBbExperimentRunner(ExperimentRunner):
                 self._check_bb_distribution(results, summary)
 
             alpha = extract_alpha_star(results)
-            if alpha:
-                summary["alpha_star"] = alpha
+            summary["alpha_star_by_seed"][str(seed)] = alpha
 
             analysis = analyze_results(results)
             for step_name, stats in analysis.failure_stats.items():
@@ -102,6 +102,13 @@ class DcBbExperimentRunner(ExperimentRunner):
                     }
                 summary["failure_analysis"][step_name]["iterations"] += stats.iterations
                 summary["failure_analysis"][step_name]["ratios"].extend(stats.ratios)
+
+        alphas = [
+            alpha
+            for alpha in summary["alpha_star_by_seed"].values()
+            if alpha is not None
+        ]
+        summary["alpha_star"] = statistics.median(alphas) if alphas else None
 
         for step_name, data in summary["failure_analysis"].items():
             ratios = data["ratios"]
@@ -204,17 +211,19 @@ class DcBbExperimentRunner(ExperimentRunner):
         builder.add_row(
             "Alpha*",
             lambda s: s.get("alpha_star"),
-            formatter=lambda v: f"{v:.2f}" if v else "?",
+            formatter=lambda v: f"{v:.2f}",
         )
 
         alphas = [
-            s.get("alpha_star") for s in summaries.values() if s.get("alpha_star")
+            s["alpha_star"]
+            for s in summaries.values()
+            if s.get("alpha_star") is not None
         ]
-        max_alpha = max(alphas) if alphas else 1
+        max_alpha = max(alphas, default=0)
         builder.add_row(
             "Alpha* %Max",
             lambda s: s.get("alpha_star"),
-            formatter=lambda v: f"{v / max_alpha * 100:.1f}%" if v else "?",
+            formatter=lambda v: f"{v / max_alpha * 100:.1f}%" if max_alpha > 0 else "?",
         )
 
         builder.add_row(

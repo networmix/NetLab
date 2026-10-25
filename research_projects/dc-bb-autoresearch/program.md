@@ -1,120 +1,147 @@
-# DC-BB Interconnect Optimization
+# Data-center-to-backbone interconnect design
 
-## Topology
+Choose how data-center (DC) devices connect to backbone (BB) devices at two
+sites, called ABC1 and XYZ1. Each proposal picks a group count and a layout for
+each site. NetLab builds that network, runs it in NetGraph and reports the result.
+Compare traffic capacity, delivery under failures and the number of ports needed.
+A design is not better just because it has fewer links or a higher normalized score.
 
-Two data centers (ABC1 and XYZ1) connected through a shared 64-plane backbone.
+## The network being modeled
 
-**ABC1 (DCType1):** 576 FADU devices in a 16×36 grid (16 HGRIDs × 36 FADU/HGRID). Up to 16 BB-facing ports per FADU.
+| Part | Grid and devices | Backbone ports per DC device |
+| --- | --- | --- |
+| ABC1 | 16 rows × 36 devices = 576 DC devices, named FADU in the model | At most 16 |
+| XYZ1 | 64 device positions × 24 planes = 1,536 DC devices, named XSW in the model | At most 4 |
+| Backbone at each site | 64 planes × 4 devices = 256 devices | |
 
-**XYZ1 (DCTypeF):** 1,536 XSW devices in a 64×24 grid (64 devices/plane × 24 planes). Up to 4 BB-facing ports per XSW.
+A plane is a set of backbone devices that can fail together. DC-to-backbone links
+carry 400 Gbps. The two backbones are joined plane by plane: every backbone
+device in a plane at ABC1 connects to every device in the same plane at XYZ1, once
+on each of two long-haul paths. That gives `64 × 4 × 4 × 2 = 2,048` long-haul
+links of 800 Gbps.
 
-**Backbone:** 256 BB devices per site (64 planes × 4 devices/plane). Dual long-haul paths (Path_A, Path_B) cross-connect at 800 Gbps per link. Total cross-site: 2,048 links.
+The traffic is 100,000 Gbps from the ABC1 rack switches to XYZ1 and 100,000 Gbps
+back. `alpha_star` multiplies both directions: `alpha_star = 2` means 200,000 Gbps
+each way. The traffic also crosses each site's internal switches, which have their
+own capacities. These values come from `DcBbScenarioConfig` in
+`netlab/autoresearch/dcbb_config.py` and from
+`netlab/autoresearch/scenario_generator.py`.
 
-## Mesh Group Interconnect
+## Divide devices into connection groups
 
-G groups partition both DC and BB grids into equal rectangular blocks. Full mesh within each group. Notation `ArxBc <> CrxDc`: DC block (A rows × B cols) paired with BB block (C rows × D cols).
+Each side divides both its DC grid and its BB grid into `G` rectangular groups.
+Every device belongs to one group. Within a group, every DC device connects to
+every BB device. A DC device therefore has `256 / G` backbone links, and a side
+has `DC devices × 256 / G` DC-to-BB links.
 
-BB block shape controls how connections overlap failure domains: planes, plane groups, and device indices. DC block shape controls which devices share a group.
+For example, ABC1 with `G=16` has `576/16 = 36` DC devices and `256/16 = 16` BB
+devices per group. Each DC device needs 16 BB-facing ports, for
+`576 × 16 = 9,216` DC-to-BB links on that side. With `G=32`, each DC device needs
+8 such ports. The port limits are why ABC1 needs `G` of at least 16 and XYZ1 at
+least 64.
 
-## Design Rules
+A layout string has the form
+`DC_row_groups x DC_column_groups _ BB_row_groups x BB_column_groups`.
+The two products must both equal `G`, and each count must divide its grid
+dimension. These are partition counts, not block sizes. The BB grid has 64 rows,
+one per plane, and 4 columns, one per device position.
 
-For single plane-site, device-index, and BB-device failures:
+For ABC1, `4x4_16x1` at `G=16` divides the DC grid into 4×4 groups of 4×9
+devices. It divides the BB grid into 16×1 groups of 4×4 devices: 4 planes and all
+4 device positions. Matching groups are fully connected. For XYZ1, `16x4_16x4` at
+`G=64` gives DC blocks of 4×6 and BB blocks of 4×1.
 
-1. Every DC device retains at least one BB connection.
-2. Each device retains at least 75% of its BB connections.
-3. Maximize G subject to these rules to reduce port count.
+## Check failure resilience
 
-The structural feasibility check excludes plane-group and long-haul failures.
-Evaluate those separately in simulations; passing the structural check does not
-establish resilience to every failure mode.
+The structural check calculates connection loss from the layout without running
+traffic. It looks at three failures: one plane at one site, one device position
+across a plane group of four consecutive planes, and one BB device. A layout
+passes when, under each of them, both of these hold:
 
-## Reference results
+1. Every DC device keeps at least one BB connection.
+2. Every DC device keeps at least 75% of its BB connections.
 
-These tables are study inputs without saved run provenance. Reproduce the selected
-configurations before using the values to rank designs. The current generator
-runs each configured failure mode separately and combines them with equal weight.
-Record the NetGraph version, seed, iteration count, and policies for new results.
+For ABC1 `4x4_16x1`, a DC device has 16 links to a block of 4 planes × 4 devices.
+Losing one plane removes 4 of them (25%). Losing one device position across the
+plane group also removes 4, and losing one BB device removes 1. The device keeps
+75%, so the layout passes. For ABC1 `8x4_16x2` at `G=32`, the block is 4 planes ×
+2 devices; losing one device position removes 4 of 8 links, so it fails.
 
-Metrics:
+Under these rules, every ABC1 layout with `G=16` passes, and no ABC1 layout with
+`G=32` or `G=64` does. No XYZ1 layout passes. Keeping 75% of at most 4 links
+allows each failure to remove only one link of four, so only `G=64` could pass. A
+4×1 block loses one link to a plane failure but all four to a device-position
+failure; 2×2 and 1×4 blocks lose two or four links to one plane. With `G=128` or
+`G=256`, one BB device already removes half or all of an XSW's links. Compare
+XYZ1 layouts by their simulated delivery.
 
-- **alpha_star**: Demand multiplier found within the configured MSD search bounds.
-- **BAC AUC**: Mean delivered/baseline bandwidth, capped at 1, over baseline and failure samples.
+Prefer the largest `G` that passes, because a larger `G` uses fewer ports. The
+structural rules leave out failures of a whole plane group and of a long-haul
+path. Simulate those. A structural pass does not prove that traffic is delivered
+under every failure mode.
 
-### ABC1 Results (other side fixed at G_xyz1=64)
+## How a proposal is evaluated
 
-| G | k_dc | BB Block | alpha* | BAC AUC | Feasible |
-|---|------|----------|--------|---------|----------|
-| 16 | 16 | 16rx1c | 9.21 | 1.0000 | ✓ |
-| 16 | 16 | 4rx4c | 9.21 | 1.0000 | ✓ |
-| 16 | 16 | 8rx2c | 9.21 | 0.9994 | ✓ |
-| 32 | 8 | 8rx1c | 9.21 | 1.0000 | ✗ |
-| 32 | 8 | 4rx2c | 9.21 | 1.0000 | ✗ |
-| 32 | 8 | 2rx4c | 9.21 | 1.0000 | ✗ |
-| 64 | 4 | 4rx1c | 9.21 | 0.8900 | ✗ |
-| 64 | 4 | 2rx2c | 9.21 | 0.8885 | ✗ |
-| 64 | 4 | 1rx4c | 9.21 | 0.8891 | ✗ |
+NetLab generates the scenario for your parameters, checks it and runs NetGraph.
+The workflow first runs `msd_baseline`, a `MaximumSupportedDemand` search for
+`alpha_star`. It then places the traffic at that multiplier under sampled
+failures: one placement step for each failure mode defined in
+`netlab/autoresearch/dcbb_failures.py`, plus `tm_combined`, whose samples pick one
+of those modes with equal probability. The modes cover long-haul paths, planes,
+plane groups, device positions, one to eight BB devices and random outages of BB
+devices and links. Every step derives its random seed from the run's seed
+(`netlab autoresearch run --seed`), so all proposals in a run use the same seed.
 
-The listed ABC1 cases have alpha 9.21. Their BAC differs by group count: about
-1.0 for G=16/32 and 0.89 for G=64. Check the simulated link utilization before
-attributing the shared alpha to a bottleneck.
+The project's [objective.yml](objective.yml) maximizes `alpha_star` and has no
+constraints. Your score is `alpha_star` alone: the connection-retention rules and
+failure delivery are not part of it, so weigh them yourself. Results that fail to
+generate or validate are reported with their error.
 
-### XYZ1 Results (other side fixed at G_abc1=64)
+`alpha_star` is the demand multiplier found by the bounded MSD search. BAC AUC is
+the mean delivered/baseline ratio, capped at 1, over the baseline and the failure
+samples. Also compare absolute delivered bandwidth: a smaller network can have a
+higher normalized BAC while carrying less traffic. See
+[the metric definitions](../../metrics.md).
 
-| G | k_dc | BB Block | alpha* | BAC AUC | Feasible |
-|---|------|----------|--------|---------|----------|
-| 64 | 4 | 4rx1c | 9.21 | 0.8900 | ✗ |
-| 64 | 4 | 2rx2c | 9.21 | 0.8851 | ✗ |
-| 64 | 4 | 1rx4c | 9.21 | 0.8943 | ✗ |
-| 128 | 2 | 2rx1c | 9.21 | 0.8697 | ✗ |
-| 128 | 2 | 1rx2c | 9.21 | 0.8697 | ✗ |
-| 256 | 1 | 1rx1c | 6.14 | 0.9405 | ✗ |
+## Run comparisons from the command line
 
-In these inputs, XYZ1 G=256 has lower alpha and higher normalized BAC than
-G=64/128. Its DC-BB capacity is 1,536 × 400 Gbps = 614.4 Tbps. Compare absolute
-delivered bandwidth as well as normalized BAC. None of the listed XYZ1 layouts
-passes the connection-retention rules.
+From the NetLab repository root with the development environment active:
 
-### Cross-Side Results (54 combinations, top by BAC)
+```bash
+netlab autoresearch structural-analysis --output layouts.json
+netlab autoresearch sweep abc1 --output-dir results/abc1
+netlab autoresearch cross-sweep --output-dir results/cross
+```
 
-| G_abc1 | BB_abc1 | G_xyz1 | BB_xyz1 | alpha* | BAC AUC |
-|--------|---------|--------|---------|--------|---------|
-| 16/32 | any | 64 | any | 9.21 | 1.0000 |
-| 16/32 | any | 128 | any | 9.21 | 0.9651-0.9660 |
-| 64 | 1rx4c | 256 | 1rx1c | 6.14 | 0.9511 |
-| 16 | 16rx1c | 256 | 1rx1c | 6.14 | 0.9488 |
-| 64 | any | 64 | any | 9.21 | 0.8849-0.8946 |
-| 64 | any | 128 | any | 9.21 | 0.8694-0.8700 |
+`structural-analysis` prints every layout's connection loss for each failure type
+and saves it to `layouts.json`. `sweep abc1` simulates one layout for each distinct
+combination of `G` and BB block shape on ABC1, with XYZ1 held at `G=64` and
+`16x4_16x4`. `sweep xyz1` does the same for XYZ1, with ABC1 held at `G=64` and
+`16x4_16x4`. `cross-sweep` simulates every combination of those ABC1 and XYZ1
+choices. Each entry in `results.jsonl` records `alpha_star`, the BAC AUC of
+`tm_combined` and the BAC of every failure mode. The output directory's
+`sweep.json` records the seed, iteration count and package versions.
 
-## Research Questions
+## Questions to answer
 
-Use fresh simulation results to answer:
+- Which layouts satisfy the connection-retention rules, and how many ports do they need?
+- Do those layouts still deliver the required traffic under plane-group and long-haul failures?
+- Does increasing `G` save ports at an acceptable cost in absolute capacity and delivered bandwidth?
+- How does the block shape change capacity and delivery for the same `G`?
+- How would different failure-mode weights change the ranking?
 
-1. **Deployment recommendation:** Which ABC1 × XYZ1 combination warrants further testing? Consider the tradeoff between port cost (higher G = fewer ports), capacity (alpha), and resilience (BAC).
+## Propose parameters
 
-2. **G=32 on ABC1:** It achieves BAC = 1.0 like G=16 but uses half the BB ports (8 vs 16 per FADU). The structural analysis flags it as infeasible under the connection-retention rules. Is the simulation BAC of 1.0 trustworthy, or is 200 iterations insufficient to reveal the vulnerability?
-
-3. **XYZ1 G=256 vs G=64:** Is the 33% capacity reduction acceptable for the BAC improvement? Under what traffic load assumptions?
-
-4. **DC-side block choice:** For the recommended G values, does the DC-side factorization matter for operational reasons (cabling, traffic locality, failure blast radius)?
-
-5. **Sensitivity to failure weights:** How does the ranking change when the combined policy weights change? Report the weights used and compare per-mode results.
-
-## Parameters
-
-- `g_abc1`: 16, 32, 64
-- `g_xyz1`: 64, 128, 256
-- `layout_abc1`: Grid partition counts; both products must equal `g_abc1`.
-- `layout_xyz1`: Grid partition counts; both products must equal `g_xyz1`.
-
-A layout is `DC_row_groups x DC_column_groups _ BB_row_groups x BB_column_groups`.
-Block dimensions are grid dimensions divided by these group counts.
-
-Return parameter choices as YAML:
+Choose values from the parameter space listed with each request; it comes from
+[hypothesis_template.yml](hypothesis_template.yml). Group counts are integers:
+16, 32 or 64 for ABC1 and 64, 128 or 256 for XYZ1. A layout must match its chosen
+group count. Return the choice as YAML, with the group counts written as plain
+numbers, not quoted strings:
 
 ```yaml
 params:
-  g_abc1: "16"
-  g_xyz1: "64"
+  g_abc1: 16
+  g_xyz1: 64
   layout_abc1: "4x4_16x1"
   layout_xyz1: "16x4_16x4"
 ```

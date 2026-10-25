@@ -9,7 +9,7 @@ workflows:
     - type: NetworkStats
       name: network_statistics
     - type: MaximumSupportedDemand
-      name: msd
+      name: msd_baseline
       demand_set: inter_site
       alpha_start: 1.0
       resolution: 0.01 # MSD search increment.
@@ -19,7 +19,7 @@ workflows:
       demand_set: inter_site
       failure_policy: single_dc_bb_link
       iterations: 1000
-      alpha_from_step: msd
+      alpha_from_step: msd_baseline
       alpha_from_field: data.alpha_star
     # BB-BB link failure (inter-site)
     - type: TrafficMatrixPlacement
@@ -27,7 +27,7 @@ workflows:
       demand_set: inter_site
       failure_policy: single_bb_bb_link
       iterations: 1000
-      alpha_from_step: msd
+      alpha_from_step: msd_baseline
       alpha_from_field: data.alpha_star
     # DC node failure
     - type: TrafficMatrixPlacement
@@ -35,7 +35,7 @@ workflows:
       demand_set: inter_site
       failure_policy: single_dc_node
       iterations: 1000
-      alpha_from_step: msd
+      alpha_from_step: msd_baseline
       alpha_from_field: data.alpha_star
     # BB node failure
     - type: TrafficMatrixPlacement
@@ -43,7 +43,7 @@ workflows:
       demand_set: inter_site
       failure_policy: single_bb_node
       iterations: 1000
-      alpha_from_step: msd
+      alpha_from_step: msd_baseline
       alpha_from_field: data.alpha_star
     # Plane failure (all inter-site links of one plane)
     - type: TrafficMatrixPlacement
@@ -51,7 +51,7 @@ workflows:
       demand_set: inter_site
       failure_policy: single_plane
       iterations: 1000
-      alpha_from_step: msd
+      alpha_from_step: msd_baseline
       alpha_from_field: data.alpha_star
     # DC row failure (all nodes in one DC row at one site)
     - type: TrafficMatrixPlacement
@@ -59,5 +59,5 @@ workflows:
       demand_set: inter_site
       failure_policy: single_dc_row
       iterations: 1000
-      alpha_from_step: msd
+      alpha_from_step: msd_baseline
       alpha_from_field: data.alpha_star
