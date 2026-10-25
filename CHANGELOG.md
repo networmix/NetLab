@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-25
+
 ### Fixed
 
 - **Experiments**: DC-BB `summary.json` and `--compare` report `alpha_star` as the median over seeds, plus `alpha_star_by_seed`; zero shows as `0.00`.
@@ -10,6 +12,7 @@
 
 ### Changed
 
+- **Dependencies**: Use TopoGen 0.5.2 with `ngraph>=0.24.1,<0.25.0`.
 - **BREAKING**: **Experiments**: The DC-BB workflow names its MSD step `msd_baseline`; read `steps.msd_baseline` in its results.
 - **BREAKING**: **Experiments**: Rename the two-plane topology to `dc4x9_bb2x4_bb2x4_dc4x9_two_to_one`, matching its backbone grid.
 - **Docs**: Explain setup, metric calculations and research workflows with self-contained examples and reproducible checks.
