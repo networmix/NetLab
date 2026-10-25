@@ -1,75 +1,97 @@
-# NetLab architecture
+# How NetLab runs work
 
-TopoGen builds geography and scenarios; NetGraph expands and simulates them.
-NetLab calls their Python APIs, schedules work, saves results, and computes metrics.
-CLI handlers pass arguments to these library services.
+TopoGen creates geographic routes and network scenarios. NetGraph runs the
+scenario's analysis steps. NetLab schedules those calls, saves their results
+and turns the results into metrics, tables and figures.
 
-## Execution and caching
+## Worker processes and time limits
 
-`TaskQueue` uses [Pebble](https://pebble.readthedocs.io/en/stable/) with a bounded
-pool of spawned processes. Deadlines start when execution begins. A timed-out
-worker is stopped and replaced, and independent jobs continue. No broker or worker
-service is needed for these local batches.
+`TaskQueue` runs tasks in a local pool of spawned processes using
+[Pebble](https://pebble.readthedocs.io/en/stable/). The pool limits how many tasks
+run at once. No separate worker service is needed.
 
-`SimulationBatch` submits independent scenario files to a caller-managed queue.
-Each simulation loads its scenario once. The parent publishes results after
-success, and cache reuse requires matching scenario, package, and result hashes.
-Editable packages include a source fingerprint. Failed builds invalidate earlier
-scenario and result files.
+A task's time limit starts when it begins executing. If it times out, its worker
+is stopped and replaced. If a worker crashes, the pool replaces it too.
+Other tasks can continue; failed tasks are reported without automatic retries.
 
-`run_pipeline` generates one graph per master, builds each seed, and optionally
-simulates it. Relative datasets and `lib/` resolve from the working directory.
-Supplied geography must use TopoGen's corridor MultiGraph format.
+`SimulationBatch` submits scenario files to a queue managed by its caller.
+Each task loads a scenario once and executes its NetGraph workflow. The parent
+process saves results only after success.
+
+## Pipeline and cache
+
+A master configuration is a TopoGen input file. `run_pipeline` generates or
+loads one geographic graph per master configuration.
+It builds a scenario for each requested seed and can then simulate each scenario.
+Relative datasets and `lib/` definitions are read from the working directory.
 
 ```python
 from pathlib import Path
-from netlab.pipeline import PipelineConfig, discover_configs, run_pipeline
+from netlab.pipeline import PipelineConfig, run_pipeline
 
 if __name__ == "__main__":
     result = run_pipeline(PipelineConfig(
-        masters=discover_configs(Path("topogen_configs_small")),
-        seeds=[11, 12], output_dir=Path("scenarios"),
-        graphs_dir=Path("graphs"), build_jobs=2, run_jobs=2,
+        masters=[Path("topogen_configs_small/small_baseline.yml")],
+        seeds=[11, 12],
+        output_dir=Path("scenarios"),
+        graphs_dir=Path("tests/data/scenarios/small_baseline/small_baseline"),
+        build_jobs=2,
+        run_jobs=2,
     ))
     assert result.success, result.errors
 ```
 
-Failed tasks are reported without automatic retries. Research generation loops
-can explicitly revise failed candidates using the recorded error. Subprocesses
-remain only for external LLM CLI backends.
+Run the example from the repository root. The supplied graph avoids a Census
+download. Its filename prefix must match the master configuration.
 
-## Where to make changes
+A generated graph is reused while the configuration, its data files and the
+package versions are unchanged. Scenario assembly runs on each invocation; when
+the rebuilt scenario differs from the saved one, its old results are removed.
+A saved simulation is reused only when the scenario, package and result hashes
+match. For editable packages, the package record also includes a fingerprint of
+the source files, so source changes invalidate cached work. A failed build
+removes the corresponding saved scenario and results rather than leaving them
+available as valid outputs.
 
-| Area | Modules under `netlab/` |
+## Metric calculation
+
+Metric functions read NetGraph result dictionaries. `metrics/analysis.py`
+validates and analyzes one seed. `metrics/batch.py` groups seeds and creates a
+complete report. That report replaces the destination only when analysis
+succeeds. `metrics/reporting.py` reads saved metric files to produce summaries
+and figures.
+
+A per-seed metric summarizes failure samples for one random seed. A project
+metric usually takes the median of those seed summaries. Pooled curves instead
+use all samples, so seeds with more samples have more weight. Definitions and
+examples are in [metrics.md](../metrics.md).
+
+## Research runs
+
+Research runners use the same simulation service. A project defines inputs,
+parameters, constraints and a score. Its log records input and dependency hashes
+so resumed work uses the same experiment definition. Higher scores rank better;
+a candidate that violates a constraint cannot become best.
+
+Parameter sweeps skip successful entries on resume and retry failed ones.
+Generation loops can propose a revised candidate after a failure, using the
+recorded error. External language-model CLI backends run as subprocesses.
+
+## Where to change the code
+
+Paths in the table are relative to `netlab/`.
+
+| Responsibility | Modules |
 | --- | --- |
-| Task scheduling and results | `tasks.py`, `simulation.py`, `artifacts.py` |
-| TopoGen batches | `topology.py`, `pipeline.py`, `cli.py` |
-| Experiment inputs and runs | `scenario.py`, `experiment.py` |
-| Tables and graph rendering | `comparison.py`, `visualize.py` |
-| Research generation and analysis | `autoresearch/generation_loop.py`, `analysis_loop.py`, `hypothesis_manager.py` |
-| Parameter searches | `autoresearch/hypothesis.py`, `runner.py`, `objective.py`, `sweep.py` |
-| Research history and prompts | `autoresearch/experiment_log.py`, `memory.py`, `prompt.py`, `metrics_report.py` |
-| LLM connections and research CLI | `autoresearch/backend.py`, `cli.py`; executable lookup in `runtime.py` |
-| DC-BB topology model | `autoresearch/dcbb_config.py`, `dcbb_failures.py`, `scenario_generator.py`, `scenario_validation.py`, `structural_analysis.py` |
-| Metric calculations | `metrics/bac.py`, `latency.py`, `msd.py`, `sps.py`, `costpower.py`, `iterops.py`, `matrixdump.py`; failure summaries in `metrics_failure.py` |
-| Metric input and aggregation | `metrics/validation.py`, `common.py`, `analysis.py`, `aggregate.py`, `batch.py`, `seed_data.py` |
-| Statistics and reports | `metrics/distributions.py`, `paired.py`, `comparisons.py`, `summary.py`, `reporting.py`, `plot_*.py` |
+| Queue, simulation and saved outputs | `tasks.py`, `simulation.py`, `artifacts.py` |
+| TopoGen builds and batch execution | `topology.py`, `pipeline.py`, `cli.py` |
+| Experiment inputs | `scenario.py`, `experiment.py` |
+| Metric calculation and validation | `metrics/` |
+| Experiment failure summaries, comparisons and topology rendering | `metrics_failure.py`, `comparison.py`, `visualize.py` |
+| Research loops, scoring and model connections | `autoresearch/` |
+| Data-center-to-backbone model, failure modes and sweeps | `autoresearch/dcbb_config.py`, `scenario_generator.py`, `dcbb_failures.py`, `structural_analysis.py`, `sweep.py` |
 
-Metric functions consume result dictionaries. `analysis.py` validates and analyzes
-one seed; `batch.py` groups seeds and publishes a complete report. `reporting.py`
-reads saved tables and metric files. Shared seed readers and statistical functions
-keep table, plot, and comparison calculations consistent.
-
-Research runners use the same simulation service. Logs bind resumed work to input
-and dependency fingerprints; feasible candidates are ranked by higher scores.
-Only successful sweep entries are skipped on resume.
-
-## Checks
-
-Run `make check-ci` for formatting, lint, type checks, and tests. Execution tests
-cover worker timeouts and crashes, cache invalidation, failed builds, and queued
-TopoGen → NetGraph runs with cached geography. Research tests cover resume,
-parameter validation, and ranking. Rendering tests check component bounds.
-
-For the independent metric experiments and their results, see
-[METRICS_VERIFICATION.md](METRICS_VERIFICATION.md).
+Run `make check-ci` after changes. Tests cover worker timeouts and crashes,
+cache invalidation, failed builds, metric arithmetic and research resume/ranking.
+The [metric verification guide](METRICS_VERIFICATION.md) explains how to run
+small network experiments with independently calculated answers.

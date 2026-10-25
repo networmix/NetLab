@@ -1,52 +1,96 @@
-# DC-BB interconnect experiments
+# Compare data-center-to-backbone connections
 
-Compare connections between data-center (DC) and backbone (BB) devices at two
-sites. DC rows represent spine rows; BB rows represent planes. Matching backbone
-planes connect the sites. Backbone planes have no direct links to one another
-within a site.
+These experiments compare ways to connect data-center (DC) devices to backbone
+(BB) devices at two sites. DC rows represent spine rows. BB rows represent
+backbone planes: groups of devices that can share a failure. Matching planes
+connect the sites; there are no direct links between different planes at one site.
 
-Topology directories are named
-`dc{rows}x{devices}_bb{planes}x{devices}_bb{planes}x{devices}_dc{rows}x{devices}_{pattern}`,
-ordered DC-A, BB-A, BB-B, DC-B. Each directory's `scenario.yml` defines its
-connections and capacities. Use `--list` to see the available configurations.
+Each topology directory contains a `scenario.yml` with its devices, connections
+and link capacities. Directory names list the grids in this order: DC-A, BB-A,
+BB-B, DC-B. `dc4x9` means 4 DC rows of 9 devices, and `bb4x4` means 4 backbone
+planes of 4 devices. For example, `dc4x9_bb4x4_bb4x4_dc4x9_one_to_one` has 36 DC
+and 16 BB devices at each site. The suffix describes how DC rows connect to
+backbone planes.
 
-## Run
+## Run an included topology
 
-From the repository root, with the development environment installed:
+From the repository root, create the development environment with `make dev`.
+Then run:
 
 ```bash
 source venv/bin/activate
 cd experiments/dc-bb-interconnect
 python run.py --list
-
-# Run an included topology with three seeds
 python run.py dc4x9_bb4x4_bb4x4_dc4x9_one_to_one --seeds 42 43 44
+```
 
-# Seed range: 42 through 49
-python run.py dc4x9_bb4x4_bb4x4_dc4x9_one_to_one --seeds 42:50
+The runner adds shared inputs to the topology's `scenario.yml`: hardware
+components from `../_shared/components.yml`, failure policies from `policies/`,
+demands from `demands/` and the workflow that the topology names from
+`workflows/`. Each topology defines its own blueprints. The seed becomes the
+scenario seed, which selects the sampled failures. A range such as `--seeds 42:50`
+includes 42 through 49.
 
-# Write the merged scenario without simulating
+The `failure_analysis` workflow first runs `msd_baseline`, a
+`MaximumSupportedDemand` search for the largest multiplier of the inter-site
+traffic the network can carry. Six placement steps then place that scaled
+traffic under 1,000 sampled failures each. Every sample fails one randomly chosen
+element of the step's type: a DC-to-BB link (`tm_dc_bb_link`), an inter-site
+BB link (`tm_bb_bb_link`), a DC device (`tm_dc_node`), a BB device
+(`tm_bb_node`), all inter-site links of one plane (`tm_plane`) or all devices of
+one DC row at one site (`tm_dc_row`).
+
+To write the merged scenario without running the analysis:
+
+```bash
 python run.py dc4x9_bb4x4_bb4x4_dc4x9_one_to_one --dry-run
+```
 
-# Analyze existing results and compare topologies
+To analyze saved results, compare topologies or draw the network:
+
+```bash
 python run.py --metrics
 python run.py --compare
-
-# Render the topology as SVG; --split stacks disconnected components
 python run.py dc4x9_bb4x4_bb4x4_dc4x9_one_to_one --visualize --split
 ```
 
-Add `--force` to rerun cached simulations. Results are written to
-`results/{topology}/`, with raw NetGraph outputs in `{topology}__seed{N}/` and
-aggregated failure statistics in `summary.json`.
+`--visualize` draws a saved result as `results/<topology>/topology.svg`.
+`--split` also writes `topology_split.svg`, with disconnected components stacked
+so they can be inspected separately. `--force` reruns cached simulations.
 
-## Included patterns
+## Find the results
 
-- `one_to_one`: each DC row attaches to its corresponding BB plane.
-- `full_mesh`: each DC row attaches to every BB plane.
-- `balanced_sparse`, `balanced_dense`, and other named variants: partial
-  connections defined in their scenario files.
+Results are saved under `results/<topology>/` relative to this experiment
+directory. Each `<topology>__seed<N>/` subdirectory holds the merged scenario and
+its NetGraph results. `summary.json` combines the seeds:
 
-The small configurations use 4×9 DC grids and four BB planes per site, except
-`two_to_one`, which has two planes. The larger `one_to_one` case uses a 16×36 DC
-grid and 16×4 backbone per site.
+- `alpha_star_by_seed` lists each seed's MSD multiplier, or `null` when a result
+  has none; `alpha_star` is the median of the available values, zero included.
+- `failure_analysis` gives, for each placement step, the minimum, mean and
+  maximum fraction of the requested traffic that was delivered, over the failure
+  samples of all seeds.
+- `worst_failures` names the steps whose minimum fraction is lowest.
+
+`python run.py --compare` prints these summaries side by side and saves
+`results/comparison.json`. `Alpha* %Max` is each topology's `alpha_star` as a
+percentage of the largest one in the comparison.
+
+Read the fractions together with `alpha_star`. Each topology is loaded to its
+own MSD multiplier, so a topology with a lower `alpha_star` can deliver a larger
+fraction of a smaller load and still carry less traffic. See
+[the metric definitions](../../metrics.md).
+
+## Connection patterns
+
+| Pattern | Connections |
+| --- | --- |
+| `one_to_one` | Each DC row attaches to the corresponding BB plane |
+| `full_mesh` | Each DC row attaches to every BB plane |
+| `two_to_one` | Two DC rows share one BB plane |
+| `balanced_sparse`, `balanced_dense` and named variants | Selected connections listed in that topology's scenario |
+
+Most small examples use 4×9 DC grids and four backbone planes of four devices at
+each site; `dc4x9_bb2x4_bb2x4_dc4x9_two_to_one` has two planes. The larger
+`one_to_one` example uses a 16×36 DC grid and 16 planes of four devices at each
+site. Use `--list` and inspect `scenario.yml` to select the configuration you want
+to compare.

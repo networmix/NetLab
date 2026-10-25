@@ -288,7 +288,6 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
             "type": "MaximumSupportedDemand",
             "name": "msd_baseline",
             "demand_set": "baseline_traffic_matrix",
-            "seed": config.seed,
             "resolution": config.msd_resolution,
         },
     ]
@@ -302,7 +301,6 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
                 "failure_policy": f"fm_{name}",
                 "iterations": config.failure_iterations,
                 "parallelism": 8,
-                "seed": config.seed,
                 "alpha_from_step": "msd_baseline",
                 "alpha_from_field": "data.alpha_star",
             }
@@ -316,7 +314,6 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
             "failure_policy": "fm_combined",
             "iterations": config.failure_iterations,
             "parallelism": 8,
-            "seed": config.seed,
             "alpha_from_step": "msd_baseline",
             "alpha_from_field": "data.alpha_star",
         }
