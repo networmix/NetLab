@@ -85,23 +85,25 @@ under every failure mode.
 NetLab generates the scenario for your parameters, checks it and runs NetGraph.
 The workflow first runs `msd_baseline`, a `MaximumSupportedDemand` search for
 `alpha_star`. It then places the traffic at that multiplier under sampled
-failures: one placement step for each failure mode defined in
+failure draws: one placement step for each failure mode defined in
 `netlab/autoresearch/dcbb_failures.py`, plus `tm_combined`, whose samples pick one
 of those modes with equal probability. The modes cover long-haul paths, planes,
 plane groups, device positions, one to eight BB devices and random outages of BB
 devices and links. Every step derives its random seed from the run's seed
 (`netlab autoresearch run --seed`), so all proposals in a run use the same seed.
 
-The project's [objective.yml](objective.yml) maximizes `alpha_star` and has no
-constraints. Your score is `alpha_star` alone: the connection-retention rules and
-failure delivery are not part of it, so weigh them yourself. Results that fail to
-generate or validate are reported with their error.
+The project's [objective.yml](objective.yml) maximizes `alpha_star`, read from
+`result.alpha_feasible` of the `msd_baseline` step, and has no constraints. Your
+score is `alpha_star` alone: the connection-retention rules and failure delivery
+are not part of it, so weigh them yourself. Results that fail to generate or
+validate are reported with their error. A proposal whose search finds no feasible
+multiplier fails with the reason `none_feasible`; it never scores zero.
 
-`alpha_star` is the demand multiplier found by the bounded MSD search. BAC AUC is
-the mean delivered/baseline ratio, capped at 1, over the baseline and the failure
-samples. Also compare absolute delivered bandwidth: a smaller network can have a
-higher normalized BAC while carrying less traffic. See
-[the metric definitions](../../metrics.md).
+`alpha_star` is the largest demand multiplier the bounded MSD search tested and
+found feasible. BAC AUC is the mean delivered/baseline ratio, capped at 1, over
+the baseline reference and the sampled draws. Also compare absolute delivered
+bandwidth: a smaller network can have a higher normalized BAC while carrying less
+traffic. See [the metric definitions](../../metrics.md).
 
 ## Run comparisons from the command line
 

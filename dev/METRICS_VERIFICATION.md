@@ -35,8 +35,8 @@ The verification network has two routes between the same endpoints:
 | Through node `v` | 3 | 4 |
 
 With both routes available, it carries 8 units. If a link on the first route
-fails, only 3 units can be delivered. The experiment includes one baseline and
-one failure sample, so its bandwidth ratios are `1` and `3/8`. Their mean,
+fails, only 3 units can be delivered. The experiment has one baseline reference
+and one sampled draw, so its bandwidth ratios are `1` and `3/8`. Their mean,
 the capped BAC score, is `(1 + 3/8) / 2 = 0.6875`.
 
 The failure's delivered traffic uses the route of cost 4. The cheapest baseline
@@ -56,6 +56,7 @@ It also checks weighted samples, placement variants and several random seeds.
 
 | Area | Independent check |
 | --- | --- |
+| Whole bandwidth units | Convert exported unit counts with `units_report.q` and compare them with physical capacities derived by hand |
 | Bandwidth at a stated availability | Count samples that meet each threshold, including exact decimal boundaries and repeated samples |
 | Availability curves | Count observations at or above each distinct delivered-bandwidth value |
 | Latency stretch | Expand delivered-volume distributions and use a separate baseline cost for each endpoint pair |
@@ -77,8 +78,8 @@ The CLI tests also check tables and report replacement.
 | `diamond-mask-*.json` | NetGraph results for each failed-link subset |
 | `native-summary.json` | Expected and measured values for the small network |
 | `variant-*.json` | Results for the additional model cases |
-| `disconnected-msd.json` | The expected rejection when no positive demand multiplier is feasible |
-| `multiseed/` | NetGraph results for three capacity variants, each with five seeds |
+| `disconnected-msd.json` | The failed run, with reason `none_feasible`, when no tested demand multiplier is feasible |
+| `multiseed/` | NetGraph results and NetLab run records for three capacity variants, each with five seeds |
 | `multiseed-expected.json` | Independently calculated summaries across seeds |
 | `multiseed_metrics/` | Generated tables and optional figures for those results |
 

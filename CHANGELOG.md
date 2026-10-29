@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING**: **Dependencies**: Require `ngraph>=0.26.0,<0.27` and `netlab-topogen>=0.6.1,<0.7`, which replaces TopoGen.
+- **BREAKING**: **Scenarios**: Workflows use NetGraph 0.26 keys: `alpha_tolerance`, `workers`, `outputs.cost_distribution`, `preset`.
+- **BREAKING**: **TopoGen configs**: Drop `build.tm_sizing.flow_placement`; traffic uses `TE_MAXFLOW_UNLIM` instead of `TE_WCMP_UNLIM`.
+- **BREAKING**: **Input formats**: Read NetGraph 0.26 results: named steps, sampled cases, units of `units_report.q`, MSD `alpha_feasible`.
+- **BREAKING**: **Metrics**: `netlab metrics` requires each result's run record, `<name>.results.run.json`, with every step's wall time.
+- **BREAKING**: **Research**: Objectives read `steps.msd_baseline.result.alpha_feasible.value`; `init` writes that path.
+- **BREAKING**: **Python API**: `compute_iter_ops` and `analyze_one_seed` take the run record; `pair_totals` takes the results, step and case.
+- **Runs**: A run whose MSD search finds no feasible multiplier fails with the reason `none_feasible`.
+- **Metrics**: Bandwidth follows NetGraph 0.26's whole units of `q`, and `random` failure rules draw per matched entity.
+- **Metrics**: TE latency percentiles and shares read NetGraph's marginal cost curve; WES uses each row's mean path cost.
+- **Metrics**: Provenance records NetLab's `commit` (clean checkout or GitHub install) and `dirty`, not its install URL; null if unknown.
+- **Docs**: Explain samples and the baseline reference, bandwidth units, run records and TE latency; examples say when they need network.
+- **Internal**: Regenerate fixtures with run records on the published packages; dev and workspace scripts use `netlab_topogen`.
+
+### Added
+
+- **Runs**: Run records store each step's wall time, measured by NetLab, as `step_durations_sec`; `tm_duration_*` read it.
+
+### Removed
+
+- **Python API**: Remove `expand_flow_results` and `flow_occurrence_count` from `netlab.metrics.common`.
+
 ## [0.5.0] - 2026-10-25
 
 ### Fixed

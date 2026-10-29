@@ -64,11 +64,14 @@ Results are saved under `results/<topology>/` relative to this experiment
 directory. Each `<topology>__seed<N>/` subdirectory holds the merged scenario and
 its NetGraph results. `summary.json` combines the seeds:
 
-- `alpha_star_by_seed` lists each seed's MSD multiplier, or `null` when a result
-  has none; `alpha_star` is the median of the available values, zero included.
+- `alpha_star_by_seed` lists each seed's MSD multiplier, NetGraph's
+  `alpha_feasible`, or `null` when a result has no `msd_baseline` step;
+  `alpha_star` is the median of the available values, zero included. A seed
+  whose search finds no feasible multiplier has no saved result: its run fails
+  with the reason `none_feasible`.
 - `failure_analysis` gives, for each placement step, the minimum, mean and
-  maximum fraction of the requested traffic that was delivered, over the failure
-  samples of all seeds.
+  maximum fraction of the requested traffic that was delivered, over the sampled
+  draws of all seeds.
 - `worst_failures` names the steps whose minimum fraction is lowest.
 
 `python run.py --compare` prints these summaries side by side and saves
