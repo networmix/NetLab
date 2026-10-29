@@ -5,10 +5,10 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+from netlab.results import expand_cases, pair_totals, require_step, sampled_cases
+
 from .common import (
     baseline_demand_map,
-    expand_flow_results,
-    pair_totals,
     require_capacity_pairs,
 )
 
@@ -16,13 +16,17 @@ Pair = Tuple[str, str]
 
 
 def _collect_per_iteration_matrix(results: dict, step_name: str) -> pd.DataFrame:
-    step = results.get("steps", {}).get(step_name, {}) or {}
-    data = step.get("data", {}) or {}
-    fr = expand_flow_results(data.get("flow_results", []) or [])
+    step = require_step(results, step_name)
+    fr = expand_cases(sampled_cases(step))
     by_iter: Dict[str, Dict[str, float]] = {}
     for idx, it in enumerate(fr):
         fid = f"it{idx}"
-        row = {f"{s}→{d}": value for (s, d), value in pair_totals(it, "placed").items()}
+        row = {
+            f"{s}→{d}": value
+            for (s, d), value in pair_totals(
+                results, step, it, "delivered_units"
+            ).items()
+        }
         by_iter[fid] = row
     if not by_iter:
         return pd.DataFrame()

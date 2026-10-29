@@ -4,66 +4,26 @@ import numpy as np
 import pytest
 
 from netlab.metrics.latency import LatencyResult, compute_latency_stretch
+from tests.result_samples import case, exported, placement, row
 
 
 def _latency_results() -> dict:
-    # Baseline: pair A/B has min cost 10 with positive volume; A/C min cost 20.
-    base_flows = [
-        {
-            "source": "metro1/dc1/r1",
-            "destination": "metro1/dc2/r2",
-            "cost_distribution": {"10": 5.0, "15": 0.0},
-        },
-        {
-            "source": "metro1/dc1/r1",
-            "destination": "metro2/dc3/r3",
-            "cost_distribution": {"20": 2.0, "25": 0.0},
-        },
-    ]
-    # Failure 1 increases costs for both pairs; shares include best-path (equal to baseline min)
-    f1_flows = [
-        {
-            "source": "metro1/dc1/r1",
-            "destination": "metro1/dc2/r2",
-            "cost_distribution": {"10": 2.5, "12": 2.5},
-        },
-        {
-            "source": "metro1/dc1/r1",
-            "destination": "metro2/dc3/r3",
-            "cost_distribution": {"20": 1.0, "30": 1.0},
-        },
-    ]
-    # Failure 2 worse for second pair only
-    f2_flows = [
-        {
-            "source": "metro1/dc1/r1",
-            "destination": "metro1/dc2/r2",
-            "cost_distribution": {"10": 5.0},
-        },
-        {
-            "source": "metro1/dc1/r1",
-            "destination": "metro2/dc3/r3",
-            "cost_distribution": {"20": 0.5, "40": 1.5},
-        },
-    ]
-    return {
-        "steps": {
-            "tm_placement": {
-                "metadata": {"iterations": 3, "unique_patterns": 2},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": base_flows,
-                    },
-                    "flow_results": [
-                        {"occurrence_count": 1, "failure_id": "f1", "flows": f1_flows},
-                        {"occurrence_count": 1, "failure_id": "f2", "flows": f2_flows},
-                    ],
-                },
-            }
-        }
-    }
+    def records(a, b):
+        return [
+            row("metro1/dc1/r1", "metro1/dc2/r2", 10, 10, costs=a),
+            row("metro1/dc1/r1", "metro2/dc3/r3", 4, 4, costs=b),
+        ]
+
+    return exported(
+        placement(
+            records({10: 10, 15: 0}, {20: 4, 25: 0}),
+            [
+                case(records({10: 5, 12: 5}, {20: 2, 30: 2})),
+                case(records({10: 10}, {20: 1, 40: 3}), name="f2"),
+            ],
+        ),
+        q=0.5,
+    )
 
 
 def test_compute_latency_stretch_correctness() -> None:
@@ -123,13 +83,13 @@ def test_compute_latency_stretch_correctness() -> None:
 
 def test_latency_requires_baseline_key() -> None:
     res = _latency_results()
-    del res["steps"]["tm_placement"]["data"]["baseline"]
-    with pytest.raises(ValueError, match="baseline dict required"):
+    del res["steps"][0]["result"]["cases"][0]
+    with pytest.raises(ValueError, match="baseline case required"):
         compute_latency_stretch(res)
 
 
-def test_latency_occurrence_count_weighting() -> None:
-    """Verify latency stretch weights by occurrence_count.
+def test_latency_occurrences_weighting() -> None:
+    """Verify latency stretch weights by case occurrences.
 
     Setup:
     - Baseline: pair (m1/d1, m2/d2) with cost 10, volume 5.
@@ -139,44 +99,15 @@ def test_latency_occurrence_count_weighting() -> None:
     Without weighting: median of [2.0, 1.0] = 1.5
     With weighting: median of [2.0]*8 + [1.0]*2 = 2.0 (both middle values in the sorted sample)
     """
-    base_flows = [
-        {
-            "source": "m1/d1/r",
-            "destination": "m2/d2/r",
-            "cost_distribution": {"10": 5.0},
-        },
-    ]
-    f1_flows = [
-        {
-            "source": "m1/d1/r",
-            "destination": "m2/d2/r",
-            "cost_distribution": {"20": 5.0},
-        },
-    ]
-    f2_flows = [
-        {
-            "source": "m1/d1/r",
-            "destination": "m2/d2/r",
-            "cost_distribution": {"10": 5.0},
-        },
-    ]
-    res = {
-        "steps": {
-            "tm_placement": {
-                "metadata": {"iterations": 10, "unique_patterns": 2},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": base_flows,
-                    },
-                    "flow_results": [
-                        {"failure_id": "f1", "occurrence_count": 8, "flows": f1_flows},
-                        {"failure_id": "f2", "occurrence_count": 2, "flows": f2_flows},
-                    ],
-                },
-            }
-        }
-    }
+    baseline = [row("m1/d1/r", "m2/d2/r", 5, 5, costs={10: 5})]
+    res = exported(
+        placement(
+            baseline,
+            [
+                case([row("m1/d1/r", "m2/d2/r", 5, 5, costs={20: 5})], 8),
+                case(baseline, 2, name="f2"),
+            ],
+        )
+    )
     out = compute_latency_stretch(res)
     assert np.isclose(out.failures["p50"], 2.0)

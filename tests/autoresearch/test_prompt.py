@@ -54,7 +54,7 @@ def _make_entry(
     seed: int = 42,
 ) -> LogEntry:
     if params is None:
-        params = {"link_capacity": 400, "flow_policy": "SHORTEST_PATHS_ECMP"}
+        params = {"link_capacity": 400, "preset": "SHORTEST_PATHS_ECMP"}
     return LogEntry(
         exp_id=exp_id,
         params=params,
@@ -103,7 +103,7 @@ class TestPromptStructure:
 
         assert "link_capacity (int)" in user_prompt
         assert "range [100.0, 1000.0]" in user_prompt
-        assert "flow_policy (enum)" in user_prompt
+        assert "preset (enum)" in user_prompt
 
         for i in range(1, 6):
             assert f"exp_{i:03d}" in user_prompt
@@ -256,11 +256,11 @@ class TestParseFencedYaml:
             "```yaml\n"
             "params:\n"
             "  link_capacity: 500\n"
-            "  flow_policy: SHORTEST_PATHS_ECMP\n"
+            "  preset: SHORTEST_PATHS_ECMP\n"
             "```\n"
         )
         result = parse_hypothesis_response(response)
-        assert result == {"link_capacity": 500, "flow_policy": "SHORTEST_PATHS_ECMP"}
+        assert result == {"link_capacity": 500, "preset": "SHORTEST_PATHS_ECMP"}
 
 
 class TestParseRawYaml:

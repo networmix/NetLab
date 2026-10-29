@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from netlab.artifacts import cache_path
+from netlab.results import feasible_alpha, require_step
 from netlab.simulation import (
     SimulationBatch,
     inspect_scenario,
@@ -23,9 +24,9 @@ network:
   nodes: {A: {}, B: {}}
   links: [{source: A, target: B, capacity: 100, cost: 1}]
 demands:
-  tm: [{source: A, target: B, volume: 10, mode: combine, flow_policy: SHORTEST_PATHS_ECMP}]
+  tm: [{source: A, target: B, volume: 10, mode: combine, preset: SHORTEST_PATHS_ECMP}]
 workflow:
-  - {type: MaximumSupportedDemand, name: msd_baseline, demand_set: tm, resolution: 0.1}
+  - {type: MaximumSupportedDemand, name: msd_baseline, demand_set: tm, alpha_tolerance: 0.1}
 """
 
 
@@ -53,9 +54,9 @@ def test_python_api_does_not_invoke_executables(monkeypatch):
     )
     result = simulate(SCENARIO)
     assert result.success
-    assert result.results["steps"]["msd_baseline"]["data"][
-        "alpha_star"
-    ] == pytest.approx(10, abs=0.2)
+    assert feasible_alpha(
+        require_step(result.results, "msd_baseline")
+    ) == pytest.approx(10, abs=0.2)
 
 
 def test_timeout_stops_work_and_queue_recovers(tmp_path):
@@ -91,7 +92,7 @@ def test_cache_checks_inputs_dependencies_and_output(tmp_path):
     scenario.write_text(SCENARIO.replace("capacity: 100", "capacity: 200"))
     assert run_simulation(scenario).status == "success"
     assert (
-        json.loads(results.read_text())["steps"]["msd_baseline"]["data"]["alpha_star"]
+        feasible_alpha(require_step(json.loads(results.read_text()), "msd_baseline"))
         > 19
     )
     with TaskQueue() as queue:
@@ -139,3 +140,171 @@ def test_output_cannot_replace_input(tmp_path):
         with pytest.raises(ValueError, match="paths must differ"):
             SimulationBatch(queue).submit(scenario, results_path=scenario)
     assert scenario.read_text() == SCENARIO
+
+
+@pytest.mark.parametrize("placement", [False, True])
+def test_none_feasible_is_a_failed_run(placement):
+    import yaml
+
+    doc = yaml.safe_load(SCENARIO)
+    doc["workflow"][0]["alpha_min"] = 100
+    doc["workflow"][0]["alpha_start"] = 100
+    if placement:
+        doc["workflow"].append(
+            {
+                "type": "TrafficMatrixPlacement",
+                "name": "tm_placement",
+                "demand_set": "tm",
+                "alpha_from_step": "msd_baseline",
+            }
+        )
+    result = simulate(yaml.safe_dump(doc))
+    assert result.status == "failed"
+    assert "none_feasible" in result.error
+    assert result.results == {}
+    doc["workflow"][0]["alpha_min"] = 0.001
+    doc["workflow"][0]["alpha_start"] = 1
+    assert simulate(yaml.safe_dump(doc)).success
+
+
+def test_step_hook_excludes_preparation_and_native_json_stays_native(monkeypatch):
+    from contextlib import contextmanager
+
+    import netlab.simulation as simulation
+
+    now = 0.0
+    original_prepare, original_run = simulation.prepare, simulation.run
+
+    def prepare(scenario):
+        nonlocal now
+        now += 100
+        return original_prepare(scenario)
+
+    def run(prepared, *, step_hook):
+        @contextmanager
+        def measured(step):
+            nonlocal now
+            with step_hook(step):
+                yield
+                now += {"msd_baseline": 3, "tm_placement": 7}[step.name]
+
+        return original_run(prepared, step_hook=measured)
+
+    monkeypatch.setattr(simulation, "perf_counter", lambda: now)
+    monkeypatch.setattr(simulation, "prepare", prepare)
+    monkeypatch.setattr(simulation, "run", run)
+    outcome = simulate(
+        SCENARIO
+        + "  - {type: TrafficMatrixPlacement, name: tm_placement, demand_set: tm, alpha_from_step: msd_baseline}\n"
+    )
+    assert outcome.success, outcome.error
+    assert outcome.step_durations_sec == {"msd_baseline": 3, "tm_placement": 7}
+    assert outcome.duration_s == 110
+    assert set(outcome.results) == {"metadata", "units_report", "steps"}
+    assert all(
+        "duration" not in key for step in outcome.results["steps"] for key in step
+    )
+
+
+def test_cache_preserves_original_timing_record_and_detects_tampering(tmp_path):
+    from netlab.run_record import run_record_path
+
+    scenario = tmp_path / "scenario.yml"
+    scenario.write_text(SCENARIO)
+    path = scenario.with_suffix(".results.json")
+    first = run_simulation(scenario)
+    record_path = run_record_path(path)
+    original = record_path.read_bytes()
+    cached = run_simulation(scenario)
+    assert cached.status == "cached"
+    assert first.step_durations_sec == cached.step_durations_sec
+    assert first.duration_s == cached.duration_s
+    assert first.inspection == cached.inspection
+    assert first.step_durations_sec["msd_baseline"] > 0
+    assert record_path.read_bytes() == original
+    record = json.loads(original)
+    record["step_durations_sec"]["msd_baseline"] = 1000000
+    record_path.write_text(json.dumps(record))
+    assert run_simulation(scenario).status == "success"
+    assert run_simulation(scenario, force=True).status == "success"
+
+
+@pytest.mark.parametrize("damage", ["missing_file", "missing_step", "bad_json"])
+def test_cache_refuses_missing_timing_and_same_batch_can_retry(tmp_path, damage):
+    from netlab.run_record import run_record_path
+
+    scenario = tmp_path / "scenario.yml"
+    scenario.write_text(SCENARIO)
+    path = scenario.with_suffix(".results.json")
+    assert run_simulation(scenario).success
+    record = run_record_path(path)
+    if damage == "missing_file":
+        record.unlink()
+    elif damage == "missing_step":
+        data = json.loads(record.read_text())
+        data["step_durations_sec"].clear()
+        record.write_text(json.dumps(data))
+    else:
+        record.write_text("{")
+    with TaskQueue() as queue:
+        batch = SimulationBatch(queue)
+        with pytest.raises(ValueError, match="run record|Run record"):
+            batch.submit(scenario)
+        assert batch.submit(scenario, force=True).result().success
+
+
+@pytest.mark.parametrize("fail_at", [1, 2, 3, 4])
+def test_publication_failure_removes_both_artifacts_and_retry_succeeds(
+    tmp_path, monkeypatch, fail_at
+):
+    import netlab.artifacts as artifacts
+    import netlab.simulation as simulation
+    from netlab.run_record import run_record_path
+
+    scenario = tmp_path / "scenario.yml"
+    scenario.write_text(SCENARIO)
+    path = scenario.with_suffix(".results.json")
+    original = artifacts.write_json_atomic
+    calls = 0
+
+    def fail_write(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == fail_at:
+            raise OSError("publication fault")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(simulation, "write_json_atomic", fail_write)
+    monkeypatch.setattr(artifacts, "write_json_atomic", fail_write)
+    with TaskQueue() as queue:
+        job = SimulationBatch(queue).submit(scenario)
+        with pytest.raises(OSError, match="publication fault"):
+            job.result()
+        for item in (
+            path,
+            run_record_path(path),
+            cache_path(path),
+            cache_path(run_record_path(path)),
+        ):
+            assert not item.exists()
+        assert job.result().success
+
+
+def test_sidecar_paths_cannot_overlap_another_job(tmp_path):
+    scenario = tmp_path / "scenario.yml"
+    scenario.write_text(SCENARIO)
+    with TaskQueue() as queue:
+        batch = SimulationBatch(queue)
+        first = batch.submit(scenario, results_path=tmp_path / "output.json")
+        with pytest.raises(ValueError, match="Duplicate simulation output"):
+            batch.submit(scenario, results_path=tmp_path / "output.run.json")
+        assert first.result().success
+
+
+def test_run_record_owns_its_measurement_mapping():
+    outcome = simulate(SCENARIO)
+    assert outcome.success
+    original = outcome.step_durations_sec["msd_baseline"]
+    record = outcome.run_record()
+    record["step_durations_sec"]["msd_baseline"] = original + 1
+    assert outcome.step_durations_sec["msd_baseline"] == original

@@ -3,7 +3,7 @@
 The 10-node topology has asymmetric parallel paths.
 
 Topology: 2 sites, 2 planes, dual LH paths (path_a: 100km/100cap,
-path_b: 200km/50cap). Flow policy: TE_WCMP_UNLIM.
+path_b: 200km/50cap). Flow policy: TE_MAXFLOW_UNLIM.
 
 See tests/data/mini_dcbb.yaml for full topology documentation.
 """
@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,7 @@ import pytest
 from netlab.metrics.bac import compute_bac
 from netlab.metrics.latency import compute_latency_stretch
 from netlab.metrics.msd import compute_alpha_star
+from netlab.results import require_step
 
 
 @pytest.fixture(scope="module")
@@ -52,7 +54,7 @@ def test_bac_lh_path_offered(results: dict) -> None:
 
 
 def test_bac_lh_path_series_length(results: dict) -> None:
-    """1 baseline + 10 failure iterations (expanded by occurrence_count)."""
+    """1 baseline + 10 failure iterations (expanded by case occurrences)."""
     bac = compute_bac(results, step_name="tm_lh_path")
     assert len(bac.series) == 11
 
@@ -101,7 +103,9 @@ def test_bac_1x_bb_auc(results: dict) -> None:
 @pytest.fixture
 def latency_lh(results: dict) -> dict:
     """Map tm_lh_path to the latency reader's tm_placement step."""
-    return {"steps": {"tm_placement": results["steps"]["tm_lh_path"]}}
+    copy = deepcopy(results)
+    require_step(copy, "tm_lh_path")["name"] = "tm_placement"
+    return copy
 
 
 def test_latency_lh_baseline_p50(latency_lh: dict) -> None:
@@ -142,7 +146,9 @@ def test_latency_lh_failures_wes(latency_lh: dict) -> None:
 
 @pytest.fixture
 def latency_bb(results: dict) -> dict:
-    return {"steps": {"tm_placement": results["steps"]["tm_1x_bb"]}}
+    copy = deepcopy(results)
+    require_step(copy, "tm_1x_bb")["name"] = "tm_placement"
+    return copy
 
 
 def test_latency_bb_failures_p50(latency_bb: dict) -> None:

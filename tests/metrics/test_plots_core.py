@@ -184,81 +184,19 @@ def test_plot_functions_save_files(tmp_path: Path) -> None:
 
 
 def test_plot_bac_overlay_saves(tmp_path: Path) -> None:
-    # Synthetic small BAC results to exercise overlay path
-    results = {
-        "workflow": {"tm": {"step_type": "TrafficMatrixPlacement"}},
-        "steps": {
-            "tm": {
-                "metadata": {"iterations": 2, "unique_patterns": 1},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": [
-                            {
-                                "source": "A",
-                                "destination": "B",
-                                "placed": 100.0,
-                                "demand": 100.0,
-                            }
-                        ],
-                    },
-                    "flow_results": [
-                        {
-                            "occurrence_count": 1,
-                            "failure_id": "f1",
-                            "flows": [
-                                {
-                                    "source": "A",
-                                    "destination": "B",
-                                    "placed": 80.0,
-                                    "demand": 100.0,
-                                }
-                            ],
-                        },
-                    ],
-                },
-            }
-        },
-    }
+    from tests.result_samples import case, exported, placement, row
+
+    results = exported(placement([row()], [case([row(delivered=80)])], name="tm"))
     bac_primary = compute_bac(results, step_name="tm", mode="auto")
     # Make an overlay with different values (pretend a different step)
-    results2 = {
-        "workflow": {"tm": {"step_type": "MaxFlow"}},
-        "steps": {
-            "tm": {
-                "metadata": {"iterations": 2, "unique_patterns": 1},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": [
-                            {
-                                "source": "A",
-                                "destination": "B",
-                                "placed": 120.0,
-                                "demand": 120.0,
-                            }
-                        ],
-                    },
-                    "flow_results": [
-                        {
-                            "occurrence_count": 1,
-                            "failure_id": "f1",
-                            "flows": [
-                                {
-                                    "source": "A",
-                                    "destination": "B",
-                                    "placed": 100.0,
-                                    "demand": 120.0,
-                                }
-                            ],
-                        },
-                    ],
-                },
-            }
-        },
-    }
+    results2 = exported(
+        placement(
+            [row(delivered=120, requested=120)],
+            [case([row(delivered=100, requested=120)], capacity=True)],
+            name="tm",
+            capacity=True,
+        )
+    )
     bac_overlay = compute_bac(results2, step_name="tm", mode="auto")
     outp = tmp_path / "bac_overlay.png"
     plot_bac(bac_primary, overlay=bac_overlay, save_to=outp)

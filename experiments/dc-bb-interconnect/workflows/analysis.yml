@@ -12,7 +12,7 @@ workflows:
       name: msd_baseline
       demand_set: inter_site
       alpha_start: 1.0
-      resolution: 0.01 # MSD search increment.
+      alpha_tolerance: 0.01 # MSD search increment.
     # DC-BB link failure (intra-site)
     - type: TrafficMatrixPlacement
       name: tm_dc_bb_link
@@ -20,7 +20,6 @@ workflows:
       failure_policy: single_dc_bb_link
       iterations: 1000
       alpha_from_step: msd_baseline
-      alpha_from_field: data.alpha_star
     # BB-BB link failure (inter-site)
     - type: TrafficMatrixPlacement
       name: tm_bb_bb_link
@@ -28,7 +27,6 @@ workflows:
       failure_policy: single_bb_bb_link
       iterations: 1000
       alpha_from_step: msd_baseline
-      alpha_from_field: data.alpha_star
     # DC node failure
     - type: TrafficMatrixPlacement
       name: tm_dc_node
@@ -36,7 +34,6 @@ workflows:
       failure_policy: single_dc_node
       iterations: 1000
       alpha_from_step: msd_baseline
-      alpha_from_field: data.alpha_star
     # BB node failure
     - type: TrafficMatrixPlacement
       name: tm_bb_node
@@ -44,7 +41,6 @@ workflows:
       failure_policy: single_bb_node
       iterations: 1000
       alpha_from_step: msd_baseline
-      alpha_from_field: data.alpha_star
     # Plane failure (all inter-site links of one plane)
     - type: TrafficMatrixPlacement
       name: tm_plane
@@ -52,7 +48,6 @@ workflows:
       failure_policy: single_plane
       iterations: 1000
       alpha_from_step: msd_baseline
-      alpha_from_field: data.alpha_star
     # DC row failure (all nodes in one DC row at one site)
     - type: TrafficMatrixPlacement
       name: tm_dc_row
@@ -60,4 +55,3 @@ workflows:
       failure_policy: single_dc_row
       iterations: 1000
       alpha_from_step: msd_baseline
-      alpha_from_field: data.alpha_star

@@ -40,7 +40,6 @@ build:
     headroom: 1.3
     alpha_dc_to_pop: 1.2
     beta_intra_pop: 0.8
-    flow_placement: EQUAL_BALANCED
     respect_min_base_capacity: true
 
 components:
@@ -86,7 +85,7 @@ traffic:
   priority_ratios:
     0: 1
   flow_policy_config:
-    0: TE_WCMP_UNLIM
+    0: TE_MAXFLOW_UNLIM
   matrix_name: baseline_traffic_matrix
   hose:
     tilt_exponent: 0.5

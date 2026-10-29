@@ -14,8 +14,10 @@ import sys
 import pytest
 import yaml
 
-from netlab.autoresearch.dcbb_config import DcBbScenarioConfig
 from netlab.autoresearch.scenario_generator import generate_scenario
+from netlab.results import feasible_alpha, require_step, sampled_cases
+from netlab.simulation import inspect_scenario
+from tests.autoresearch.dcbb_samples import SmallDcBbScenarioConfig
 
 
 @pytest.mark.slow
@@ -31,12 +33,9 @@ class TestE2EExecution:
         """
         tmp_path = tmp_path_factory.mktemp("e2e")
 
-        # Reduced config: fewer failure iterations and coarser MSD resolution
-        config = DcBbScenarioConfig(
-            failure_iterations=10,
-            msd_resolution=0.1,
-        )
-        scenario = generate_scenario(config)
+        scenario = generate_scenario(SmallDcBbScenarioConfig())
+        inspection = inspect_scenario(yaml.safe_dump(scenario))
+        assert (inspection.node_count, inspection.link_count) == (19, 28)
 
         scenario_path = tmp_path / "scenario.yml"
         with open(scenario_path, "w") as f:
@@ -98,45 +97,33 @@ class TestE2EExecution:
     @pytest.mark.timeout(600)
     def test_msd_baseline_present(self, scenario_output):
         results, *_ = scenario_output
-        steps = results["steps"]
-        assert "msd_baseline" in steps, (
-            f"No msd_baseline in steps. Found: {list(steps.keys())}"
+        assert (
+            require_step(results, "msd_baseline")["step_type"]
+            == "MaximumSupportedDemand"
         )
 
     @pytest.mark.timeout(600)
     def test_alpha_star_positive(self, scenario_output):
         results, *_ = scenario_output
-        msd_data = results["steps"]["msd_baseline"]["data"]
-        alpha_star = msd_data.get("alpha_star")
-        assert alpha_star is not None, "alpha_star missing from msd_baseline data"
-        assert alpha_star > 0, f"alpha_star={alpha_star}, expected > 0"
+        assert feasible_alpha(require_step(results, "msd_baseline")) > 0
 
     @pytest.mark.timeout(600)
     def test_tm_combined_present(self, scenario_output):
         results, *_ = scenario_output
-        steps = results["steps"]
-        assert "tm_combined" in steps, (
-            f"No tm_combined in steps. Found: {list(steps.keys())}"
+        assert (
+            require_step(results, "tm_combined")["step_type"]
+            == "TrafficMatrixPlacement"
         )
 
     @pytest.mark.timeout(600)
-    def test_tm_combined_has_flow_results(self, scenario_output):
+    def test_tm_combined_has_samples(self, scenario_output):
         results, *_ = scenario_output
-        tm_data = results["steps"]["tm_combined"]["data"]
-        flow_results = tm_data.get("flow_results")
-        assert flow_results is not None, "flow_results missing from tm_combined data"
-        assert len(flow_results) > 0, "flow_results is empty"
+        assert sampled_cases(require_step(results, "tm_combined"))
 
     @pytest.mark.timeout(600)
-    def test_workflow_metadata(self, scenario_output):
+    def test_step_metadata(self, scenario_output):
         results, *_ = scenario_output
-        assert "workflow" in results, (
-            f"No 'workflow' key in results. Keys: {list(results.keys())}"
-        )
-        workflow = results["workflow"]
-        assert "msd_baseline" in workflow, (
-            f"msd_baseline not in workflow metadata. Found: {list(workflow.keys())}"
-        )
-        assert "tm_combined" in workflow, (
-            f"tm_combined not in workflow metadata. Found: {list(workflow.keys())}"
-        )
+        for name in ("msd_baseline", "tm_combined"):
+            step = require_step(results, name)
+            assert step["scenario_seed"] == 42
+            assert isinstance(step["step_seed"], int)

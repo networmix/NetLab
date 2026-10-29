@@ -6,7 +6,15 @@ import statistics
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from netlab.metrics.common import expand_flow_results, nonnegative_number
+from netlab.metrics.common import nonnegative_number
+from netlab.results import (
+    delivery_ratio,
+    expand_cases,
+    feasible_alpha,
+    find_step,
+    placement_steps,
+    sampled_cases,
+)
 
 
 @dataclass
@@ -67,20 +75,12 @@ def extract_failure_ratios(
 ) -> Dict[str, List[float]]:
     """Return occurrence-weighted failure ratios, keyed by placement step name."""
     failure_ratios: Dict[str, List[float]] = {}
-    steps = results.get("steps", {})
-
-    for step_name, step_data in steps.items():
-        if not step_name.startswith(step_prefix):
+    for step in placement_steps(results):
+        if not step["name"].startswith(step_prefix):
             continue
-
-        flow_results = step_data.get("data", {}).get("flow_results", [])
-        if not flow_results:
-            continue
-
-        ratios = [
-            fr["summary"]["overall_ratio"] for fr in expand_flow_results(flow_results)
-        ]
-        failure_ratios[step_name] = ratios
+        samples = expand_cases(sampled_cases(step))
+        if samples:
+            failure_ratios[step["name"]] = [delivery_ratio(case) for case in samples]
 
     return failure_ratios
 
@@ -95,9 +95,9 @@ def compute_failure_stats(
         if not ratios:
             continue
 
-        ratios = [nonnegative_number(value, "overall_ratio") for value in ratios]
+        ratios = [nonnegative_number(value, "delivery ratio") for value in ratios]
         if any(value > 1.0 + 1e-9 for value in ratios):
-            raise ValueError("overall_ratio cannot exceed one")
+            raise ValueError("delivery ratio cannot exceed one")
         stats[step_name] = FailureStats(
             step_name=step_name,
             iterations=len(ratios),
@@ -184,22 +184,16 @@ def extract_alpha_star(
     results: dict, msd_step: str = "msd_baseline"
 ) -> Optional[float]:
     """Read alpha_star from the named MSD step; return None when absent."""
-    steps = results.get("steps", {})
-    msd_data = steps.get(msd_step, {}).get("data", {})
-    value = msd_data.get("alpha_star")
-    return nonnegative_number(value, "alpha_star") if value is not None else None
+    step = find_step(results, msd_step)
+    return feasible_alpha(step) if step is not None else None
 
 
 def extract_network_stats(results: dict) -> Optional[Dict[str, Any]]:
     """Return node count, link count, and total capacity, or None when absent."""
-    steps = results.get("steps", {})
-    net_stats = steps.get("network_statistics", {}).get("data", {})
-
-    if not net_stats:
+    step = find_step(results, "network_statistics")
+    if step is None:
         return None
-
     return {
-        "node_count": net_stats.get("node_count"),
-        "link_count": net_stats.get("link_count"),
-        "total_capacity": net_stats.get("total_capacity"),
+        key: step["result"][key]
+        for key in ("node_count", "link_count", "total_capacity")
     }

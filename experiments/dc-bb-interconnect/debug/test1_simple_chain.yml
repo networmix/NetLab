@@ -44,7 +44,7 @@ demands:
     - source: "SiteA/DC/node/1"
       target: "SiteB/DC/node/1"
       volume: 1000
-      flow_policy: SHORTEST_PATHS_ECMP
+      preset: SHORTEST_PATHS_ECMP
 
 workflow:
   - type: BuildGraph

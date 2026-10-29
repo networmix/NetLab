@@ -5,9 +5,9 @@ params:
     step: 100
     default: 400
     description: "Link capacity in Gbps"
-  flow_policy:
+  preset:
     type: enum
-    values: ["SHORTEST_PATHS_ECMP", "SHORTEST_PATHS_UCMP"]
+    values: ["SHORTEST_PATHS_ECMP"]
     default: "SHORTEST_PATHS_ECMP"
     description: "Flow routing policy"
   demand_volume:

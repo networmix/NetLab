@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 unset PYTHONPATH PYTHONHOME
 if [[ $# -ne 3 ]]; then
-    echo 'Usage: bash dev/check_ngraph_integration.sh /path/to/NetGraph /path/to/NetGraph-Core /path/to/TopoGen' >&2
+    echo 'Usage: bash dev/check_ngraph_integration.sh /path/to/NetGraph /path/to/NetGraph-Core /path/to/NetLab-TopoGen' >&2
     exit 2
 fi
 for source_dir in "$@"; do
@@ -74,7 +74,7 @@ from packaging.requirements import Requirement
 project = tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']
 requirements = project['dependencies'] + project['optional-dependencies']['dev']
 pathlib.Path(sys.argv[1]).write_text('\n'.join(
-    req for req in requirements if Requirement(req).name not in {'ngraph', 'topogen'}
+    req for req in requirements if Requirement(req).name not in {'ngraph', 'netlab-topogen'}
 ) + '\n')
 PY
 python -m pip install -r "$run_dir/requirements.txt" \
@@ -90,15 +90,15 @@ import sys
 import _netgraph_core
 import netlab
 import ngraph
-import topogen
+import netlab_topogen
 
 ngraph_path, core_path, topogen_path, wheel = map(pathlib.Path, sys.argv[1:])
 for name, root in [('NetLab', pathlib.Path.cwd()), ('NetGraph', ngraph_path),
-                   ('Core', core_path), ('TopoGen', topogen_path)]:
+                   ('Core', core_path), ('NetLab-TopoGen', topogen_path)]:
     print(f'{name}: {root}', flush=True)
     subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'], check=True)
     subprocess.run(['git', '-C', str(root), 'status', '--short'], check=True)
-for module, root in [(netlab, pathlib.Path.cwd()), (ngraph, ngraph_path), (topogen, topogen_path)]:
+for module, root in [(netlab, pathlib.Path.cwd()), (ngraph, ngraph_path), (netlab_topogen, topogen_path)]:
     print(f'{module.__name__}: {module.__file__}')
     assert pathlib.Path(module.__file__).resolve().is_relative_to(root)
 print('Python:', sys.version)

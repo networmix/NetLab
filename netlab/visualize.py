@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import networkx as nx
 
 from netlab.artifacts import atomic_path
+from netlab.results import find_step
 
 
 @dataclass
@@ -87,13 +88,12 @@ class GraphVisualizer(ABC):
         with open(results_path) as f:
             results = json.load(f)
 
-        steps = results.get("steps", {})
-        if build_graph_step not in steps:
+        step = find_step(results, build_graph_step)
+        if step is None:
             raise ValueError(
                 f"No {build_graph_step} step in results. Add BuildGraph to workflow."
             )
-
-        graph_data = steps[build_graph_step]["data"]["graph"]
+        graph_data = step["result"]["graph"]
         graph = nx.node_link_graph(graph_data, edges="edges")
 
         return cls(graph, style)

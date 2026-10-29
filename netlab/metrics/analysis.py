@@ -18,6 +18,7 @@ from netlab.metrics.iterops import IterOpsResult, compute_iter_ops
 from netlab.metrics.latency import LatencyResult, compute_latency_stretch, plot_latency
 from netlab.metrics.msd import AlphaResult, compute_alpha_star
 from netlab.metrics.sps import SpsResult, compute_sps
+from netlab.run_record import validate_step_durations
 
 from .validation import (
     _require_steps,
@@ -28,7 +29,12 @@ from .validation import (
 
 
 def analyze_one_seed(
-    results: dict, out_dir: Path, do_plots: bool, *, enable_maxflow: bool = False
+    results: dict,
+    out_dir: Path,
+    do_plots: bool,
+    *,
+    run_record: dict,
+    enable_maxflow: bool = False,
 ) -> Tuple[
     AlphaResult,
     BacResult,
@@ -39,11 +45,12 @@ def analyze_one_seed(
     Optional[SpsResult],
 ]:
     _require_steps(results, enable_maxflow)
-    expected_total_at_alpha = _validate_alpha_and_base_demands(results)
-    _validate_tm_placement_baseline(results, expected_total_at_alpha)
+    _validate_alpha_and_base_demands(results)
+    _validate_tm_placement_baseline(results)
     if enable_maxflow:
         _validate_maxflow_baseline(results)
 
+    validate_step_durations(results, run_record)
     alpha = compute_alpha_star(results)
 
     bac_place = compute_bac(results, step_name="tm_placement", mode="auto")
@@ -54,7 +61,7 @@ def analyze_one_seed(
     )
 
     latency = compute_latency_stretch(results)
-    iterops = compute_iter_ops(results)
+    iterops = compute_iter_ops(results, run_record)
 
     sps_res: Optional[SpsResult] = None
     if enable_maxflow:

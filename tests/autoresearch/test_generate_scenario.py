@@ -164,7 +164,7 @@ class TestGenerateScenarioStructure:
     def test_workflow_steps_no_invalid_keys(self, scenario):
         for step in scenario["workflow"]:
             if step["type"] == "MaximumSupportedDemand":
-                assert "flow_policy" not in step
+                assert "preset" not in step
                 assert "metadata" not in step
             elif step["type"] == "TrafficMatrixPlacement":
                 assert "metadata" not in step

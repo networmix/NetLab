@@ -22,7 +22,7 @@ TEMPLATE_YAML = textwrap.dedent("""\
         step: 100
         default: 500
         description: "Link capacity in Mbps"
-      flow_policy:
+      preset:
         type: enum
         values: ["SHORTEST_PATHS_ECMP", "SHORTEST_PATHS", "MIN_COST"]
         default: "SHORTEST_PATHS_ECMP"
@@ -56,7 +56,7 @@ def template(template_path: Path) -> HypothesisTemplate:
 
 VALID_PARAMS = {
     "link_capacity": 400,
-    "flow_policy": "SHORTEST_PATHS_ECMP",
+    "preset": "SHORTEST_PATHS_ECMP",
     "demand_scale": 2.5,
     "num_paths": 8,
 }
@@ -75,7 +75,7 @@ class TestParseTemplate:
         assert lc.default == 500
         assert lc.description == "Link capacity in Mbps"
 
-        fp = params["flow_policy"]
+        fp = params["preset"]
         assert fp.type == "enum"
         assert fp.values == ["SHORTEST_PATHS_ECMP", "SHORTEST_PATHS", "MIN_COST"]
         assert fp.default == "SHORTEST_PATHS_ECMP"
@@ -138,7 +138,7 @@ class TestRejectMissingParam:
         """Providing only 3 of 4 params produces error naming the missing one."""
         params = {
             "link_capacity": 400,
-            "flow_policy": "SHORTEST_PATHS_ECMP",
+            "preset": "SHORTEST_PATHS_ECMP",
             "demand_scale": 2.5,
             # num_paths is missing
         }
@@ -152,7 +152,7 @@ class TestDeterministicHash:
         """Same params in different dict order produce identical hash."""
         params_a = {
             "link_capacity": 400,
-            "flow_policy": "SHORTEST_PATHS_ECMP",
+            "preset": "SHORTEST_PATHS_ECMP",
             "demand_scale": 2.5,
             "num_paths": 8,
         }
@@ -160,7 +160,7 @@ class TestDeterministicHash:
             "num_paths": 8,
             "demand_scale": 2.5,
             "link_capacity": 400,
-            "flow_policy": "SHORTEST_PATHS_ECMP",
+            "preset": "SHORTEST_PATHS_ECMP",
         }
         h1 = Hypothesis(params_a, template)
         h2 = Hypothesis(params_b, template)
@@ -181,7 +181,7 @@ BASE_SCENARIO = textwrap.dedent("""\
         - name: link_a
           capacity: ${{link_capacity}}
       routing:
-        policy: ${{flow_policy}}
+        policy: ${{preset}}
 """)
 
 
@@ -238,11 +238,11 @@ class TestCrossCheckUnusedParam:
     def test_unused_param(self, template_path: Path) -> None:
         """Template has 'num_paths' etc. but scenario has no placeholder for them."""
         tmpl = HypothesisTemplate(template_path)
-        # Only use link_capacity placeholder; demand_scale, flow_policy, num_paths unused
+        # Only use link_capacity placeholder; demand_scale, preset, num_paths unused
         scenario_text = "cap: ${{link_capacity}}"
         merger = HypothesisMerger(scenario_text, tmpl)
         errors = merger.validate_placeholders()
-        unused_names = {"demand_scale", "flow_policy", "num_paths"}
+        unused_names = {"demand_scale", "preset", "num_paths"}
         for name in unused_names:
             assert any(name in e for e in errors), f"Expected error about {name}"
 
@@ -280,10 +280,10 @@ class TestParamDefDataclass:
 class TestEnumValidation:
     def test_reject_invalid_enum_value(self, template: HypothesisTemplate) -> None:
         """Invalid enum value produces error."""
-        params = {**VALID_PARAMS, "flow_policy": "INVALID_POLICY"}
+        params = {**VALID_PARAMS, "preset": "INVALID_POLICY"}
         h = Hypothesis(params, template)
         errors = h.validate()
-        assert any("flow_policy" in e for e in errors)
+        assert any("preset" in e for e in errors)
         assert any("INVALID_POLICY" in e for e in errors)
 
 

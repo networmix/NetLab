@@ -9,6 +9,8 @@ from typing import Any
 
 import yaml
 
+from netlab.results import feasible_alpha, require_step
+
 
 @dataclass
 class ObjectiveResult:
@@ -142,6 +144,12 @@ def _navigate_dot_path(data: dict, dot_path: str, metric_key: str) -> float:
     parts = dot_path.split(".")
     current: Any = data
     for i, part in enumerate(parts):
+        if i == 1 and parts[0] == "steps":
+            record = require_step(data, part)
+            if record["step_type"] == "MaximumSupportedDemand":
+                feasible_alpha(record)
+            current = record
+            continue
         if not isinstance(current, dict):
             traversed = ".".join(parts[:i])
             raise KeyError(

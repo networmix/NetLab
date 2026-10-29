@@ -1,4 +1,4 @@
-"""Read failure counts and elapsed time from placement results."""
+"""Read placement counts and NetLab-measured step wall time."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from netlab.metrics.common import flow_occurrence_count
+from netlab.results import baseline_case, case_occurrences, require_step, sampled_cases
+from netlab.run_record import step_duration
 
-from .common import nonnegative_number
 from .validation import validate_sample_counts
 
 
@@ -16,16 +16,15 @@ from .validation import validate_sample_counts
 class IterOpsResult:
     """Counts and timing for one seed.
 
-    ``failures_count`` sums pattern occurrence counts; ``total_iterations_count``
-    also includes one baseline. ``per_iter_duration_sec`` divides the recorded
-    step duration by that total, including repeated patterns.
+    ``failures_count`` includes sampled empty draws; ``total_iterations_count``
+    adds one baseline reference. Timings come from the NetLab run record.
     """
 
     failures_count: int
     unique_patterns: int
     total_iterations_count: int
-    total_duration_sec: float = float("nan")
-    per_iter_duration_sec: float = float("nan")
+    total_duration_sec: float
+    per_iter_duration_sec: float
 
     def flat_series(self) -> pd.Series:
         return pd.Series(
@@ -48,39 +47,18 @@ class IterOpsResult:
         }
 
 
-def compute_iter_ops(results: dict) -> IterOpsResult:
-    """Sum failure occurrence counts and read the recorded placement duration."""
-    tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
-    meta = tm_step.get("metadata", {}) or {}
-    data = tm_step.get("data", {}) or {}
-    baseline_it = data.get("baseline")
-    if not isinstance(baseline_it, dict):
-        raise ValueError("tm_placement.data.baseline dict required")
-    fr = data.get("flow_results", []) or []
-    if not isinstance(fr, list):
-        raise ValueError("tm_placement.data.flow_results must be a list")
-
-    validate_sample_counts(tm_step, "tm_placement")
-
-    fail_count = sum(flow_occurrence_count(it) for it in fr)
-    unique_patterns = len(fr)
-    total_count = 1 + fail_count  # baseline + failures
-
-    total_duration = float("nan")
-    dur = meta.get("duration_sec")
-    if dur is not None:
-        total_duration = nonnegative_number(dur, "duration_sec")
-
-    per_iter_duration = (
-        float(total_duration / total_count)
-        if total_count > 0 and pd.notna(total_duration)
-        else float("nan")
-    )
-
+def compute_iter_ops(results: dict, run_record: dict) -> IterOpsResult:
+    """Count sampled draws and the additional baseline reference."""
+    step = require_step(results, "tm_placement")
+    baseline_case(step)
+    validate_sample_counts(step, "tm_placement")
+    samples = sampled_cases(step)
+    fail_count = sum(case_occurrences(case) for case in samples)
+    duration = step_duration(run_record, "tm_placement")
     return IterOpsResult(
-        failures_count=int(fail_count),
-        unique_patterns=int(unique_patterns),
-        total_iterations_count=int(total_count),
-        total_duration_sec=float(total_duration),
-        per_iter_duration_sec=float(per_iter_duration),
+        failures_count=fail_count,
+        unique_patterns=len(samples),
+        total_iterations_count=1 + fail_count,
+        total_duration_sec=duration,
+        per_iter_duration_sec=duration / (1 + fail_count),
     )

@@ -26,6 +26,7 @@ from netlab.metrics_failure import (  # noqa: E402
     extract_alpha_star,
     extract_network_stats,
 )
+from netlab.results import find_step  # noqa: E402
 from netlab.scenario import ScenarioMerger, is_failure_policy  # noqa: E402
 
 
@@ -144,8 +145,8 @@ class DcBbExperimentRunner(ExperimentRunner):
 
     def _check_bb_distribution(self, results: dict, summary: dict) -> None:
         """DC-BB specific: Check if BB link distribution is even."""
-        steps = results.get("steps", {})
-        graph_data = steps.get("build_graph", {}).get("data", {}).get("graph", {})
+        step = find_step(results, "build_graph")
+        graph_data = step["result"]["graph"] if step is not None else {}
 
         if not graph_data:
             return
@@ -284,7 +285,7 @@ class DcBbExperimentRunner(ExperimentRunner):
                 for rf in seed_dir.glob("*.results.json"):
                     with open(rf) as f:
                         results = json.load(f)
-                    if "build_graph" in results.get("steps", {}):
+                    if find_step(results, "build_graph") is not None:
                         results_file = rf
                         break
                 if results_file:

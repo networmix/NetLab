@@ -42,7 +42,7 @@ export PATH="$VIRTUAL_ENV/bin:$PATH"
 if [[ "$mode" == setup ]]; then
     python -m pip install -e '.[dev]'
     python -m pip check
-    python -c 'import netlab, ngraph, netgraph_core, topogen; print("Workspace environment ready")'
+    python -c 'import netlab, ngraph, netgraph_core, netlab_topogen; print("Workspace environment ready")'
 else
     make check-ci
 fi

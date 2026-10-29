@@ -2,12 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+from netlab.results import (
+    EndpointKey,
+    physical_bandwidth,
+    row_endpoints,
+    row_units,
+    rows,
+)
 
 from .common import get_tm_baseline_and_failures, nonnegative_number
 
@@ -15,6 +23,9 @@ from .common import get_tm_baseline_and_failures, nonnegative_number
 @dataclass
 class LatencyResult:
     """Latency stretch summary for a single seed.
+
+    Tails and shares use reported cost bins. For marginal curves WES uses
+    the mean cost per resolved row; delivered-path reports use bin excesses.
 
     Attributes:
         baseline: Volume-weighted tails for the baseline iteration (keys: p50, p95, p99,
@@ -39,27 +50,41 @@ class LatencyResult:
         }
 
 
-def _baseline_cost_per_pair_tm(baseline: dict) -> Dict[Tuple[str, str], float]:
-    """Build per-pair baseline costs from tm_placement baseline iteration.
+def _cost_bins(results: dict, record: dict) -> list[tuple[float, float]]:
+    """Read reported costs and physical delivered volume for either report kind."""
+    report = record.get("cost_distribution")
+    if report is None:
+        return []
+    if report["kind"] == "marginal_curve":
+        cost_field, volume_field = "marginal_cost", "units"
+    elif report["kind"] == "delivered_by_path_cost":
+        cost_field, volume_field = "physical_path_cost", "delivered_units"
+    else:
+        raise ValueError(f"Unknown cost report kind: {report['kind']}")
+    return [
+        (
+            nonnegative_number(bin[cost_field], cost_field),
+            physical_bandwidth(results, bin[volume_field]),
+        )
+        for bin in report["bins"]
+    ]
 
-    For each pair, choose the minimum cost with non-zero volume from cost_distribution.
-    """
-    per_pair: Dict[Tuple[str, str], float] = {}
-    for rec in baseline.get("flows", []) or []:
-        s = rec.get("source", "")
-        d = rec.get("destination", "")
-        if not s or not d or s == d:
+
+def _baseline_cost_per_pair_tm(
+    results: dict, baseline: dict
+) -> dict[EndpointKey, float]:
+    """Minimum positive-volume reported cost for each resolved endpoint set."""
+    per_pair: dict[EndpointKey, float] = {}
+    for record in rows(baseline):
+        pair = row_endpoints(record)
+        if (
+            not pair[0]
+            or not pair[1]
+            or (len(pair[0]) == len(pair[1]) == 1 and pair[0] == pair[1])
+        ):
             continue
-        cdist = rec.get("cost_distribution", {}) or {}
-        if not cdist:
-            continue
-        costs = [
-            nonnegative_number(k, "cost")
-            for k, v in cdist.items()
-            if nonnegative_number(v, "volume") > 0
-        ]
+        costs = [cost for cost, volume in _cost_bins(results, record) if volume > 0]
         if costs:
-            pair = (s, d)
             per_pair[pair] = min(per_pair.get(pair, float("inf")), min(costs))
     return per_pair
 
@@ -69,35 +94,50 @@ def compute_latency_stretch(
 ) -> LatencyResult:
     baseline, fr = get_tm_baseline_and_failures(results, step_name)
 
-    base_cost = _baseline_cost_per_pair_tm(baseline)
+    base_cost = _baseline_cost_per_pair_tm(results, baseline)
 
     def _iter_metrics(it: dict) -> Dict[str, float]:
-        flows = it.get("flows", []) or []
+        flows = rows(it)
         vals: list[float] = []
         wts: list[float] = []
         best_wts: float = 0.0
         delivered = 0.0
+        excess_sum = 0.0
         for rec in flows:
-            s = rec.get("source", "")
-            d = rec.get("destination", "")
-            if not s or not d or s == d:
+            pair = row_endpoints(rec)
+            if (
+                not pair[0]
+                or not pair[1]
+                or (len(pair[0]) == len(pair[1]) == 1 and pair[0] == pair[1])
+            ):
                 continue
-            delivered += nonnegative_number(
-                rec.get("placed", sum(rec.get("cost_distribution", {}).values())),
-                "placed",
+            row_delivered = physical_bandwidth(
+                results, row_units(rec, "delivered_units")
             )
-            denom = base_cost.get((s, d), None)
+            delivered += row_delivered
+            denom = base_cost.get(pair, None)
             if denom is None or denom <= 0:
                 continue
-            cdist = rec.get("cost_distribution", {}) or {}
-            for k, v in cdist.items():
-                c = nonnegative_number(k, "cost")
-                vol = nonnegative_number(v, "volume")
+            marginal = (rec.get("cost_distribution") or {}).get(
+                "kind"
+            ) == "marginal_curve"
+            if marginal and row_delivered > 0:
+                total_cost = rec["result"].get("total_cost")
+                if type(total_cost) is not int or total_cost < 0:
+                    raise ValueError(
+                        "marginal_curve total_cost must be a nonnegative integer"
+                    )
+                # total_cost is cost times whole bandwidth units; q scales its volume.
+                mean_cost = physical_bandwidth(results, total_cost) / row_delivered
+                excess_sum += row_delivered * max(mean_cost / float(denom) - 1.0, 0.0)
+            for c, vol in _cost_bins(results, rec):
                 if vol <= 0:
                     continue
                 stretch = c / float(denom)
                 vals.append(stretch)
                 wts.append(vol)
+                if not marginal:
+                    excess_sum += vol * max(stretch - 1.0, 0.0)
                 if abs(c - float(denom)) <= 1e-9 * max(abs(c), abs(float(denom))):
                     best_wts += vol
         coverage = sum(wts) / delivered if delivered > 0 else float("nan")
@@ -124,16 +164,7 @@ def compute_latency_stretch(
             float((w[(arr <= 1.5)].sum() / total_w)) if total_w > 0 else float("nan")
         )
         best_share = float(best_wts / total_w) if total_w > 0 else float("nan")
-        # Weighted Excess Stretch: E[(stretch-1)+]
-        if total_w > 0:
-            excess_sum = 0.0
-            for i in range(int(len(arr))):
-                excess = arr[i] - 1.0
-                if excess > 0.0:
-                    excess_sum += float(excess * w[i])
-            wes = float(excess_sum / total_w)
-        else:
-            wes = float("nan")
+        wes = float(excess_sum / total_w) if total_w > 0 else float("nan")
         return {
             "reference_coverage": coverage,
             "p50": wq(0.50),

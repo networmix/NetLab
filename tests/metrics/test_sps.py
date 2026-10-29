@@ -3,55 +3,26 @@ from __future__ import annotations
 import numpy as np
 
 from netlab.metrics.sps import SpsResult, compute_sps
+from tests.result_samples import case, exported, placement, row
 
 
 def _sps_fixture() -> dict:
-    # Baseline TM with non-zero demands for two pairs
-    base_tm = [
-        {"source": "A", "destination": "B", "demand": 100.0},
-        {"source": "A", "destination": "C", "demand": 50.0},
-    ]
-    # node_to_node_capacity_matrix per-iteration capacities for exact pairs
-    it0_caps = [
-        {"source": "A", "destination": "B", "placed": 100.0},
-        {"source": "A", "destination": "C", "placed": 50.0},
-    ]  # SPS = 1.0
-    it1_caps = [
-        {"source": "A", "destination": "B", "placed": 50.0},
-        {"source": "A", "destination": "C", "placed": 50.0},
-    ]  # SPS = (min(0.5,1)*100 + min(1,1)*50) / 150 = (50 + 50)/150 = 2/3 ≈ 0.6667
-    it2_caps = [
-        {"source": "A", "destination": "B", "placed": 0.0},
-        {"source": "A", "destination": "C", "placed": 25.0},
-    ]  # SPS = (0 + 0.5*50)/150 = 25/150 = 1/6 ≈ 0.1667
-    return {
-        "steps": {
-            "tm_placement": {
-                "metadata": {"iterations": 1, "unique_patterns": 1},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": base_tm,
-                    },
-                    "flow_results": [],
-                },
-            },
-            "node_to_node_capacity_matrix": {
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": it0_caps,
-                    },
-                    "flow_results": [
-                        {"occurrence_count": 1, "failure_id": "f1", "flows": it1_caps},
-                        {"occurrence_count": 1, "failure_id": "f2", "flows": it2_caps},
-                    ],
-                }
-            },
-        }
-    }
+    def records(a, b):
+        return [row("A", "B", a, 100), row("A", "C", b, 50)]
+
+    return exported(
+        placement(records(100, 50)),
+        placement(
+            records(100, 50),
+            [
+                case(records(50, 50), capacity=True),
+                case(records(0, 25), name="f2", capacity=True),
+            ],
+            name="node_to_node_capacity_matrix",
+            capacity=True,
+        ),
+        q=0.25,
+    )
 
 
 def test_compute_sps_series_and_tails() -> None:
@@ -65,51 +36,26 @@ def test_compute_sps_series_and_tails() -> None:
     assert np.isclose(sps.sps_at_probability[90.0], expected[1])
 
 
-def test_sps_occurrence_count_weighting() -> None:
-    """Verify SPS expands by occurrence_count.
+def test_sps_case_occurrences_weighting() -> None:
+    """Verify SPS expands by case occurrences.
 
-    Setup: 2 unique patterns, one with occurrence_count=3.
+    Setup: 2 unique patterns, one with case occurrences=3.
     - f1 (count=3): SPS = 1.0 (full capacity)
     - f2 (count=1): SPS = 0.5
     Series should have 4 entries: [1.0, 1.0, 1.0, 0.5]
     """
-    res = {
-        "steps": {
-            "tm_placement": {
-                "data": {
-                    "baseline": {
-                        "flows": [
-                            {"source": "A", "destination": "B", "demand": 100.0},
-                        ]
-                    },
-                    "flow_results": [],
-                }
-            },
-            "node_to_node_capacity_matrix": {
-                "data": {
-                    "baseline": {
-                        "flows": [{"source": "A", "destination": "B", "placed": 100}]
-                    },
-                    "flow_results": [
-                        {
-                            "failure_id": "f1",
-                            "occurrence_count": 3,
-                            "flows": [
-                                {"source": "A", "destination": "B", "placed": 100.0}
-                            ],
-                        },
-                        {
-                            "failure_id": "f2",
-                            "occurrence_count": 1,
-                            "flows": [
-                                {"source": "A", "destination": "B", "placed": 50.0}
-                            ],
-                        },
-                    ],
-                }
-            },
-        }
-    }
+    res = exported(
+        placement([row()]),
+        placement(
+            [row()],
+            [
+                case([row()], 3, capacity=True),
+                case([row(delivered=50)], 1, name="f2", capacity=True),
+            ],
+            name="node_to_node_capacity_matrix",
+            capacity=True,
+        ),
+    )
     sps: SpsResult = compute_sps(res)
     assert len(sps.series) == 4
     vals = sorted(sps.series.values)

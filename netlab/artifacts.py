@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from contextlib import contextmanager
 from importlib.metadata import distribution
 from importlib.util import find_spec
@@ -56,7 +57,7 @@ def fingerprint(data: Any) -> str:
 def package_versions() -> dict[str, dict[str, Any]]:
     """Identify installed revisions, including current editable package contents."""
     packages = {}
-    for name in ("netlab", "topogen", "ngraph", "netgraph-core"):
+    for name in ("netlab", "netlab-topogen", "ngraph", "netgraph-core"):
         package = distribution(name)
         record: dict[str, Any] = {"version": package.version}
         direct_url = package.read_text("direct_url.json")
@@ -74,6 +75,42 @@ def package_versions() -> dict[str, dict[str, Any]]:
                             files[str(path.relative_to(root))] = sha256_file(path)
                 record["content_sha256"] = fingerprint(files)
         packages[name] = record
+    return packages
+
+
+def package_provenance() -> dict[str, dict[str, Any]]:
+    """Record NetLab's commit only for a clean Git tree; retain content identity and report unknown Git state as null."""
+    packages = package_versions()
+    netlab = packages["netlab"]
+    netlab.pop("source", None)
+    commit = None
+    dirty = None
+    root = Path(__file__).resolve().parents[1]
+    if (root / ".git").exists():
+        status = subprocess.run(
+            [
+                "git",
+                "--no-optional-locks",
+                "status",
+                "--porcelain",
+                "--untracked-files=normal",
+                "--ignore-submodules=none",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        dirty = bool(status.stdout)
+        if not dirty:
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+    netlab.update(commit=commit, dirty=dirty)
     return packages
 
 

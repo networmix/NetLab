@@ -1,35 +1,34 @@
 {
-  "generated_at": "2026-10-04T21:29:26.822132+00:00",
+  "generated_at": "2026-10-29T13:20:58.149593+00:00",
   "python": "3.13.13 (main, May 10 2026, 19:20:37) [Clang 22.1.3 ]",
   "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
-  "scenarios_root": "tests/data/scenarios",
-  "output_root": "tests/data/scenarios_metrics",
+  "scenarios_root": "build/fixture-regeneration/run-cl5b5kj_/scenarios",
+  "output_root": "build/fixture-regeneration/run-cl5b5kj_/scenarios_metrics",
   "packages": {
     "netlab": {
-      "version": "0.3.0"
-    },
-    "topogen": {
-      "version": "0.4.0",
+      "version": "0.5.0",
       "source": {
-        "url": "https://github.com/networmix/TopoGen",
-        "vcs_info": {
-          "commit_id": "3bf0fa4aa08604a886421461f7ce36dbd7275121",
-          "requested_revision": "main",
-          "vcs": "git"
-        }
-      }
+        "dir_info": {
+          "editable": true
+        },
+        "url": "file:///Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1"
+      },
+      "content_sha256": "992e4e046f4c1932434fc937cc79d3a70b7633e3efef5a22c906abe874c5749c"
+    },
+    "netlab-topogen": {
+      "version": "0.6.1"
     },
     "ngraph": {
-      "version": "0.24.0"
+      "version": "0.26.0"
     },
     "netgraph-core": {
-      "version": "0.11.0"
+      "version": "0.12.0"
     },
     "numpy": {
-      "version": "2.5.3"
+      "version": "2.5.4"
     },
     "pandas": {
-      "version": "3.0.6"
+      "version": "3.1.0"
     },
     "scipy": {
       "version": "1.18.1"

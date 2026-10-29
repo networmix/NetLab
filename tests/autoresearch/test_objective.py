@@ -8,17 +8,18 @@ from pathlib import Path
 import pytest
 
 from netlab.autoresearch.objective import ObjectiveFunction
+from tests.result_samples import exported, msd
 
 OBJECTIVE_YAML = textwrap.dedent("""\
     direction: maximize
     primary_metric: bac_auc
     metrics:
       alpha_star:
-        path: "workflow.msd_baseline.alpha_star"
+        path: "steps.msd_baseline.result.alpha_feasible.value"
       bac_auc:
-        path: "workflow.tm_placement.bac.auc_normalized"
+        path: "metrics.bac_auc"
       total_cost:
-        path: "workflow.msd_baseline.total_cost"
+        path: "metrics.total_cost"
     constraints:
       - metric: alpha_star
         operator: ">="
@@ -31,11 +32,11 @@ OBJECTIVE_MINIMIZE_YAML = textwrap.dedent("""\
     primary_metric: total_cost
     metrics:
       alpha_star:
-        path: "workflow.msd_baseline.alpha_star"
+        path: "steps.msd_baseline.result.alpha_feasible.value"
       bac_auc:
-        path: "workflow.tm_placement.bac.auc_normalized"
+        path: "metrics.bac_auc"
       total_cost:
-        path: "workflow.msd_baseline.total_cost"
+        path: "metrics.total_cost"
     constraints: []
 """)
 
@@ -44,11 +45,11 @@ OBJECTIVE_MULTI_CONSTRAINT_YAML = textwrap.dedent("""\
     primary_metric: bac_auc
     metrics:
       alpha_star:
-        path: "workflow.msd_baseline.alpha_star"
+        path: "steps.msd_baseline.result.alpha_feasible.value"
       bac_auc:
-        path: "workflow.tm_placement.bac.auc_normalized"
+        path: "metrics.bac_auc"
       total_cost:
-        path: "workflow.msd_baseline.total_cost"
+        path: "metrics.total_cost"
     constraints:
       - metric: alpha_star
         operator: ">="
@@ -62,12 +63,9 @@ OBJECTIVE_MULTI_CONSTRAINT_YAML = textwrap.dedent("""\
 
 
 def _make_results(alpha_star: float, bac_auc: float, total_cost: float) -> dict:
-    return {
-        "workflow": {
-            "msd_baseline": {"alpha_star": alpha_star, "total_cost": total_cost},
-            "tm_placement": {"bac": {"auc_normalized": bac_auc}},
-        }
-    }
+    results = exported(msd(alpha_star))
+    results["metrics"] = {"bac_auc": bac_auc, "total_cost": total_cost}
+    return results
 
 
 @pytest.fixture()
@@ -218,8 +216,8 @@ class TestMissingMetric:
 
     def test_missing_path_in_results(self, obj_maximize: ObjectiveFunction) -> None:
         """Defined metric but path doesn't exist in results -> KeyError."""
-        results = {"workflow": {"msd_baseline": {"alpha_star": 1.5}}}
-        # bac_auc path is workflow.tm_placement.bac.auc_normalized — missing
+        results = exported(msd(1.5))
+        # bac_auc path is metrics.bac_auc — missing
         with pytest.raises(KeyError, match="bac_auc"):
             obj_maximize.extract_metric(results, "bac_auc")
 
@@ -242,9 +240,9 @@ class TestObjectiveFromYAML:
             primary_metric: total_cost
             metrics:
               alpha_star:
-                path: "workflow.msd_baseline.alpha_star"
+                path: "steps.msd_baseline.result.alpha_feasible.value"
               total_cost:
-                path: "workflow.msd_baseline.total_cost"
+                path: "metrics.total_cost"
             constraints:
               - metric: alpha_star
                 operator: ">="
@@ -365,9 +363,9 @@ class TestEqualityConstraint:
             primary_metric: bac_auc
             metrics:
               bac_auc:
-                path: "workflow.tm_placement.bac.auc_normalized"
+                path: "metrics.bac_auc"
               alpha_star:
-                path: "workflow.msd_baseline.alpha_star"
+                path: "steps.msd_baseline.result.alpha_feasible.value"
             constraints:
               - metric: alpha_star
                 operator: "=="
@@ -387,9 +385,9 @@ class TestEqualityConstraint:
             primary_metric: bac_auc
             metrics:
               bac_auc:
-                path: "workflow.tm_placement.bac.auc_normalized"
+                path: "metrics.bac_auc"
               alpha_star:
-                path: "workflow.msd_baseline.alpha_star"
+                path: "steps.msd_baseline.result.alpha_feasible.value"
             constraints:
               - metric: alpha_star
                 operator: "=="
@@ -403,3 +401,58 @@ class TestEqualityConstraint:
         result = obj.evaluate(results)
         assert result.status == "infeasible"
         assert "exact_alpha" in result.violated_constraints
+
+
+def test_named_step_order_and_none_feasible(tmp_path):
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "research_projects/dc-bb-autoresearch/objective.yml"
+    )
+    objective = ObjectiveFunction(path)
+    assert (
+        objective.evaluate(exported(msd(3))).score
+        > objective.evaluate(exported(msd(1))).score
+    )
+    r = exported(
+        {"name": "unrelated", "step_type": "NetworkStats", "result": {}}, msd(3)
+    )
+    assert objective.evaluate(r).score == 3
+    r["steps"].reverse()
+    assert objective.evaluate(r).score == 3
+    with pytest.raises(ValueError, match="none_feasible"):
+        objective.evaluate(exported(msd(None, status="none_feasible")))
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_nonfinite_objective_stays_refused(obj_maximize, value):
+    r = _make_results(1, value, 100)
+    with pytest.raises(ValueError, match="finite"):
+        obj_maximize.evaluate(r)
+
+
+@pytest.mark.timeout(60)
+def test_reduced_generator_runs_through_real_objective():
+    from copy import deepcopy
+
+    import yaml
+
+    from netlab.autoresearch.scenario_generator import generate_scenario
+    from netlab.simulation import simulate
+    from tests.autoresearch.dcbb_samples import SmallDcBbScenarioConfig
+
+    config = SmallDcBbScenarioConfig()
+    document = generate_scenario(config)
+    objective = ObjectiveFunction(
+        Path(__file__).resolve().parents[2]
+        / "research_projects/dc-bb-autoresearch/objective.yml"
+    )
+    outcome = simulate(yaml.safe_dump(document), require_traffic=True)
+    assert outcome.success, outcome.error
+    score = objective.evaluate(outcome.results)
+    assert score.status == "feasible" and score.score > 0
+    assert score.score == score.primary_value
+    disconnected = deepcopy(document)
+    for link in disconnected["network"]["links"]:
+        link["disabled"] = True
+    refused = simulate(yaml.safe_dump(disconnected), require_traffic=True)
+    assert refused.status == "failed" and "none_feasible" in refused.error

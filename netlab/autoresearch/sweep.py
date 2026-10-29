@@ -23,7 +23,13 @@ from netlab.autoresearch.structural_analysis import (
     run_structural_analysis,
 )
 from netlab.metrics.bac import BacResult, compute_bac
-from netlab.metrics.common import expand_flow_results
+from netlab.results import (
+    expand_cases,
+    feasible_alpha,
+    find_step,
+    require_step,
+    sampled_cases,
+)
 from netlab.simulation import run_simulation
 
 
@@ -175,14 +181,14 @@ def _dist_summary(values: list[int]) -> dict:
     }
 
 
-def _extract_failure_stats(flow_results: list[dict]) -> dict:
+def _extract_failure_stats(cases: list[dict]) -> dict:
     """Summarize failure scope across events by site.
 
-    Uses occurrence_count to weight each unique pattern by how many
+    Uses case occurrences to weight each unique pattern by how many
     MC iterations produced it.
     """
-    # Expand by occurrence_count so each MC iteration is counted
-    expanded = expand_flow_results(flow_results)
+    # Expand case occurrences so each MC iteration is counted
+    expanded = expand_cases(cases)
     n_events = len(expanded)
     if n_events == 0:
         return {"event_count": 0, "nodes_by_site": {}, "links_by_site": {}}
@@ -191,7 +197,7 @@ def _extract_failure_stats(flow_results: list[dict]) -> dict:
     site_link_counts: dict[str, list[int]] = defaultdict(lambda: [0] * n_events)
 
     for i, fr in enumerate(expanded):
-        fs = fr.get("failure_state", {})
+        fs = fr["case"]["pattern"]
         for node in fs.get("excluded_nodes", []):
             site_node_counts[_node_site(node)][i] += 1
         for link in fs.get("excluded_links", []):
@@ -230,18 +236,14 @@ def _extract_step_metrics(results_data: dict, step_name: str) -> dict:
         flow_bac: per-flow BAC {label: {auc, pct}}
         failure_stats: failure scope summary by site
     """
-    step_data = results_data.get("steps", {}).get(step_name, {}).get("data", {})
-    baseline = step_data.get("baseline")
-    flow_results = step_data.get("flow_results", [])
-
-    if not baseline or not flow_results:
-        return {}
+    step = require_step(results_data, step_name)
+    samples = sampled_cases(step)
 
     bac = compute_bac(results_data, step_name=step_name)
     return {
         **_bac_summary(bac),
         "flow_bac": {label: _bac_summary(flow) for label, flow in bac.per_flow.items()},
-        "failure_stats": _extract_failure_stats(flow_results),
+        "failure_stats": _extract_failure_stats(samples),
     }
 
 
@@ -296,8 +298,9 @@ def _execute_scenario(
     results_data = outcome.results
 
     try:
-        msd = results_data.get("steps", {}).get("msd_baseline", {}).get("data", {})
-        result["alpha_star"] = float(msd["alpha_star"])
+        result["alpha_star"] = feasible_alpha(
+            require_step(results_data, "msd_baseline")
+        )
     except Exception as e:
         result.update(
             status="error", error=f"alpha_star: {e}", duration_s=time.time() - t0
@@ -305,14 +308,13 @@ def _execute_scenario(
         return result
 
     try:
-        steps = results_data.get("steps", {})
         bac_modes: dict = {}
         for mode in FAILURE_MODE_NAMES:
             step_name = f"tm_{mode}"
-            if step_name in steps:
+            if find_step(results_data, step_name) is not None:
                 bac_modes[mode] = _extract_step_metrics(results_data, step_name)
 
-        if "tm_combined" in steps:
+        if find_step(results_data, "tm_combined") is not None:
             combined_metrics = _extract_step_metrics(results_data, "tm_combined")
             result["bac_combined"] = combined_metrics.get("auc", 0.0)
             bac_modes["combined"] = combined_metrics

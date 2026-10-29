@@ -11,6 +11,7 @@ import yaml
 from netlab.autoresearch.backend import MockBackend
 from netlab.autoresearch.experiment_log import ExperimentLog, LogEntry
 from netlab.autoresearch.runner import AutoResearchRunner, RunConfig
+from tests.result_samples import exported, msd
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -39,7 +40,7 @@ OBJECTIVE_YAML = textwrap.dedent("""\
     primary_metric: alpha_star
     metrics:
       alpha_star:
-        path: "steps.msd_baseline.data.alpha_star"
+        path: "steps.msd_baseline.result.alpha_feasible.value"
 """)
 
 PROGRAM_MD = "Optimize link capacity for maximum throughput."
@@ -413,7 +414,7 @@ class TestCrashStderrCaptured:
                 growth_factor: 2.0
                 alpha_min: 0.001
                 alpha_max: 1000000.0
-                resolution: 0.05
+                alpha_tolerance: 0.05
                 max_bracket_iters: 16
                 max_bisect_iters: 32
             demands:
@@ -473,7 +474,7 @@ def test_minimize_selects_zero_and_keeps_distinct_attempt_ids(tmp_path, monkeypa
     def execute(*args, **kwargs):
         return SimulationResult(
             "success",
-            results={"steps": {"msd_baseline": {"data": {"alpha_star": next(values)}}}},
+            results=exported(msd(next(values))),
         )
 
     monkeypatch.setattr("netlab.autoresearch.runner.run_simulation", execute)

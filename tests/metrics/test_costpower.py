@@ -7,24 +7,35 @@ from netlab.metrics.costpower import CostPowerResult, compute_cost_power
 
 def _fixture() -> dict:
     return {
-        "steps": {
-            "cost_power": {
-                "data": {
-                    "levels": {
-                        "0": [{"capex_total": 100000.0, "power_total_watts": 5000.0}],
-                        "1": [
-                            {
-                                "path": "metro1",
-                                "platform_capex": 60000.0,
-                                "optics_capex": 40000.0,
-                                "capex_total": 100000.0,
-                                "power_total_watts": 5000.0,
-                            }
-                        ],
-                    }
-                }
+        "units_report": {"q": 0.25},
+        "steps": [
+            {
+                "name": "cost_power",
+                "step_type": "CostPower",
+                "result": {
+                    "levels": [
+                        {
+                            "level": 1,
+                            "rows": [
+                                {
+                                    "path": "metro1",
+                                    "platform_capex": 60000.0,
+                                    "optics_capex": 40000.0,
+                                    "capex_total": 100000.0,
+                                    "power_total_watts": 5000.0,
+                                }
+                            ],
+                        },
+                        {
+                            "level": 0,
+                            "rows": [
+                                {"capex_total": 100000.0, "power_total_watts": 5000.0}
+                            ],
+                        },
+                    ]
+                },
             }
-        }
+        ],
     }
 
 

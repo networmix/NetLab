@@ -19,11 +19,24 @@ from netlab.metrics.batch import run_metrics
 from netlab.metrics.costpower import compute_cost_power
 from netlab.metrics.sps import compute_sps
 from netlab.metrics.summary import build_baseline_normalized_table
+from netlab.results import baseline_case, require_step, rows, sampled_cases
+from netlab.run_record import run_record_path
+from tests.result_samples import exported
 
 
 @pytest.fixture(scope="module")
-def native_results():
+def native_run():
     return native(scenario_document(1))
+
+
+@pytest.fixture(scope="module")
+def native_results(native_run):
+    return native_run[0]
+
+
+@pytest.fixture(scope="module")
+def native_record(native_run):
+    return native_run[1]
 
 
 def test_all_sixteen_native_failure_subsets(tmp_path):
@@ -40,42 +53,52 @@ def test_all_sixteen_native_failure_subsets(tmp_path):
         "cost_volume",
         "summary",
         "count",
-        "duration",
+        "quantum",
         "alpha",
         "maxflow_baseline",
     ],
 )
-def test_current_results_reject_corrupt_numbers(native_results, tmp_path, mutation):
+def test_current_results_reject_corrupt_numbers(
+    native_results, native_record, tmp_path, mutation
+):
     r = deepcopy(native_results)
-    step = r["steps"]["tm_placement"]
-    flow = step["data"]["flow_results"][0]["flows"][0]
-    if mutation in ["placed", "dropped"]:
-        flow[mutation] += 1
+    step = require_step(r, "tm_placement")
+    flow = rows(sampled_cases(step)[0])[0]
+    if mutation == "placed":
+        flow["result"]["delivered_units"] += 1
+    elif mutation == "dropped":
+        flow["reference_shortfall_units"] += 1
     elif mutation == "cost":
-        flow["cost_distribution"] = {"NaN": flow["placed"]}
+        flow["cost_distribution"]["bins"][0]["marginal_cost"] = math.nan
     elif mutation == "cost_volume":
-        flow["cost_distribution"] = {"2": flow["placed"] + 1}
+        flow["cost_distribution"]["bins"][0]["units"] += 1
     elif mutation == "summary":
-        step["data"]["baseline"]["summary"]["total_demand"] = math.inf
+        baseline_case(step)["states"]["converged"]["totals"][
+            "reference_request_units"
+        ] = math.inf
     elif mutation == "count":
-        step["metadata"]["iterations"] += 1
-    elif mutation == "duration":
-        step["metadata"]["duration_sec"] = -1
+        step["result"]["metadata"]["sampling"]["iterations"] += 1
+    elif mutation == "quantum":
+        r["units_report"]["q"] = 0
     elif mutation == "alpha":
-        r["steps"]["msd_baseline"]["data"]["alpha_star"] = math.nan
+        require_step(r, "msd_baseline")["result"]["alpha_feasible"]["value"] = math.nan
     elif mutation == "maxflow_baseline":
-        r["steps"]["node_to_node_capacity_matrix"]["data"]["baseline"]["flows"][0][
-            "placed"
-        ] = -1
+        rows(baseline_case(require_step(r, "node_to_node_capacity_matrix")))[0][
+            "result"
+        ]["delivered_units"] = -1
     with pytest.raises(ValueError):
-        analyze_one_seed(r, tmp_path, False, enable_maxflow=True)
+        analyze_one_seed(
+            r, tmp_path, False, enable_maxflow=True, run_record=native_record
+        )
 
 
-def test_maxflow_group_names_cannot_silently_become_outages(native_results):
+def test_maxflow_group_names_cannot_silently_become_outages(
+    native_results, native_record
+):
     r = deepcopy(native_results)
-    r["steps"]["node_to_node_capacity_matrix"]["data"]["baseline"]["flows"][0][
-        "source"
-    ] = "^a/dc/node$"
+    rows(baseline_case(require_step(r, "node_to_node_capacity_matrix")))[0][
+        "endpoints"
+    ]["sources"] = ["^a/dc/node$"]
     with pytest.raises(ValueError, match="exact placement endpoints"):
         compute_sps(r)
 
@@ -93,21 +116,25 @@ def test_no_baseline_ratio_without_a_denominator(tmp_path):
     assert math.isnan(table.loc["baseline", "node_count_r"])
 
 
-def test_rerun_replaces_stale_seeds_and_optional_artifacts(native_results, tmp_path):
+def test_rerun_replaces_stale_seeds_and_optional_artifacts(
+    native_results, native_record, tmp_path
+):
     root = tmp_path / "runs"
     root.mkdir()
     first = root / "baseline__seed1_scenario.results.json"
     second = root / "baseline__seed2_scenario.results.json"
     first.write_text(
         json.dumps(
-            dict(native_results, scenario=dict(native_results["scenario"], seed=1))
+            dict(native_results, metadata=dict(native_results["metadata"], seed=1))
         )
     )
     second.write_text(
         json.dumps(
-            dict(native_results, scenario=dict(native_results["scenario"], seed=2))
+            dict(native_results, metadata=dict(native_results["metadata"], seed=2))
         )
     )
+    for path in (first, second):
+        run_record_path(path).write_text(json.dumps(native_record))
     run_metrics(root, no_plots=True, enable_maxflow=True)
     out = tmp_path / "runs_metrics"
     assert (out / "baseline" / "seed2" / "bac.json").exists()
@@ -122,15 +149,18 @@ def test_rerun_replaces_stale_seeds_and_optional_artifacts(native_results, tmp_p
     }
 
 
-def test_invalid_rerun_does_not_publish_partial_metrics(native_results, tmp_path):
+def test_invalid_rerun_does_not_publish_partial_metrics(
+    native_results, native_record, tmp_path
+):
     root = tmp_path / "runs"
     root.mkdir()
     first = root / "baseline__seed1_scenario.results.json"
     first.write_text(
         json.dumps(
-            dict(native_results, scenario=dict(native_results["scenario"], seed=1))
+            dict(native_results, metadata=dict(native_results["metadata"], seed=1))
         )
     )
+    run_record_path(first).write_text(json.dumps(native_record))
     run_metrics(root, no_plots=True)
     out = tmp_path / "runs_metrics"
     before = {
@@ -138,9 +168,14 @@ def test_invalid_rerun_does_not_publish_partial_metrics(native_results, tmp_path
     }
     # A later seed fails after the first one was analyzed.
     bad = deepcopy(native_results)
-    bad["scenario"]["seed"] = 2
-    bad["steps"]["tm_placement"]["data"]["baseline"]["flows"][0]["placed"] = -1
+    bad["metadata"]["seed"] = 2
+    rows(baseline_case(require_step(bad, "tm_placement")))[0]["result"][
+        "delivered_units"
+    ] = -1
     (root / "baseline__seed2_scenario.results.json").write_text(json.dumps(bad))
+    run_record_path(root / "baseline__seed2_scenario.results.json").write_text(
+        json.dumps(native_record)
+    )
     with pytest.raises(ValueError):
         run_metrics(root, no_plots=True)
     after = {
@@ -151,19 +186,23 @@ def test_invalid_rerun_does_not_publish_partial_metrics(native_results, tmp_path
 
 
 def test_cost_invalid_denominator_and_actual_zero():
-    results = {
-        "steps": {
-            "cost_power": {
-                "data": {"levels": {"0": [{"capex_total": 0, "power_total_watts": 0}]}}
-            }
+    results = exported(
+        {
+            "name": "cost_power",
+            "step_type": "CostPower",
+            "result": {
+                "levels": [
+                    {"level": 0, "rows": [{"capex_total": 0, "power_total_watts": 0}]}
+                ]
+            },
         }
-    }
+    )
     assert compute_cost_power(results, 100, 100).per_offered_demand__usd_per_gbit == 0
     assert (
         compute_cost_power(results, math.inf, 0).per_offered_demand__usd_per_gbit
         is None
     )
-    results["steps"]["cost_power"]["data"]["levels"]["0"][0]["capex_total"] = -1
+    results["steps"][0]["result"]["levels"][0]["rows"][0]["capex_total"] = -1
     with pytest.raises(ValueError):
         compute_cost_power(results, 100, 100)
 
@@ -177,19 +216,20 @@ def test_multiseed_report_against_independent_reference_and_pattern_permutation(
 
     root = verify_multiseed(tmp_path)
     before = pd.read_csv(tmp_path / "multiseed_metrics" / "project.csv")
-    for path in root.glob("*.json"):
+    for path in root.glob("*.results.json"):
         result = json.loads(path.read_text())
         for name in ["tm_placement", "node_to_node_capacity_matrix"]:
-            step = result["steps"][name]
-            step["data"]["flow_results"].reverse()
-            step["metadata"]["occurrence_counts"].reverse()
+            step = require_step(result, name)
+            step["result"]["cases"].reverse()
         path.write_text(json.dumps(result))
     run_metrics(root, no_plots=True, enable_maxflow=True)
     after = pd.read_csv(tmp_path / "multiseed_metrics" / "project.csv")
     pd.testing.assert_frame_equal(before, after)
 
 
-def test_metrics_json_is_strict_and_seed_mismatch_is_rejected(native_results, tmp_path):
+def test_metrics_json_is_strict_and_seed_mismatch_is_rejected(
+    native_results, native_record, tmp_path
+):
     from netlab.metrics.batch import group_by_scenario
     from netlab.metrics.common import write_metric_json
 
@@ -222,9 +262,11 @@ def test_failure_statistics_reject_invalid_ratios(invalid):
 
 def test_native_without_path_details_reports_unavailable_latency(tmp_path):
     doc = scenario_document(1)
-    doc["workflow"][1]["include_flow_details"] = False
-    raw = native(doc)
-    _, bac, _, latency, _, _, _ = analyze_one_seed(raw, tmp_path, True)
+    doc["workflow"][1]["outputs"]["cost_distribution"] = False
+    raw, run_record = native(doc)
+    _, bac, _, latency, _, _, _ = analyze_one_seed(
+        raw, tmp_path, True, run_record=run_record
+    )
     assert bac.series.tolist() == [8, 3]
     assert latency.baseline["reference_coverage"] == 0
     assert latency.failures["reference_coverage"] == 0
@@ -232,13 +274,16 @@ def test_native_without_path_details_reports_unavailable_latency(tmp_path):
     assert not (tmp_path / "latency.png").exists()
 
 
-def test_changed_input_cannot_publish_metrics(native_results, tmp_path, monkeypatch):
+def test_changed_input_cannot_publish_metrics(
+    native_results, native_record, tmp_path, monkeypatch
+):
     import netlab.metrics.batch as batch
 
     root = tmp_path / "runs"
     root.mkdir()
     path = root / "baseline__seed42_scenario.results.json"
     path.write_text(json.dumps(native_results))
+    run_record_path(path).write_text(json.dumps(native_record))
     original = batch.analyze_one_seed
 
     def analyze_and_mutate(*args, **kwargs):

@@ -178,3 +178,9 @@ research_projects/**/results/
 research_projects/**/phase*/
 research_projects/lm_*/
 research_projects/square_mesh_*/
+
+# Timing records published with the tracked result fixtures
+!tests/data/**/*results.run.json
+!tests/autoresearch/data/
+tests/autoresearch/data/*
+!tests/autoresearch/data/*results.run.json

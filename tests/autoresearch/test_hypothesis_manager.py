@@ -24,12 +24,12 @@ demands:
       target: ^B$
       volume: 10
       mode: combine
-      flow_policy: SHORTEST_PATHS_ECMP
+      preset: SHORTEST_PATHS_ECMP
 workflow:
   - type: MaximumSupportedDemand
     name: msd_baseline
     demand_set: tm
-    resolution: 0.1
+    alpha_tolerance: 0.1
 """
 
 # MockBackend needs 3 responses:

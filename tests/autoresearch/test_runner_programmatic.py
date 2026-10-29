@@ -9,36 +9,26 @@ import pytest
 import yaml
 
 from netlab.autoresearch.backend import MockBackend
+from netlab.autoresearch.dcbb_config import DcBbScenarioConfig
 from netlab.autoresearch.experiment_log import ExperimentLog
 from netlab.autoresearch.runner import AutoResearchRunner, RunConfig
-
-HYPOTHESIS_TEMPLATE_YAML = textwrap.dedent("""\
-    params:
-      g_abc1:
-        type: enum
-        values: [16, 32, 64]
-        default: 64
-        description: "Mesh group count for ABC1"
-      g_xyz1:
-        type: enum
-        values: [64, 128, 256]
-        default: 64
-        description: "Mesh group count for XYZ1"
-""")
+from netlab.autoresearch.scenario_generator import generate_scenario
+from netlab.simulation import inspect_scenario
+from tests.autoresearch.dcbb_samples import SmallDcBbScenarioConfig
 
 OBJECTIVE_YAML = textwrap.dedent("""\
     direction: maximize
     primary_metric: alpha_star
     metrics:
       alpha_star:
-        path: "steps.msd_baseline.data.alpha_star"
+        path: "steps.msd_baseline.result.alpha_feasible.value"
 """)
 
 CONFIG_YAML = textwrap.dedent("""\
     generation_mode: programmatic
     generator_module: netlab.autoresearch.scenario_generator
     generator_function: generate_scenario
-    config_class: netlab.autoresearch.dcbb_config.DcBbScenarioConfig
+    config_class: tests.autoresearch.dcbb_samples.SmallDcBbScenarioConfig
 """)
 
 PROGRAM_MD = "Optimize mesh group count for maximum throughput."
@@ -49,7 +39,13 @@ def make_programmatic_project(tmp_path: Path) -> Path:
     proj = tmp_path / "project"
     proj.mkdir()
     (proj / "program.md").write_text(PROGRAM_MD)
-    (proj / "hypothesis_template.yml").write_text(HYPOTHESIS_TEMPLATE_YAML)
+    params = {
+        name: {"type": "enum", "values": [1, 2], "default": 1}
+        for name in ("g_abc1", "g_xyz1")
+    }
+    (proj / "hypothesis_template.yml").write_text(
+        yaml.safe_dump({"params": params}, sort_keys=False)
+    )
     (proj / "objective.yml").write_text(OBJECTIVE_YAML)
     (proj / "config.yml").write_text(CONFIG_YAML)
     (proj / "results").mkdir()
@@ -58,15 +54,9 @@ def make_programmatic_project(tmp_path: Path) -> Path:
 
 def _mock_response(g_abc1: int, g_xyz1: int) -> str:
     """Build a mock LLM response with the given G values."""
-    return textwrap.dedent(f"""\
-        Trying g_abc1={g_abc1}, g_xyz1={g_xyz1}.
-
-        ```yaml
-        params:
-          g_abc1: {g_abc1}
-          g_xyz1: {g_xyz1}
-        ```
-    """)
+    params = {"g_abc1": g_abc1, "g_xyz1": g_xyz1}
+    payload = yaml.safe_dump({"params": params}, sort_keys=False)
+    return f"Trying g_abc1={g_abc1}, g_xyz1={g_xyz1}.\n\n```yaml\n{payload}```\n"
 
 
 class TestProgrammaticInit:
@@ -79,8 +69,9 @@ class TestProgrammaticInit:
         runner = AutoResearchRunner(config)
 
         assert runner._generation_mode == "programmatic"
-        assert runner._generator_fn is not None
-        assert runner._config_class_ref is not None
+        assert runner._generator_fn is generate_scenario
+        assert runner._config_class_ref is SmallDcBbScenarioConfig
+        assert issubclass(runner._config_class_ref, DcBbScenarioConfig)
         assert runner._merger is None
 
     def test_no_config_yml_defaults_to_template(self, tmp_path: Path) -> None:
@@ -158,12 +149,11 @@ class TestProgrammaticHappyPath:
     def test_generates_and_runs_scenario(self, tmp_path: Path) -> None:
         """Programmatic mode: generate a DC-BB scenario, run ngraph, get results.
 
-        Uses default G values (64, 64) which are compatible with the
-        default layout (16,4,16,4).
+        Uses one mesh group per site with minimum dimensions.
         """
         proj = make_programmatic_project(tmp_path)
 
-        responses = [_mock_response(64, 64)]
+        responses = [_mock_response(1, 1)]
         backend = MockBackend(responses)
         config = RunConfig(
             project_dir=proj, backend=backend, max_experiments=1, seed=42
@@ -180,13 +170,17 @@ class TestProgrammaticHappyPath:
         assert entries[0].status == "success"
         assert entries[0].metrics is not None
         assert "alpha_star" in entries[0].metrics
-        assert entries[0].objective_score is not None
+        assert entries[0].objective_score == entries[0].metrics["alpha_star"] > 0
 
         exp_dir = proj / "results" / "exp_001"
         assert exp_dir.exists()
         assert (exp_dir / "scenario.yml").exists()
         assert (exp_dir / "scenario.results.json").exists()
 
+        inspection = inspect_scenario((exp_dir / "scenario.yml").read_text())
+        # ABC1 has four nodes, BB has eight, and XYZ1 has seven.
+        assert inspection.node_count == 19
+        assert inspection.link_count == 28
         scenario = yaml.safe_load((exp_dir / "scenario.yml").read_text())
         assert "network" in scenario
         assert "nodes" in scenario["network"]
@@ -196,20 +190,17 @@ class TestProgrammaticHappyPath:
         best_path = proj / "best_hypothesis.yml"
         assert best_path.exists()
         best_data = yaml.safe_load(best_path.read_text())
-        assert best_data["params"]["g_abc1"] == 64
-        assert best_data["params"]["g_xyz1"] == 64
+        assert best_data["params"]["g_abc1"] == 1
+        assert best_data["params"]["g_xyz1"] == 1
 
 
 class TestProgrammaticGenerationError:
     def test_invalid_g_produces_generation_error(self, tmp_path: Path) -> None:
-        """g_abc1=32 with default layout -> ValueError from generate_scenario
-        -> logged as generation_error.
-        """
+        """Two groups with a one-group layout are logged as generation_error."""
         proj = make_programmatic_project(tmp_path)
 
-        # g_abc1=32 is invalid with default layout_abc1=(16,4,16,4) because
-        # 16*4=64 != 32
-        responses = [_mock_response(32, 64)]
+        # The hypothesis is allowed, but the layout has exactly one group.
+        responses = [_mock_response(2, 1)]
         backend = MockBackend(responses)
         config = RunConfig(
             project_dir=proj, backend=backend, max_experiments=1, seed=42
@@ -239,8 +230,8 @@ class TestProgrammaticDedup:
         proj = make_programmatic_project(tmp_path)
 
         responses = [
-            _mock_response(64, 64),
-            _mock_response(64, 64),  # duplicate
+            _mock_response(1, 1),
+            _mock_response(1, 1),  # duplicate
         ]
         backend = MockBackend(responses)
         config = RunConfig(
@@ -269,9 +260,9 @@ class TestProgrammaticMixed:
         proj = make_programmatic_project(tmp_path)
 
         responses = [
-            _mock_response(64, 64),  # valid -> success
-            _mock_response(32, 64),  # invalid G -> generation_error
-            _mock_response(64, 64),  # duplicate -> cached
+            _mock_response(1, 1),  # valid -> success
+            _mock_response(2, 1),  # invalid G -> generation_error
+            _mock_response(1, 1),  # duplicate -> cached
         ]
         backend = MockBackend(responses)
         config = RunConfig(

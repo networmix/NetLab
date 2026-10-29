@@ -1,0 +1,28 @@
+{
+  "scenario": "/Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1/build/fixture-regeneration/run-cl5b5kj_/scenarios/small_baseline/small_baseline__seed12/small_baseline__seed12_scenario.yml",
+  "status": "success",
+  "error": "",
+  "duration_s": 0.06585404206998646,
+  "inspection": {
+    "node_count": 13,
+    "link_count": 27,
+    "risk_groups": [
+      "corridor_risk_atlanta_chicago",
+      "corridor_risk_atlanta_columbus",
+      "corridor_risk_atlanta_washington-arlington",
+      "corridor_risk_chicago_columbus",
+      "corridor_risk_chicago_washington-arlington",
+      "corridor_risk_columbus_new-york-jersey-city-newark",
+      "corridor_risk_columbus_washington-arlington",
+      "corridor_risk_new-york-jersey-city-newark_washington-arlington"
+    ],
+    "demand_count": 6,
+    "workflow_steps": 4
+  },
+  "step_durations_sec": {
+    "network_statistics": 0.0002115410752594471,
+    "msd_baseline": 0.0008442080579698086,
+    "tm_placement": 0.017201041104272008,
+    "cost_power": 0.000533208018168807
+  }
+}

@@ -12,6 +12,7 @@ import yaml
 from ngraph.scenario import Scenario
 
 from netlab.simulation import simulate
+from tests.result_samples import exported, msd
 
 EXPERIMENT = Path(__file__).resolve().parents[1] / "experiments" / "dc-bb-interconnect"
 TOPOLOGY = "dc4x9_bb4x4_bb4x4_dc4x9_one_to_one"
@@ -50,7 +51,7 @@ def test_included_workflow_preserves_msd_in_summary_and_comparison(
     )
     for step in document["workflow"]:
         if "iterations" in step:
-            step.update(iterations=1, parallelism=1)
+            step.update(iterations=1, workers=1)
     outcome = simulate(yaml.safe_dump(document, sort_keys=False))
     assert outcome.success, outcome.error
     msd_name = next(
@@ -58,7 +59,9 @@ def test_included_workflow_preserves_msd_in_summary_and_comparison(
         for step in document["workflow"]
         if step["type"] == "MaximumSupportedDemand"
     )
-    alpha = outcome.results["steps"][msd_name]["data"]["alpha_star"]
+    from netlab.results import feasible_alpha, require_step
+
+    alpha = feasible_alpha(require_step(outcome.results, msd_name))
     assert alpha > 0
     save_result(runner, TOPOLOGY, 42, outcome.results)
     runner.compute_metrics([TOPOLOGY])
@@ -77,7 +80,11 @@ def test_summary_aggregates_seed_alphas_and_keeps_zero(
 ):
     runner = experiment_module.DcBbExperimentRunner(EXPERIMENT, results_dir=tmp_path)
     for seed, alpha in enumerate(alphas, 1):
-        result = {"steps": {"msd_baseline": {"data": {"alpha_star": alpha}}}}
+        result = (
+            exported(msd(alpha), seed=seed)
+            if alpha is not None
+            else exported(seed=seed)
+        )
         save_result(runner, "example", seed, result)
     runner.compute_metrics(["example"])
     summary = read_summary(runner, "example")
@@ -120,3 +127,12 @@ def test_comparison_displays_zero_and_handles_zero_maximum(
     ).split()
     assert row[3] == "0.00"
     assert row[4] == ("0.0%" if other_alpha else "?")
+
+
+def test_summary_refuses_none_feasible(experiment_module, tmp_path):
+    runner = experiment_module.DcBbExperimentRunner(EXPERIMENT, results_dir=tmp_path)
+    save_result(
+        runner, "example", 1, exported(msd(None, status="none_feasible"), seed=1)
+    )
+    with pytest.raises(ValueError, match="none_feasible"):
+        runner.compute_metrics(["example"])

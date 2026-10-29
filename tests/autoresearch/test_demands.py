@@ -38,7 +38,7 @@ class TestBuildDemands:
         config = DcBbScenarioConfig()
         entries = _build_demands(config)["baseline_traffic_matrix"]
         for entry in entries:
-            assert entry["flow_policy"] == "SHORTEST_PATHS_ECMP"
+            assert entry["preset"] == "SHORTEST_PATHS_ECMP"
 
     def test_abc1_to_xyz1_direction(self):
         """First entry: ABC1 RSW -> XYZ1 RSW."""
@@ -86,7 +86,7 @@ class TestBuildDemands:
     def test_demand_entry_keys(self):
         """Each entry should have exactly the expected keys."""
         config = DcBbScenarioConfig()
-        expected_keys = {"source", "target", "volume", "mode", "flow_policy"}
+        expected_keys = {"source", "target", "volume", "mode", "preset"}
         for entry in _build_demands(config)["baseline_traffic_matrix"]:
             assert set(entry.keys()) == expected_keys
 

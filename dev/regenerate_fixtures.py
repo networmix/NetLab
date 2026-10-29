@@ -16,11 +16,18 @@ import sys
 import tempfile
 from pathlib import Path
 
+from netlab.artifacts import (
+    cache_path,
+    package_provenance,
+    record_cache,
+    write_json_atomic,
+)
 from netlab.metrics.batch import run_metrics
 from netlab.pipeline import PipelineConfig, discover_configs, run_pipeline
+from netlab.run_record import run_record_path
 from netlab.simulation import run_simulation
 
-SOURCES = ("ngraph", "netgraph-core", "topogen")
+SOURCES = ("ngraph", "netgraph-core", "netlab-topogen")
 
 
 def source_provenance(name: str) -> dict:
@@ -46,12 +53,31 @@ def source_provenance(name: str) -> dict:
     return info
 
 
+def normalize_fixture_record(results_path: Path, root: Path) -> None:
+    """Keep genuine run measurements while making the scenario path repository-relative."""
+    path = run_record_path(results_path)
+    record = json.loads(path.read_text())
+    record["scenario"] = str(Path(record["scenario"]).relative_to(root))
+    write_json_atomic(path, record)
+    manifest = cache_path(path)
+    if manifest.exists():
+        record_cache(path, json.loads(manifest.read_text())["key"])
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     os.chdir(root)
+    netlab = package_provenance()["netlab"]
+    if netlab["dirty"]:
+        sys.exit(
+            "NetLab has uncommitted changes; fixtures must be reproducible from a committed revision."
+        )
     provenance = {
         "python": sys.version.split()[0],
-        "sources": {name: source_provenance(name) for name in SOURCES},
+        "sources": {
+            **{name: source_provenance(name) for name in SOURCES},
+            "netlab": netlab,
+        },
     }
     build = root / "build/fixture-regeneration"
     build.mkdir(parents=True, exist_ok=True)
@@ -75,6 +101,8 @@ def main() -> None:
     )
     if not outcome.success:
         raise RuntimeError(outcome.errors)
+    for path in scenarios.rglob("*.results.json"):
+        normalize_fixture_record(path, root)
     run_metrics(scenarios, no_plots=True)
     for source, output in (
         (
@@ -86,6 +114,7 @@ def main() -> None:
         result = run_simulation(source, results_path=output, force=True)
         if not result.success:
             raise RuntimeError(result.error)
+        normalize_fixture_record(output, root)
 
     # Save the previous fixtures alongside the generated output for review.
     shutil.copytree(root / "tests/data/scenarios_metrics", work / "inputs/metrics")
@@ -96,7 +125,8 @@ def main() -> None:
             path.unlink()
     for path in scenarios.rglob("*"):
         if path.is_file() and (
-            path.name.endswith("_scenario.yml") or path.name.endswith(".results.json")
+            path.name.endswith("_scenario.yml")
+            or path.name.endswith((".results.json", ".run.json"))
         ):
             target = fixture_root / path.relative_to(scenarios)
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -107,14 +137,18 @@ def main() -> None:
         root / "tests/data/scenarios_metrics",
         ignore=shutil.ignore_patterns("summary.txt"),
     )
-    shutil.copy2(
-        work / "square/square_mesh.results.json",
-        root / "tests/autoresearch/data/square_mesh_results.json",
-    )
-    shutil.copy2(
-        work / "mini/mini_dcbb.results.json",
-        root / "tests/data/mini_dcbb_output/mini_dcbb.results.json",
-    )
+    for source, target in (
+        (
+            work / "square/square_mesh.results.json",
+            root / "tests/autoresearch/data/square_mesh_results.json",
+        ),
+        (
+            work / "mini/mini_dcbb.results.json",
+            root / "tests/data/mini_dcbb_output/mini_dcbb.results.json",
+        ),
+    ):
+        shutil.copy2(source, target)
+        shutil.copy2(run_record_path(source), run_record_path(target))
     (work / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     print(json.dumps(provenance, indent=2))
 

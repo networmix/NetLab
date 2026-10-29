@@ -6,7 +6,9 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
-from .common import expand_flow_results, pair_totals, require_capacity_pairs
+from netlab.results import expand_cases, pair_totals, require_step, sampled_cases
+
+from .common import baseline_demand_map, require_capacity_pairs
 from .distributions import threshold_at_probability
 
 
@@ -31,15 +33,8 @@ class SpsResult:
 
 def _extract_baseline_demands_tm(results: dict) -> Dict[str, float]:
     """Per-pair baseline demand from tm_placement baseline. Key is 's→d'."""
-    tm_step = results.get("steps", {}).get("tm_placement", {}) or {}
-    data = tm_step.get("data", {}) or {}
-    base = data.get("baseline")
-    if not isinstance(base, dict):
-        return {}
     return {
-        f"{s}→{d}": demand
-        for (s, d), demand in pair_totals(base, "demand").items()
-        if demand > 0
+        f"{s}→{d}": demand for (s, d), demand in baseline_demand_map(results).items()
     }
 
 
@@ -48,14 +43,15 @@ def _per_iteration_pair_caps(results: dict) -> pd.DataFrame:
 
     Columns are source/destination pairs; missing capacities are zero.
     """
-    mf_step = results.get("steps", {}).get("node_to_node_capacity_matrix", {}) or {}
-    data = mf_step.get("data", {}) or {}
-    fr = expand_flow_results(data.get("flow_results", []) or [])
+    step = require_step(results, "node_to_node_capacity_matrix")
+    fr = expand_cases(sampled_cases(step))
     pairs: Dict[str, Dict[str, float]] = {}
     for idx, it in enumerate(fr):
         pairs[f"it{idx}"] = {
             f"{s}→{d}": capacity
-            for (s, d), capacity in pair_totals(it, "placed").items()
+            for (s, d), capacity in pair_totals(
+                results, step, it, "delivered_units"
+            ).items()
         }
     if not pairs:
         return pd.DataFrame()

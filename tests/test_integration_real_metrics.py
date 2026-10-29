@@ -12,6 +12,7 @@ from netlab.metrics.summary import (
     build_baseline_normalized_table,
     build_project_summary_table,
 )
+from netlab.run_record import run_record_path
 
 
 def _copy_results_json_tree(src: Path, dst: Path) -> None:
@@ -20,6 +21,7 @@ def _copy_results_json_tree(src: Path, dst: Path) -> None:
         target = dst / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(p, target)
+        shutil.copy2(run_record_path(p), run_record_path(target))
 
 
 def _allclose_series(

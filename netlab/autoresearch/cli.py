@@ -47,7 +47,7 @@ _DEFAULT_OBJECTIVE_YAML = textwrap.dedent("""\
     primary_metric: alpha_star
     metrics:
       alpha_star:
-        path: "steps.msd_baseline.data.alpha_star"
+        path: "steps.msd_baseline.result.alpha_feasible.value"
 """)
 
 

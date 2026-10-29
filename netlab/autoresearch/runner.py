@@ -35,6 +35,7 @@ from netlab.autoresearch.prompt import (
     parse_hypothesis_response,
     render_memory_section,
 )
+from netlab.results import find_step
 from netlab.simulation import run_simulation
 
 logger = logging.getLogger(__name__)
@@ -361,7 +362,7 @@ class AutoResearchRunner:
                 # Try tm_combined first (per-mode workflow), fall back to tm_placement
                 step = (
                     "tm_combined"
-                    if "tm_combined" in results_data.get("steps", {})
+                    if find_step(results_data, "tm_combined") is not None
                     else "tm_placement"
                 )
                 bac = compute_bac(results_data, step_name=step)

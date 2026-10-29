@@ -268,14 +268,14 @@ def _build_demands(config: DcBbScenarioConfig) -> dict:
                 "target": "^xyz1/mp1/rsw$",
                 "volume": volume,
                 "mode": "combine",
-                "flow_policy": "SHORTEST_PATHS_ECMP",
+                "preset": "SHORTEST_PATHS_ECMP",
             },
             {
                 "source": "^xyz1/mp1/rsw$",
                 "target": "^abc1/pod.*/rsw$",
                 "volume": volume,
                 "mode": "combine",
-                "flow_policy": "SHORTEST_PATHS_ECMP",
+                "preset": "SHORTEST_PATHS_ECMP",
             },
         ],
     }
@@ -288,7 +288,7 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
             "type": "MaximumSupportedDemand",
             "name": "msd_baseline",
             "demand_set": "baseline_traffic_matrix",
-            "resolution": config.msd_resolution,
+            "alpha_tolerance": config.msd_resolution,
         },
     ]
 
@@ -300,9 +300,8 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
                 "demand_set": "baseline_traffic_matrix",
                 "failure_policy": f"fm_{name}",
                 "iterations": config.failure_iterations,
-                "parallelism": 8,
+                "workers": 8,
                 "alpha_from_step": "msd_baseline",
-                "alpha_from_field": "data.alpha_star",
             }
         )
 
@@ -313,9 +312,8 @@ def _build_workflow(config: DcBbScenarioConfig) -> list[dict]:
             "demand_set": "baseline_traffic_matrix",
             "failure_policy": "fm_combined",
             "iterations": config.failure_iterations,
-            "parallelism": 8,
+            "workers": 8,
             "alpha_from_step": "msd_baseline",
-            "alpha_from_field": "data.alpha_star",
         }
     )
 

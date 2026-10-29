@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from math import fsum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -11,7 +10,15 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .common import expand_flow_results, pair_totals
+from netlab.results import (
+    baseline_case,
+    expand_cases,
+    pair_totals,
+    require_step,
+    sampled_cases,
+    total_bandwidth,
+)
+
 from .distributions import availability_curve, curve_on_grid, threshold_at_probability
 
 
@@ -55,24 +62,14 @@ class BacResult:
         return d
 
 
-def _get_step(results: dict, name: str) -> dict:
-    return results.get("steps", {}).get(name, {}).get("data", {}) or {}
-
-
 def _detect_mode(results: dict, step_name: str, mode: str) -> str:
     if mode != "auto":
         return mode
-    st = results.get("workflow", {}).get(step_name, {}).get("step_type", "")
-    if st == "TrafficMatrixPlacement":
-        return "placement"
-    if st == "MaxFlow":
-        return "maxflow"
-    return "placement"
-
-
-def _sum_delivered(iteration: dict) -> float:
-    """Sum placed bandwidth consistently across Python versions."""
-    return fsum(pair_totals(iteration, "placed").values())
+    return (
+        "maxflow"
+        if require_step(results, step_name)["step_type"] == "MaxFlow"
+        else "placement"
+    )
 
 
 _QUANTILE_PROBS = (0.50, 0.90, 0.95, 0.99, 0.999, 0.9999)
@@ -122,47 +119,24 @@ def _compute_bac_stats(
     return q_abs, q_pct, avail, auc_norm, bw_abs, bw_pct
 
 
-def _flow_label(flow_source: str, flow_destination: str) -> str:
-    """Build a directional label for pairwise or combine-mode endpoints.
-
-    Flow source format: ``_src_<source_pattern>|<target_pattern>|<hash>``
-    Returns label like ``abc1/rsw>xyz1/rsw``.
-    """
-    demand_id = flow_source.removeprefix("_src_")
-    parts = demand_id.split("|")
-    if (
-        flow_source.startswith("_src_")
-        and flow_destination == f"_snk_{demand_id}"
-        and len(parts) == 3
-    ):
-        src_part = parts[0].strip("^$")
-        dst_part = parts[1].strip("^$")
-        return f"{src_part}>{dst_part}"
-    return f"{flow_source}>{flow_destination}"
+def _flow_label(source: str, destination: str) -> str:
+    return f"{source}>{destination}"
 
 
 def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
     mode = _detect_mode(results, step_name, mode)
-    data = _get_step(results, step_name)
-
-    baseline = data.get("baseline")
-    if not isinstance(baseline, dict):
-        raise ValueError(f"{step_name}: data.baseline dict required")
-    flow_results = data.get("flow_results", [])
-    if not isinstance(flow_results, list):
-        raise ValueError(f"flow_results must be a list for step: {step_name}")
-
-    offered = _sum_delivered(baseline)
+    step = require_step(results, step_name)
+    baseline = baseline_case(step)
+    offered = total_bandwidth(results, baseline)
     if not np.isfinite(offered) or offered < 0:
         raise ValueError(f"{step_name}: baseline delivered must be finite and >= 0")
-
-    expanded = expand_flow_results(flow_results)
+    expanded = expand_cases(sampled_cases(step))
 
     delivered = [offered]
     fids: List[str] = ["baseline"]
-    for idx, it in enumerate(expanded):
-        delivered.append(_sum_delivered(it))
-        fids.append(str(it.get("failure_id", f"it{idx}")))
+    for it in expanded:
+        delivered.append(total_bandwidth(results, it))
+        fids.append(str(it["case"]["id"]))
 
     s = pd.Series(delivered, dtype=float)
     s.index.name = "iteration"
@@ -172,7 +146,9 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
     # Aggregate priority classes by source/destination pair.
     flow_map = {
         pair: placed
-        for pair, placed in pair_totals(baseline, "placed").items()
+        for pair, placed in pair_totals(
+            results, step, baseline, "delivered_units"
+        ).items()
         if placed > 0
     }
     labels = {pair: _flow_label(*pair) for pair in flow_map}
@@ -180,12 +156,12 @@ def compute_bac(results: dict, step_name: str, mode: str = "auto") -> BacResult:
 
     per_flow: Dict[str, BacResult] = {}
     if len(flow_map) > 1:
-        flow_series: Dict[Tuple[str, str], List[float]] = {
+        flow_series: dict[tuple[str, str], list[float]] = {
             pair: [bl_placed] for pair, bl_placed in flow_map.items()
         }
 
         for it in expanded:
-            it_flows = pair_totals(it, "placed")
+            it_flows = pair_totals(results, step, it, "delivered_units")
             for pair in flow_map:
                 flow_series[pair].append(it_flows.get(pair, 0.0))
 

@@ -16,9 +16,11 @@ import networkx as nx
 import pandas as pd
 import pytest
 import yaml
-from topogen.config import TopologyConfig
-from topogen.corridors import corridor_risk_name
-from topogen.integrated_graph import save_to_json
+from netlab_topogen.config import TopologyConfig
+from netlab_topogen.corridors import corridor_risk_name
+from netlab_topogen.integrated_graph import save_to_json
+
+from netlab.results import baseline_case, feasible_alpha, require_step, rows
 
 pytestmark = [pytest.mark.slow, pytest.mark.timeout(300)]
 
@@ -46,7 +48,7 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
     for step in workflows["design_analysis_brief"]:
         if "iterations" in step:
             step["iterations"] = 10
-            step["parallelism"] = 1
+            step["workers"] = 1
             step["failure_policy"] = policy
     (tmp_path / "lib").mkdir()
     (tmp_path / "lib/workflows.yml").write_text(yaml.safe_dump(workflows))
@@ -114,10 +116,10 @@ def test_topogen_build_run_metrics(tmp_path: Path, template: str, policy: str):
     output = scenarios / "tiny/tiny__seed7/tiny__seed7_scenario.results.json"
     assert output.is_file(), logs
     results = json.loads(output.read_text())
-    assert results["workflow"]["tm_placement"]["scenario_seed"] == 7
-    assert results["workflow"]["tm_placement"]["seed_source"] != "explicit-step"
-    assert results["steps"]["msd_baseline"]["data"]["alpha_star"] > 0
-    assert len(results["steps"]["tm_placement"]["data"]["baseline"]["flows"]) == 6
+    assert require_step(results, "tm_placement")["scenario_seed"] == 7
+    assert require_step(results, "tm_placement")["seed_source"] != "explicit-step"
+    assert feasible_alpha(require_step(results, "msd_baseline")) > 0
+    assert len(rows(baseline_case(require_step(results, "tm_placement")))) == 6
     run = subprocess.run(
         [sys.executable, "-m", "netlab.cli", "metrics", str(scenarios), "--no-plots"],
         cwd=tmp_path,
@@ -148,3 +150,82 @@ def test_missing_graph_invalidates_all_planned_seed_artifacts(tmp_path):
     assert "tiny/graph" in outcome.errors
     assert not result.exists()
     assert not scenario.exists()
+
+
+@pytest.mark.parametrize("invalid", [True, False])
+def test_topogen_validates_before_publishing(tmp_path, monkeypatch, invalid):
+    from types import SimpleNamespace
+
+    import netlab.topology as topology
+
+    config_path = (
+        Path(__file__).resolve().parents[1] / "topogen_configs_small/small_baseline.yml"
+    )
+    config = TopologyConfig.from_yaml(config_path)
+    build = SimpleNamespace(yaml="seed: 7\n")
+    validation = SimpleNamespace(
+        issues=["bad scenario"] if invalid else [], prepared=object()
+    )
+    calls = []
+    monkeypatch.setattr(
+        topology.TopologyConfig, "from_yaml", staticmethod(lambda _: config)
+    )
+    monkeypatch.setattr(
+        topology, "load_from_json", lambda _: (object(), config.projection.target_crs)
+    )
+    monkeypatch.setattr(
+        topology,
+        "load_library",
+        lambda directory: calls.append(("library", directory)) or object(),
+    )
+    monkeypatch.setattr(
+        topology,
+        "build_scenario",
+        lambda graph, cfg, library: calls.append(("build", cfg)) or build,
+    )
+    monkeypatch.setattr(
+        topology,
+        "validate_scenario",
+        lambda text, components: calls.append(("validate", text, components))
+        or validation,
+    )
+
+    def publish(path, text):
+        calls.append(("scenario", path))
+        path.write_text(text)
+
+    monkeypatch.setattr(topology, "write_scenario", publish)
+    monkeypatch.setattr(
+        topology,
+        "write_artifacts",
+        lambda b, v, c, context: calls.append(("artifacts", b, v, c, context)),
+    )
+    scenario = tmp_path / "scenario.yml"
+    scenario.write_text("previous")
+    if invalid:
+        with pytest.raises(
+            ValueError, match="Scenario validation failed:\nbad scenario"
+        ):
+            topology.build_seed_scenario(
+                config_path, tmp_path / "graph.json", scenario, 7
+            )
+        assert scenario.read_text() == "previous"
+        assert [call[0] for call in calls] == ["library", "build", "validate"]
+    else:
+        assert (
+            topology.build_seed_scenario(
+                config_path, tmp_path / "graph.json", scenario, 7
+            )
+            == scenario
+        )
+        assert scenario.read_text() == build.yaml
+        assert [call[0] for call in calls] == [
+            "library",
+            "build",
+            "validate",
+            "scenario",
+            "artifacts",
+        ]
+        assert calls[-1][1:4] == (build, validation, config)
+        assert calls[-1][4].output_dir == scenario.parent
+    assert config.output.scenario_seed == 7

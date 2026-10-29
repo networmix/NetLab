@@ -18,35 +18,38 @@ from netlab.metrics.matrixdump import compute_pair_matrices
 from netlab.metrics.msd import compute_alpha_star
 from netlab.metrics.paired import holm_adjust, paired_t
 from netlab.metrics.sps import compute_sps
+from netlab.results import require_step
+from tests.result_samples import case, exported, msd, placement, row
 
 
 def record(source, placed, cost=1, demand=None):
-    return dict(
-        source=source,
-        destination="b/dc/node",
-        priority=0,
-        demand=placed if demand is None else demand,
-        placed=placed,
-        dropped=0 if demand is None else demand - placed,
-        cost_distribution={str(cost): placed} if placed else {},
+    return row(
+        source,
+        "b/dc/node",
+        int(placed),
+        int(placed if demand is None else demand),
+        costs={cost: int(placed)} if placed else {},
     )
 
 
 def payload(samples, baseline=9):
-    return {
-        "steps": {
-            name: {
-                "data": {
-                    "baseline": {"flows": [record("a/dc/node", baseline)]},
-                    "flow_results": [
-                        dict(occurrence_count=1, flows=[record("a/dc/node", x)])
-                        for x in samples
-                    ],
-                }
-            }
-            for name in ("tm_placement", "node_to_node_capacity_matrix")
-        }
-    }
+    return exported(
+        *[
+            placement(
+                [record("a/dc/node", baseline)],
+                [
+                    case([record("a/dc/node", x)], name=f"f{i}", capacity=capacity)
+                    for i, x in enumerate(samples)
+                ],
+                name=name,
+                capacity=capacity,
+            )
+            for name, capacity in (
+                ("tm_placement", False),
+                ("node_to_node_capacity_matrix", True),
+            )
+        ]
+    )
 
 
 def inverse_survival_oracle(values, percent):
@@ -82,9 +85,9 @@ def test_bandwidth_replicating_empirical_distribution_is_invariant():
 def test_bandwidth_totals_preserve_small_flows_in_any_order():
     flows = [record(f"a/{i}", value) for i, value in enumerate([1e16, 1.0, 1.0])]
     results = payload([])
-    data = results["steps"]["tm_placement"]["data"]
-    data["baseline"] = {"flows": flows}
-    data["flow_results"] = [{"occurrence_count": 1, "flows": flows[::-1]}]
+    data = require_step(results, "tm_placement")["result"]
+    data["cases"][0] = case(flows, 0, kind="baseline", name="baseline")
+    data["cases"][1:] = [case(flows[::-1])]
 
     bac = compute_bac(results, "tm_placement")
     expected = 10_000_000_000_000_002.0
@@ -101,11 +104,11 @@ def test_sps_probability_matches_counting_oracle():
 
 
 def test_distinct_physical_endpoints_do_not_share_latency_reference_or_matrix_row():
-    baseline = {"flows": [record("a/dc/node1", 1, 1), record("a/dc/node2", 1, 10)]}
+    baseline = [record("a/dc/node1", 1, 1), record("a/dc/node2", 1, 10)]
     results = payload([])
-    data = results["steps"]["tm_placement"]["data"]
-    data["baseline"] = baseline
-    data["flow_results"] = [dict(baseline, occurrence_count=1)]
+    data = require_step(results, "tm_placement")["result"]
+    data["cases"][0] = case(baseline, 0, kind="baseline", name="baseline")
+    data["cases"][1:] = [case(baseline)]
     latency = compute_latency_stretch(results)
     assert latency.baseline["p99"] == 1
     assert latency.baseline["WES"] == 0
@@ -114,7 +117,7 @@ def test_distinct_physical_endpoints_do_not_share_latency_reference_or_matrix_ro
 
 
 def test_missing_cost_is_unavailable_not_free():
-    cost = compute_cost_power({}, 100, 100)
+    cost = compute_cost_power(exported(), 100, 100)
     assert math.isnan(cost.capex_total)
     assert cost.per_offered_demand__usd_per_gbit is None
 
@@ -122,15 +125,9 @@ def test_missing_cost_is_unavailable_not_free():
 @pytest.mark.parametrize("bad", [-1, math.nan, math.inf])
 def test_alpha_rejects_invalid_numeric_values(bad):
     with pytest.raises(ValueError):
-        compute_alpha_star(
-            {
-                "steps": {
-                    "msd_baseline": {
-                        "data": {"alpha_star": bad, "base_demands": [{"volume": 1}]}
-                    }
-                }
-            }
-        )
+        step = msd(1)
+        step["result"]["alpha_feasible"]["value"] = bad
+        compute_alpha_star(exported(step))
 
 
 def test_zero_baseline_preserves_absolute_outage_not_fictitious_availability():
@@ -208,14 +205,14 @@ def test_holm_rejects_ambiguous_or_invalid_family(values):
 def test_latency_metrics_ignore_cost_measurement_units():
     def evaluate(scale):
         data = payload([])
-        step = data["steps"]["tm_placement"]["data"]
-        step["baseline"] = {"flows": [record("A", 10, 2 * scale)]}
-        step["flow_results"] = [
-            dict(occurrence_count=1, flows=[record("A", 10, 4 * scale)])
-        ]
+        step = require_step(data, "tm_placement")["result"]
+        step["cases"][0] = case(
+            [record("A", 10, 2 * scale)], 0, kind="baseline", name="baseline"
+        )
+        step["cases"][1:] = [case([record("A", 10, 4 * scale)])]
         return compute_latency_stretch(data).failures
 
-    assert evaluate(1e-12) == evaluate(1)
+    assert evaluate(10**12) == evaluate(1)
 
 
 def test_latency_weighted_tails_against_explicit_volume_replication():
@@ -224,12 +221,14 @@ def test_latency_weighted_tails_against_explicit_volume_replication():
         costs = rng.integers(1, 20, 5)
         weights = rng.integers(1, 30, 5)
         data = payload([])
-        step = data["steps"]["tm_placement"]["data"]
-        step["baseline"] = {"flows": [record("A", 1, 1)]}
+        step = require_step(data, "tm_placement")["result"]
+        step["cases"][0] = case(
+            [record("A", 1, 1)], 0, kind="baseline", name="baseline"
+        )
         flows = [
             record("A", int(w), int(c)) for c, w in zip(costs, weights, strict=True)
         ]
-        step["flow_results"] = [dict(occurrence_count=1, flows=flows)]
+        step["cases"][1:] = [case(flows)]
         values = sorted(
             int(c) for c, w in zip(costs, weights, strict=True) for _ in range(int(w))
         )
@@ -281,11 +280,14 @@ def test_common_seed_pairing_precedes_normalization(tmp_path):
 
 def test_latency_partial_reference_coverage_is_visible():
     data = payload([])
-    step = data["steps"]["tm_placement"]["data"]
-    step["baseline"] = {"flows": [record("A", 10, 1), record("unreachable", 0)]}
-    step["flow_results"] = [
-        dict(occurrence_count=1, flows=[record("A", 5, 2), record("unreachable", 5, 3)])
-    ]
+    step = require_step(data, "tm_placement")["result"]
+    step["cases"][0] = case(
+        [record("A", 10, 1), record("unreachable", 0)],
+        0,
+        kind="baseline",
+        name="baseline",
+    )
+    step["cases"][1:] = [case([record("A", 5, 2), record("unreachable", 5, 3)])]
     result = compute_latency_stretch(data)
     assert result.failures["p99"] == 2
     assert result.failures["reference_coverage"] == 0.5

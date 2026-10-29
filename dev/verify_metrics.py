@@ -27,6 +27,15 @@ from netlab.metrics.bac import compute_bac
 from netlab.metrics.latency import compute_latency_stretch
 from netlab.metrics.matrixdump import compute_pair_matrices
 from netlab.metrics.sps import compute_sps
+from netlab.results import (
+    baseline_case,
+    case_occurrences,
+    physical_bandwidth,
+    require_step,
+    rows,
+    sampled_cases,
+)
+from netlab.run_record import run_record_path
 from netlab.simulation import simulate
 
 EDGES = [
@@ -64,18 +73,17 @@ def scenario_document(mask: int = 0, seed: int = 42) -> dict[str, Any]:
             type="MaximumSupportedDemand",
             name="msd_baseline",
             demand_set="traffic",
-            resolution=0.0001,
+            alpha_tolerance=0.0001,
         ),
         dict(
             type="TrafficMatrixPlacement",
             name="tm_placement",
             demand_set="traffic",
             iterations=1,
-            parallelism=1,
+            workers=1,
             seed=seed,
-            include_flow_details=True,
+            outputs={"cost_distribution": True},
             alpha_from_step="msd_baseline",
-            alpha_from_field="data.alpha_star",
             **failure,
         ),
         dict(
@@ -85,9 +93,9 @@ def scenario_document(mask: int = 0, seed: int = 42) -> dict[str, Any]:
             target="^(b/dc/node)$",
             mode="pairwise",
             iterations=1,
-            parallelism=1,
+            workers=1,
             seed=seed,
-            include_flow_details=True,
+            outputs={"cost_distribution": True},
             **failure,
         ),
         dict(type="CostPower", name="cost_power"),
@@ -107,7 +115,7 @@ def scenario_document(mask: int = 0, seed: int = 42) -> dict[str, Any]:
                     target="^b/dc/node$",
                     volume=8,
                     mode="pairwise",
-                    flow_policy="TE_WCMP_UNLIM",
+                    preset="TE_MAXFLOW_UNLIM",
                 )
             ]
         },
@@ -135,11 +143,11 @@ def scenario_document(mask: int = 0, seed: int = 42) -> dict[str, Any]:
     )
 
 
-def native(doc: dict[str, Any]) -> dict[str, Any]:
+def native(doc: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     outcome = simulate(yaml.safe_dump(doc))
     if not outcome.success:
         raise AssertionError(outcome.error)
-    return outcome.results
+    return outcome.results, outcome.run_record()
 
 
 def assert_close(actual: Any, expected: Any) -> None:
@@ -149,7 +157,7 @@ def assert_close(actual: Any, expected: Any) -> None:
 def verify_exhaustive(output: Path) -> list[dict[str, Any]]:
     records, rows = [], []
     for mask in range(16):
-        raw = native(scenario_document(mask))
+        raw, run_record = native(scenario_document(mask))
         (output / f"diamond-mask-{mask:02d}.json").write_text(
             json.dumps(raw, indent=2) + "\n"
         )
@@ -164,7 +172,7 @@ def verify_exhaustive(output: Path) -> list[dict[str, Any]]:
         long = 3 if not mask & 12 else 0
         assert capacity == short + long
         alpha, bac, mf, latency, cp, iterations, sps = analyze_one_seed(
-            raw, output, False, enable_maxflow=True
+            raw, output, False, enable_maxflow=True, run_record=run_record
         )
         assert_close(alpha.alpha_star, 1)
         assert_close(alpha.base_total_demand, 8)
@@ -209,15 +217,22 @@ def verify_exhaustive(output: Path) -> list[dict[str, Any]]:
     for name in ["tm_placement", "node_to_node_capacity_matrix"]:
         patterns = []
         for mask, raw in enumerate(records):
-            pattern = deepcopy(raw["steps"][name]["data"]["flow_results"][0])
-            pattern["occurrence_count"] = mask + 1
+            pattern = deepcopy(sampled_cases(require_step(raw, name))[0])
+            pattern["case"]["occurrences"] = mask + 1
             patterns.append(pattern)
-        combined["steps"][name]["data"]["flow_results"] = patterns
-        expanded["steps"][name]["data"]["flow_results"] = [
-            dict(p, occurrence_count=1)
-            for p in patterns
-            for _ in range(p["occurrence_count"])
-        ]
+        compressed_step = require_step(combined, name)
+        expanded_step = require_step(expanded, name)
+        compressed_step["result"]["cases"] = patterns
+        expanded_cases = []
+        for pattern in patterns:
+            for _ in range(case_occurrences(pattern)):
+                copied = deepcopy(pattern)
+                copied["case"]["occurrences"] = 1
+                expanded_cases.append(copied)
+        expanded_step["result"]["cases"] = expanded_cases
+        for step in (compressed_step, expanded_step):
+            step["result"]["metadata"]["sampling"]["iterations"] = 136
+
     assert (
         compute_bac(combined, "tm_placement").to_jsonable()
         == compute_bac(expanded, "tm_placement").to_jsonable()
@@ -249,41 +264,53 @@ def verify_variants(output: Path) -> dict[str, dict[str, Any]]:
         dict(template, volume=5, priority=0),
         dict(template, volume=3, priority=1),
     ]
-    raw = native(doc)
+    raw, run_record = native(doc)
     alpha, bac, _, latency, _, _, sps = analyze_one_seed(
-        raw, output, False, enable_maxflow=True
+        raw, output, False, enable_maxflow=True, run_record=run_record
     )
     assert_close(alpha.alpha_star, 1)
     assert_close(bac.series, [8, 3])
     assert sps is not None
     assert_close(sps.series, [3 / 8])
     assert_close(latency.baseline["p99"], 2)
-    classes = raw["steps"]["tm_placement"]["data"]["flow_results"][0]["flows"]
-    assert {r["priority"]: r["placed"] for r in classes} == {0: 3, 1: 0}
+    step = require_step(raw, "tm_placement")
+    classes = rows(sampled_cases(step)[0])
+    priorities = {d["id"]: d["priority"] for d in step["question"]["demands"]}
+    assert {
+        priorities[r["base_id"]]: physical_bandwidth(
+            raw, r["result"]["delivered_units"]
+        )
+        for r in classes
+    } == {0: 3, 1: 0}
     outcomes["priorities"] = raw
 
     # Regex expansion splits the given volume across pairs; it does not multiply it.
     doc = scenario_document(0)
     doc["demands"]["traffic"][0]["source"] = "^(u|v)$"
     doc["workflow"][2]["source"] = "^(u|v)$"
-    raw = native(doc)
+    raw, run_record = native(doc)
     alpha, bac, _, _, _, _, sps = analyze_one_seed(
-        raw, output, False, enable_maxflow=True
+        raw, output, False, enable_maxflow=True, run_record=run_record
     )
-    flows = raw["steps"]["tm_placement"]["data"]["baseline"]["flows"]
+    flows = rows(baseline_case(require_step(raw, "tm_placement")))
     assert len(flows) == 2
-    assert_close(sum(r["demand"] for r in flows), alpha.alpha_star * 8)
+    assert_close(
+        physical_bandwidth(raw, sum(r["reference_request_units"] for r in flows)),
+        alpha.alpha_star * 8,
+    )
     assert_close(alpha.alpha_star, 1)
     assert_close(bac.offered, 8)
     assert sps is not None
     assert_close(sps.series, [1])
     outcomes["pairwise_expansion"] = raw
 
-    # Combine-mode pseudo endpoints must remain distinct and fully supported.
+    # Combine-mode endpoint sets remain distinct and fully supported.
     doc = scenario_document(1)
     doc["demands"]["traffic"][0]["mode"] = "combine"
-    raw = native(doc)
-    _, bac, _, latency, _, _, _ = analyze_one_seed(raw, output, False)
+    raw, run_record = native(doc)
+    _, bac, _, latency, _, _, _ = analyze_one_seed(
+        raw, output, False, run_record=run_record
+    )
     assert_close(bac.series, [8, 3])
     assert_close(latency.failures["p99"], 2)
     outcomes["combine"] = raw
@@ -294,8 +321,10 @@ def verify_variants(output: Path) -> dict[str, dict[str, Any]]:
         dict(doc["demands"]["traffic"][0], source="^b/dc/node$", target="^a/dc/node$")
     )
     doc["workflow"][2].update(source="^([ab]/dc/node)$", target="^([ab]/dc/node)$")
-    raw = native(doc)
-    _, bac, _, _, _, _, sps = analyze_one_seed(raw, output, False, enable_maxflow=True)
+    raw, run_record = native(doc)
+    _, bac, _, _, _, _, sps = analyze_one_seed(
+        raw, output, False, enable_maxflow=True, run_record=run_record
+    )
     assert_close(bac.series, [16, 6])
     assert len(bac.per_flow) == 2
     assert sps is not None
@@ -304,9 +333,11 @@ def verify_variants(output: Path) -> dict[str, dict[str, Any]]:
 
     # Search-limited alpha is a reported bound, not a claim of true network maximum.
     doc = scenario_document(0)
-    doc["workflow"][0]["alpha_max"] = 0.5
-    raw = native(doc)
-    alpha, bac, _, _, cp, _, _ = analyze_one_seed(raw, output, False)
+    doc["workflow"][0].update(alpha_start=0.5, alpha_max=0.5)
+    raw, run_record = native(doc)
+    alpha, bac, _, _, cp, _, _ = analyze_one_seed(
+        raw, output, False, run_record=run_record
+    )
     assert_close(alpha.alpha_star, 0.5)
     assert_close(bac.offered, 4)
     assert_close(cp.per_offered_demand__usd_per_gbit, 104)
@@ -316,9 +347,9 @@ def verify_variants(output: Path) -> dict[str, dict[str, Any]]:
     doc = scenario_document(0)
     for step in doc["workflow"]:
         step.pop("failure_policy", None)
-    raw = native(doc)
+    raw, run_record = native(doc)
     _, bac, _, _, _, operations, sps = analyze_one_seed(
-        raw, output, False, enable_maxflow=True
+        raw, output, False, enable_maxflow=True, run_record=run_record
     )
     assert bac.series.tolist() == [8]
     assert operations.failures_count == 0 and operations.total_iterations_count == 1
@@ -330,7 +361,7 @@ def verify_variants(output: Path) -> dict[str, dict[str, Any]]:
     for link in doc["network"]["links"]:
         link["disabled"] = True
     disconnected = simulate(yaml.safe_dump(doc))
-    assert not disconnected.success and "No feasible alpha" in disconnected.error
+    assert not disconnected.success and "none_feasible" in disconnected.error
     (output / "disconnected-msd.json").write_text(
         json.dumps(
             {"status": disconnected.status, "error": disconnected.error}, indent=2
@@ -364,22 +395,30 @@ def verify_multiseed(output: Path, plots: bool = False) -> Path:
             iterations = 9 + index * 10
             for step in doc["workflow"][1:3]:
                 step["iterations"] = iterations
-            raw = native(doc)
+            raw, run_record = native(doc)
             (root / f"{scenario}__seed{seed}_scenario.results.json").write_text(
                 json.dumps(raw, indent=2) + "\n"
             )
+            run_record_path(
+                root / f"{scenario}__seed{seed}_scenario.results.json"
+            ).write_text(json.dumps(run_record))
             total = 5 + long_capacity
             delivered, stretch = [total], []
-            patterns = raw["steps"]["tm_placement"]["data"]["flow_results"]
+            patterns = sampled_cases(require_step(raw, "tm_placement"))
             for pattern in patterns:
-                failed = pattern["failure_state"]["excluded_links"]
+                failed = pattern["case"]["pattern"]["excluded_links"]
                 assert len(failed) == 1
                 lost_short = "u" in failed[0].split("|")
                 value = long_capacity if lost_short else 5
-                count = pattern["occurrence_count"]
+                count = pattern["case"]["occurrences"]
                 delivered.extend([value] * count)
                 stretch.extend([2 if lost_short else 1] * count)
-                assert_close(pattern["summary"]["total_placed"], value)
+                assert_close(
+                    physical_bandwidth(
+                        raw, pattern["states"]["converged"]["totals"]["delivered_units"]
+                    ),
+                    value,
+                )
             assert len(stretch) == iterations
 
             def bw(percent, delivered=delivered):

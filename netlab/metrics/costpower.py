@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from netlab.results import find_step
+
 from .common import nonnegative_number
 
 
@@ -51,9 +53,9 @@ def compute_cost_power(
     offered_demand: Optional[float] = None,
     reliable_at_p999: Optional[float] = None,
 ) -> CostPowerResult:
-    cp = results.get("steps", {}).get("cost_power", {}).get("data", {}) or {}
-    levels = cp.get("levels", {}) or {}
-    roots = levels.get("0", [])
+    step = find_step(results, "cost_power")
+    levels = step["result"]["levels"] if step is not None else []
+    roots = [row for level in levels if level["level"] == 0 for row in level["rows"]]
     if roots and (not isinstance(roots, list) or len(roots) != 1):
         raise ValueError("cost_power requires exactly one root total")
     root = roots[0] if roots else {}
@@ -68,7 +70,7 @@ def compute_cost_power(
         else float("nan")
     )
 
-    level1 = levels.get("1", []) or []
+    level1 = [row for level in levels if level["level"] == 1 for row in level["rows"]]
     df = (
         pd.DataFrame(level1)
         if level1

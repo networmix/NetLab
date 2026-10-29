@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from netlab.results import feasible_alpha, require_step
+
 from .common import nonnegative_number
 
 
@@ -24,20 +26,18 @@ class AlphaResult:
 
 
 def compute_alpha_star(results: dict) -> AlphaResult:
-    try:
-        msd = results["steps"]["msd_baseline"]["data"]
-        alpha = nonnegative_number(msd["alpha_star"], "alpha_star")
-        demands = msd["base_demands"]
-        if not isinstance(demands, list) or not demands:
-            raise ValueError("base_demands must be a nonempty list")
-        base_total = nonnegative_number(
-            sum(nonnegative_number(demand["volume"], "volume") for demand in demands),
-            "base_total_demand",
-        )
-    except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError(
-            "msd_baseline.data requires alpha_star and base_demands[].volume"
-        ) from exc
+    step = require_step(results, "msd_baseline")
+    alpha = feasible_alpha(step)
+    demands = step["question"]["demands"]
+    if not isinstance(demands, list) or not demands:
+        raise ValueError("MSD question.demands must be a nonempty list")
+    base_total = nonnegative_number(
+        sum(
+            nonnegative_number(demand["physical_volume"], "physical_volume")
+            for demand in demands
+        ),
+        "base_total_demand",
+    )
     return AlphaResult(
         alpha_star=alpha, source="msd_baseline", base_total_demand=base_total
     )

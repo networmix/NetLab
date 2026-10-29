@@ -12,34 +12,34 @@ from netlab.metrics.latency import compute_latency_stretch
 from netlab.metrics.matrixdump import compute_pair_matrices
 from netlab.metrics.sps import compute_sps
 from netlab.metrics_failure import aggregate_failure_metrics, analyze_results
+from tests.result_samples import case, exported, placement, row
 
 
 def flow(demand, placed, cost=1):
-    return {
-        "source": "A",
-        "destination": "B",
-        "demand": demand,
-        "placed": placed,
-        "cost_distribution": {str(cost): placed},
-    }
+    return row("A", "B", placed, demand, costs={cost: placed})
 
 
 def result_data():
-    base = {"flows": [flow(40, 40), flow(60, 60, 2)]}
-    failures = [
-        {"occurrence_count": 2, "flows": [], "summary": {"overall_ratio": 0}},
-        {
-            "occurrence_count": 1,
-            "flows": [flow(40, 10, 2), flow(60, 30, 3)],
-            "summary": {"overall_ratio": 0.4},
-        },
-    ]
-    return {
-        "steps": {
-            name: {"data": {"baseline": base, "flow_results": failures}}
-            for name in ("tm_placement", "node_to_node_capacity_matrix")
-        }
-    }
+    base = [flow(40, 40), flow(60, 60, 2)]
+    return exported(
+        *[
+            placement(
+                base,
+                [
+                    case([flow(100, 0)], 2, capacity=capacity),
+                    case(
+                        [flow(40, 10, 2), flow(60, 30, 3)], name="f2", capacity=capacity
+                    ),
+                ],
+                name=name,
+                capacity=capacity,
+            )
+            for name, capacity in (
+                ("tm_placement", False),
+                ("node_to_node_capacity_matrix", True),
+            )
+        ]
+    )
 
 
 def test_sum_classes_and_retain_total_outage_samples():
@@ -56,8 +56,10 @@ def test_sum_classes_and_retain_total_outage_samples():
 
 def test_all_failures_disconnected_is_zero_not_missing():
     data = result_data()
-    for step in data["steps"].values():
-        step["data"]["flow_results"] = [{"occurrence_count": 3, "flows": []}]
+    for step in data["steps"]:
+        step["result"]["cases"][1:] = [
+            case([flow(100, 0)], 3, capacity=step["step_type"] == "MaxFlow")
+        ]
     assert compute_sps(data).series.tolist() == [0, 0, 0]
     absolute, normalized, _, _ = compute_pair_matrices(data, include_maxflow=True)
     assert (absolute.loc["A→B"] == 0).all()

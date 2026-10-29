@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
+
+from netlab.run_record import run_record_path
 
 
 def _run_cli(argv: list[str]) -> int:
@@ -54,9 +57,11 @@ def test_cli_run_reports_build_failure(tmp_path, capsys):
     assert (output / "provenance.json").is_file()
 
 
-def test_cli_metrics_summary_smoke(capsys) -> None:
+def test_cli_metrics_summary_smoke(capsys, tmp_path) -> None:
     data_root = Path(__file__).resolve().parent / "data"
-    scen = data_root / "scenarios"
+    scen = tmp_path / "scenarios"
+    shutil.copytree(data_root / "scenarios", scen)
+    shutil.copytree(data_root / "scenarios_metrics", tmp_path / "scenarios_metrics")
     code = _run_cli(["metrics", str(scen), "--summary"])
     out = capsys.readouterr().out
     assert code == 0
@@ -72,6 +77,7 @@ def test_cli_metrics_run_on_temp_copy(tmp_path: Path) -> None:
         target = dst / p.relative_to(src)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(p.read_bytes())
+        run_record_path(target).write_bytes(run_record_path(p).read_bytes())
     code = _run_cli(["metrics", str(dst), "--no-plots"])
     assert code == 0
     out_root = tmp_path / "scenarios_metrics"

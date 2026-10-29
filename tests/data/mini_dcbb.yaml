@@ -22,8 +22,8 @@
 #   via path_a: 1 + 5 + 100 + 5 + 1 = 112  (560 μs)
 #   via path_b: 1 + 5 + 200 + 5 + 1 = 212  (1060 μs)
 #
-# Flow policy: TE_WCMP_UNLIM — fills shortest paths first, then
-# overflows to next-shortest. This lets both paths carry traffic.
+# Routing preset: TE_MAXFLOW_UNLIM — unrestricted minimum-cost maximum flow.
+# Both corridors carry traffic at alpha=3 on this network.
 #
 # Per-plane capacity: path_a(100) + path_b(50) = 150
 # Total cross-site capacity: 2 × 150 = 300
@@ -33,7 +33,9 @@
 # At alpha=3, demand = 300 per direction.
 # TE fills path_a first (cost 112): 2 planes × 100 = 200
 # Remaining 100 overflows to path_b (cost 212): 2 planes × 50 = 100
-# Baseline cost_distribution: {112: 200, 212: 100}
+# Baseline marginal curve, shown in physical bandwidth: {112: 200, 212: 100}.
+# Exported bandwidth amounts are integer units; multiply by units_report.q.
+# The marginal curve is not a general delivered-path latency distribution.
 #
 # Failures at alpha=3, demand=300 per direction:
 #
@@ -41,11 +43,11 @@
 #
 #   Lose path_a (all path_a links on both planes removed):
 #     Remaining: 2 × path_b = 100. Placed: 100. Ratio: 100/300 = 1/3
-#     cost_distribution: {212: 100}
+#     Marginal curve in physical bandwidth: {212: 100}
 #
 #   Lose path_b (all path_b links on both planes removed):
 #     Remaining: 2 × path_a = 200. Placed: 200. Ratio: 200/300 = 2/3
-#     cost_distribution: {112: 200}
+#     Marginal curve in physical bandwidth: {112: 200}
 #
 #   With seed=42 and 10 iterations, both patterns should appear.
 #   Pattern occurrence counts sum to 10.
@@ -57,11 +59,11 @@
 #     the node). Remaining: plane 2 only = path_a(100) + path_b(50) = 150.
 #     TE fills path_a first: 100 at cost 112, then path_b: 50 at cost 212.
 #     Placed: 150. Ratio: 150/300 = 1/2
-#     cost_distribution: {112: 100, 212: 50}
+#     Marginal curve in physical bandwidth: {112: 100, 212: 50}
 #
 #   All 4 BB nodes produce the same ratio (symmetric topology) but
-#   different failure_states → 4 unique patterns, same placed/ratio.
-#   20 iterations → occurrence_counts sum to 20.
+#   different exclusion patterns → 4 unique patterns, same delivery/ratio.
+#   20 iterations → case occurrences sum to 20.
 
 seed: 42
 
@@ -165,12 +167,12 @@ demands:
       target: ^xyz1/rsw$
       volume: 100.0
       mode: combine
-      flow_policy: TE_WCMP_UNLIM
+      preset: TE_MAXFLOW_UNLIM
     - source: ^xyz1/rsw$
       target: ^abc1/rsw$
       volume: 100.0
       mode: combine
-      flow_policy: TE_WCMP_UNLIM
+      preset: TE_MAXFLOW_UNLIM
 
 failures:
   fm_lh_path:
@@ -204,26 +206,27 @@ workflow:
     demand_set: baseline_traffic_matrix
     alpha_start: 1.0
     growth_factor: 2.0
-    resolution: 0.01
+    alpha_tolerance: 0.01
 
   - type: TrafficMatrixPlacement
     name: tm_lh_path
     demand_set: baseline_traffic_matrix
     failure_policy: fm_lh_path
     iterations: 10
-    parallelism: 1
+    workers: 1
     seed: 42
-    include_flow_details: true
+    outputs:
+      cost_distribution: true
     alpha_from_step: msd_baseline
-    alpha_from_field: data.alpha_star
+
 
   - type: TrafficMatrixPlacement
     name: tm_1x_bb
     demand_set: baseline_traffic_matrix
     failure_policy: fm_1x_bb
     iterations: 20
-    parallelism: 1
+    workers: 1
     seed: 42
-    include_flow_details: true
+    outputs:
+      cost_distribution: true
     alpha_from_step: msd_baseline
-    alpha_from_field: data.alpha_star

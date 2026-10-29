@@ -105,40 +105,15 @@ class TestPrintResults:
 
 
 def test_step_metrics_preserve_destinations_and_weights():
-    results = {
-        "steps": {
-            "tm": {
-                "data": {
-                    "baseline": {
-                        "flows": [
-                            {
-                                "source": "A",
-                                "destination": "B",
-                                "demand": 100.0,
-                                "placed": 100.0,
-                            },
-                            {
-                                "source": "A",
-                                "destination": "C",
-                                "demand": 200.0,
-                                "placed": 200.0,
-                            },
-                        ]
-                    },
-                    "flow_results": [
-                        {
-                            "occurrence_count": 2,
-                            "failure_state": {},
-                            "flows": [
-                                {"source": "A", "destination": "B", "placed": 0.0},
-                                {"source": "A", "destination": "C", "placed": 100.0},
-                            ],
-                        }
-                    ],
-                }
-            }
-        }
-    }
+    from tests.result_samples import case, exported, placement, row
+
+    results = exported(
+        placement(
+            [row("A", "B", 100, 100), row("A", "C", 200, 200)],
+            [case([row("A", "B", 0, 100), row("A", "C", 100, 200)], 2)],
+            name="tm",
+        )
+    )
     metrics = _extract_step_metrics(results, "tm")
     assert metrics["auc"] == pytest.approx(5 / 9, abs=1e-6)
     assert set(metrics["flow_bac"]) == {"A>B", "A>C"}

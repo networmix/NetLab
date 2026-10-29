@@ -1,0 +1,18 @@
+{
+  "scenario": "/Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1/tests/autoresearch/data/square_mesh.yaml",
+  "status": "success",
+  "error": "",
+  "duration_s": 0.03315300005488098,
+  "inspection": {
+    "node_count": 4,
+    "link_count": 6,
+    "risk_groups": [],
+    "demand_count": 1,
+    "workflow_steps": 3
+  },
+  "step_durations_sec": {
+    "msd_baseline": 0.0007520830258727074,
+    "tm_placement": 0.0115769999101758,
+    "node_to_node_capacity_matrix": 0.009098958922550082
+  }
+}

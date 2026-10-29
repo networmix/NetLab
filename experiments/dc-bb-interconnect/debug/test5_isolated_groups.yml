@@ -62,7 +62,7 @@ demands:
       target: "^SiteB/DC"
       volume: 1000
       mode: combine
-      flow_policy: SHORTEST_PATHS_ECMP
+      preset: SHORTEST_PATHS_ECMP
 
 workflow:
   - type: BuildGraph
@@ -70,4 +70,4 @@ workflow:
   - type: MaximumSupportedDemand
     name: msd
     demand_set: test
-    resolution: 0.001
+    alpha_tolerance: 0.001

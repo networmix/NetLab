@@ -1,0 +1,21 @@
+{
+  "scenario": "/Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1/tests/data/mini_dcbb.yaml",
+  "status": "success",
+  "error": "",
+  "duration_s": 0.016464916989207268,
+  "inspection": {
+    "node_count": 10,
+    "link_count": 12,
+    "risk_groups": [
+      "path_a",
+      "path_b"
+    ],
+    "demand_count": 2,
+    "workflow_steps": 3
+  },
+  "step_durations_sec": {
+    "msd_baseline": 0.0006726658903062344,
+    "tm_lh_path": 0.0006288751028478146,
+    "tm_1x_bb": 0.0003542918711900711
+  }
+}

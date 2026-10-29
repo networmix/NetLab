@@ -23,7 +23,7 @@ import pandas as pd
 
 import netlab.metrics.summary as summary_mod
 from netlab.artifacts import (
-    package_versions,
+    package_provenance,
     sha256_file,
     write_csv_atomic,
 )
@@ -39,6 +39,8 @@ from netlab.metrics.latency import LatencyResult
 from netlab.metrics.matrixdump import compute_pair_matrices
 from netlab.metrics.msd import AlphaResult
 from netlab.metrics.sps import SpsResult
+from netlab.results import find_step
+from netlab.run_record import load_run_record, run_record_path
 
 from .analysis import analyze_one_seed
 from .common import write_metric_json as write_json_atomic
@@ -79,7 +81,7 @@ def group_by_scenario(files: List[Path]) -> Dict[str, Dict[int, Path]]:
             s = s[:-8]
         scenario_stem, seed = parse_seeded_stem(s)
         data = load_json(p)
-        recorded_seed = data.get("scenario", {}).get("seed")
+        recorded_seed = data.get("metadata", {}).get("seed")
         if recorded_seed is not None and (
             type(recorded_seed) is not int
             or (seed is not None and seed != recorded_seed)
@@ -88,9 +90,9 @@ def group_by_scenario(files: List[Path]) -> Dict[str, Dict[int, Path]]:
                 f"Scenario seed disagrees with filename or is not an integer: {p}"
             )
         if seed is None:
-            seed_val = data.get("scenario", {}).get("seed")
+            seed_val = data.get("metadata", {}).get("seed")
             if seed_val is None:
-                raise ValueError(f"Missing 'scenario.seed' in results file: {p}")
+                raise ValueError(f"Missing 'metadata.seed' in results file: {p}")
             try:
                 if type(seed_val) is not int:
                     raise ValueError("seed must be an integer")
@@ -177,7 +179,11 @@ def _run_metrics(
             raise ValueError(f"Requested scenarios not found: {sorted(missing)}")
 
     input_hashes = {
-        p: sha256_file(p) for mapping in grouped.values() for p in mapping.values()
+        p: sha256_file(p)
+        for mapping in grouped.values()
+        for result_path in mapping.values()
+        for p in (result_path, run_record_path(result_path))
+        if p.is_file()
     }
     require_maxflow = enable_maxflow
     for scenario_stem, seed_map in grouped.items():
@@ -186,11 +192,16 @@ def _run_metrics(
 
         for seed, path in sorted(seed_map.items()):
             results = load_json(path)
+            run_record = load_run_record(path, results)
             seed_dir = out_root / scenario_stem / f"seed{seed}"
             seed_dir.mkdir(parents=True, exist_ok=True)
 
             alpha, bac_p, bac_m, latency, cp, itops, sps_opt = analyze_one_seed(
-                results, seed_dir, do_plots, enable_maxflow=enable_maxflow
+                results,
+                seed_dir,
+                do_plots,
+                run_record=run_record,
+                enable_maxflow=enable_maxflow,
             )
             scenario_out.alpha[seed] = alpha
             scenario_out.bac_place[seed] = bac_p
@@ -507,9 +518,10 @@ def _run_metrics(
         ns_rows = []
         for seed, path in sorted(seed_map.items()):
             res2 = load_json(path)
-            ns = res2.get("steps", {}).get("network_statistics", {}).get("data", {})
+            ns_step = find_step(res2, "network_statistics")
+            ns = ns_step["result"] if ns_step is not None else {}
             if not ns:
-                raise ValueError(f"Missing network_statistics.data in {path}")
+                raise ValueError(f"Missing network_statistics result in {path}")
             if ns.get("node_count") is None or ns.get("link_count") is None:
                 raise ValueError(
                     f"Incomplete network_statistics (node/link counts) in {path}"
@@ -522,8 +534,8 @@ def _run_metrics(
             ns_rows.append(
                 {
                     "seed": seed,
-                    "node_count": int(ns.get("node_count")),
-                    "link_count": int(ns.get("link_count")),
+                    "node_count": int(ns["node_count"]),
+                    "link_count": int(ns["link_count"]),
                 }
             )
         ns_df = pd.DataFrame(ns_rows).set_index("seed").sort_index()
@@ -688,7 +700,7 @@ def _create_metrics_provenance(
 
 
 def _metric_package_versions() -> dict:
-    packages = package_versions()
+    packages = package_provenance()
     for name in ("numpy", "pandas", "scipy", "matplotlib", "seaborn"):
         packages[name] = {"version": version(name)}
     return packages

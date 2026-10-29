@@ -13,6 +13,8 @@ import pytest
 import yaml
 
 from netlab.metrics.analysis import analyze_one_seed
+from netlab.results import require_step
+from netlab.simulation import run_simulation
 
 
 @pytest.fixture(scope="module")
@@ -27,25 +29,27 @@ def current_results(tmp_path_factory):
     scenario_path = root / "mini.yml"
     scenario_path.write_text(yaml.safe_dump(scenario, sort_keys=False))
     output = root / "scenarios" / "mini" / "mini__seed42"
-    for args in (
-        ["inspect", str(scenario_path)],
-        ["run", str(scenario_path), "-o", str(output)],
-    ):
-        result = subprocess.run(
-            [sys.executable, "-m", "ngraph", *args],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        assert result.returncode == 0, result.stdout + result.stderr
-    return json.loads((output / "mini.results.json").read_text()), root / "scenarios"
+    inspection = subprocess.run(
+        [sys.executable, "-m", "ngraph", "inspect", str(scenario_path)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert inspection.returncode == 0, inspection.stdout + inspection.stderr
+    outcome = run_simulation(
+        scenario_path, results_path=output / "mini.results.json", timeout=30
+    )
+    assert outcome.success, outcome.error
+    return outcome.results, root / "scenarios", outcome.run_record()
 
 
 def test_analyze_fresh_results(current_results, tmp_path, monkeypatch):
-    results, _ = current_results
+    results, _, run_record = current_results
     results = copy.deepcopy(results)
     monkeypatch.delenv("NGRAPH_ENABLE_MAXFLOW", raising=False)
-    alpha, bac, _, latency, _, _, _ = analyze_one_seed(results, tmp_path, False)
+    alpha, bac, _, latency, _, _, _ = analyze_one_seed(
+        results, tmp_path, False, run_record=current_results[2]
+    )
     assert alpha.alpha_star == pytest.approx(3.0)
     assert alpha.base_total_demand == pytest.approx(200.0)
     assert bac.offered == pytest.approx(600.0)
@@ -56,7 +60,7 @@ def test_analyze_fresh_results(current_results, tmp_path, monkeypatch):
 
 
 def test_metrics_cli_on_fresh_results(current_results):
-    _, root = current_results
+    _, root, _ = current_results
     result = subprocess.run(
         [sys.executable, "-m", "netlab.cli", "metrics", str(root), "--no-plots"],
         capture_output=True,
@@ -80,30 +84,36 @@ def test_metrics_cli_on_fresh_results(current_results):
     "volume, message",
     [
         (0, "zero-demand"),
-        (-1, "demand volume must be a finite nonnegative number"),
-        (float("nan"), "demand volume must be a finite nonnegative number"),
+        (-1, "MSD physical_volume must be a finite nonnegative number"),
+        (float("nan"), "MSD physical_volume must be a finite nonnegative number"),
     ],
 )
 def test_current_demands_still_validated(current_results, tmp_path, volume, message):
     results = copy.deepcopy(current_results[0])
-    results["steps"]["msd_baseline"]["data"]["base_demands"][0]["volume"] = volume
+    require_step(results, "msd_baseline")["question"]["demands"][0][
+        "physical_volume"
+    ] = volume
     with pytest.raises(ValueError, match=message):
-        analyze_one_seed(results, tmp_path, False)
+        analyze_one_seed(results, tmp_path, False, run_record=current_results[2])
 
 
-def test_demand_total_must_match_placement(current_results, tmp_path):
+def test_rounded_expansion_accounting_must_match(current_results, tmp_path):
     results = copy.deepcopy(current_results[0])
-    results["steps"]["msd_baseline"]["data"]["base_demands"][0]["volume"] = 101
-    with pytest.raises(ValueError, match="total flow demand.*does not match"):
-        analyze_one_seed(results, tmp_path, False)
+    require_step(results, "tm_placement")["result"]["accounting"][0][
+        "resolved_units"
+    ] += 1
+    with pytest.raises(ValueError, match="expansion accounting"):
+        analyze_one_seed(results, tmp_path, False, run_record=current_results[2])
 
 
-@pytest.mark.parametrize("field", ["source", "target", "volume"])
+@pytest.mark.parametrize("field", ["source", "target", "physical_volume"])
 def test_current_demand_fields_required(current_results, tmp_path, field):
     results = copy.deepcopy(current_results[0])
-    del results["steps"]["msd_baseline"]["data"]["base_demands"][0][field]
-    with pytest.raises(ValueError, match="source/target selector|demand volume must"):
-        analyze_one_seed(results, tmp_path, False)
+    del require_step(results, "msd_baseline")["question"]["demands"][0][field]
+    with pytest.raises(
+        ValueError, match="source/target selector|MSD physical_volume must"
+    ):
+        analyze_one_seed(results, tmp_path, False, run_record=current_results[2])
 
 
 def test_pairwise_maxflow_pipeline(tmp_path, monkeypatch):
@@ -113,22 +123,19 @@ def test_pairwise_maxflow_pipeline(tmp_path, monkeypatch):
     for step in scenario["workflow"]:
         if "iterations" in step:
             step["iterations"] = 10
-            step["parallelism"] = 1
+            step["workers"] = 1
     scenario["workflow"].append({"type": "NetworkStats", "name": "network_statistics"})
     scenario_path = tmp_path / "square.yml"
     scenario_path.write_text(yaml.safe_dump(scenario, sort_keys=False))
     root = tmp_path / "scenarios"
     output = root / "square" / "square__seed42"
-    run = subprocess.run(
-        [sys.executable, "-m", "ngraph", "run", str(scenario_path), "-o", str(output)],
-        capture_output=True,
-        text=True,
-        timeout=30,
+    outcome = run_simulation(
+        scenario_path, results_path=output / "square.results.json", timeout=30
     )
-    assert run.returncode == 0, run.stdout + run.stderr
-    results = json.loads((output / "square.results.json").read_text())
+    assert outcome.success, outcome.error
+    results = outcome.results
     alpha, bac, maxflow, _, _, _, sps = analyze_one_seed(
-        results, tmp_path, False, enable_maxflow=True
+        results, tmp_path, False, enable_maxflow=True, run_record=outcome.run_record()
     )
     assert alpha.alpha_star == pytest.approx(1.0)
     assert alpha.base_total_demand == pytest.approx(12.0)

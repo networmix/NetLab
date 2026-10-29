@@ -1,696 +1,1745 @@
 {
-  "workflow": {
-    "msd_baseline": {
+  "metadata": {
+    "schema_version": "1.0",
+    "netgraph_version": "0.26.0",
+    "core_version": "0.12.0",
+    "core_extension_sha256": "d69b0dec11700cdc030395e814bf6e09670b147176cefca341a77e776a62e849",
+    "python_version": "3.13.13",
+    "seed": 42
+  },
+  "units_report": {
+    "q": 0.00390625,
+    "exponent": -8,
+    "mode": "auto",
+    "precision": 0.001,
+    "target_met": true,
+    "input_convention": "promoted_binary64_half_up",
+    "display_convention": "units_authoritative_binary64_display",
+    "scope": {
+      "workflow_steps": [
+        "msd_baseline",
+        "tm_lh_path",
+        "tm_1x_bb"
+      ],
+      "workflow_demand_sets": [
+        "baseline_traffic_matrix"
+      ],
+      "library_demand_sets": []
+    },
+    "limited_by": "split_count",
+    "achieved_precision": {
+      "numerator": 21,
+      "denominator": 25600
+    },
+    "input_bound": {
+      "kind": "input",
+      "label": "link.bb/abc1/pl1|bb/xyz1/pl1|1.capacity",
+      "q_upper_bound": {
+        "numerator": 28823037615171175,
+        "denominator": 288230376151711744
+      },
+      "met": true
+    },
+    "split_bound": {
+      "kind": "split_count",
+      "capacity_label": "link.bb/abc1/pl1|bb/xyz1/pl1|1.capacity",
+      "capacity": 50.0,
+      "nodes": 10,
+      "directed_links": 24,
+      "group": null,
+      "demands": 0,
+      "tunnels": 0,
+      "count": {
+        "numerator": 21,
+        "denominator": 2
+      },
+      "q_upper_bound": {
+        "numerator": 28823037615171175,
+        "denominator": 6052837899185946624
+      },
+      "met": true
+    },
+    "range_limit": null,
+    "augmented_capacity_sum_units": 2201600,
+    "augmented_cost_sum": 1248,
+    "weight_approximations": []
+  },
+  "steps": [
+    {
+      "name": "msd_baseline",
       "step_type": "MaximumSupportedDemand",
-      "step_name": "msd_baseline",
       "execution_order": 0,
       "scenario_seed": 42,
       "step_seed": 2022406077,
-      "seed_source": "scenario-derived"
+      "seed_source": "scenario-derived",
+      "question": {
+        "kind": "msd",
+        "demand_set": "baseline_traffic_matrix",
+        "demands": [
+          {
+            "source": {
+              "path": "^abc1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "target": {
+              "path": "^xyz1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "priority": 0,
+            "id": "baseline_traffic_matrix|0",
+            "model": {
+              "routing": "centralized_te",
+              "admission": "lossless",
+              "allocation": null,
+              "source_allocation": "optimized",
+              "source_weights": null,
+              "weight_basis": null,
+              "edge_weights": null,
+              "tie_break": null,
+              "multipath": null,
+              "parallel_edges": null,
+              "tunnel_count": null,
+              "prefer_headroom": false,
+              "cost_ceiling": null,
+              "min_unreserved_bandwidth_units": null,
+              "route_names": null,
+              "controller": null,
+              "supplied_support": false,
+              "supplied_program": false
+            },
+            "physical_volume": 100.0,
+            "mode": "combine",
+            "group_mode": "flatten"
+          },
+          {
+            "source": {
+              "path": "^xyz1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "target": {
+              "path": "^abc1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "priority": 0,
+            "id": "baseline_traffic_matrix|1",
+            "model": {
+              "routing": "centralized_te",
+              "admission": "lossless",
+              "allocation": null,
+              "source_allocation": "optimized",
+              "source_weights": null,
+              "weight_basis": null,
+              "edge_weights": null,
+              "tie_break": null,
+              "multipath": null,
+              "parallel_edges": null,
+              "tunnel_count": null,
+              "prefer_headroom": false,
+              "cost_ceiling": null,
+              "min_unreserved_bandwidth_units": null,
+              "route_names": null,
+              "controller": null,
+              "supplied_support": false,
+              "supplied_program": false
+            },
+            "physical_volume": 100.0,
+            "mode": "combine",
+            "group_mode": "flatten"
+          }
+        ],
+        "alpha_start": 1.0,
+        "growth_factor": 2.0,
+        "alpha_min": 1e-06,
+        "alpha_max": 1000000000.0,
+        "alpha_tolerance": 0.01,
+        "max_bracket_iters": 32,
+        "max_bisect_iters": 32,
+        "export_probe_rows": false
+      },
+      "result": {
+        "kind": "msd",
+        "metadata": {
+          "workers": 1,
+          "sampling": null
+        },
+        "outputs": {
+          "native": {
+            "edge_flows": false,
+            "residual": false,
+            "edge_reservations": false,
+            "saturated_boundary_edges": false,
+            "min_cut": false
+          },
+          "cost_distribution": false,
+          "details": false
+        },
+        "alpha_feasible": {
+          "value": 3.0,
+          "numerator": 3,
+          "denominator": 1
+        },
+        "best_probe_index": 3,
+        "monotone_proven": false,
+        "proof": "unproved",
+        "upper_certificate": null,
+        "search_status": "feasible",
+        "stop_reason": "tolerance",
+        "history": [
+          {
+            "index": 0,
+            "alpha": {
+              "value": 1.0,
+              "numerator": 1,
+              "denominator": 1
+            },
+            "outcome": "feasible",
+            "totals": {
+              "reference_request_units": 51200,
+              "delivered_units": 51200,
+              "unadmitted_units": 0,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 0,
+              "delivery_ratio": {
+                "numerator": 1,
+                "denominator": 1
+              },
+              "feasible": true
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 1,
+            "alpha": {
+              "value": 2.0,
+              "numerator": 2,
+              "denominator": 1
+            },
+            "outcome": "feasible",
+            "totals": {
+              "reference_request_units": 102400,
+              "delivered_units": 102400,
+              "unadmitted_units": 0,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 0,
+              "delivery_ratio": {
+                "numerator": 1,
+                "denominator": 1
+              },
+              "feasible": true
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 2,
+            "alpha": {
+              "value": 4.0,
+              "numerator": 4,
+              "denominator": 1
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 204800,
+              "delivered_units": 153600,
+              "unadmitted_units": 51200,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 51200,
+              "delivery_ratio": {
+                "numerator": 3,
+                "denominator": 4
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 3,
+            "alpha": {
+              "value": 3.0,
+              "numerator": 3,
+              "denominator": 1
+            },
+            "outcome": "feasible",
+            "totals": {
+              "reference_request_units": 153600,
+              "delivered_units": 153600,
+              "unadmitted_units": 0,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 0,
+              "delivery_ratio": {
+                "numerator": 1,
+                "denominator": 1
+              },
+              "feasible": true
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 4,
+            "alpha": {
+              "value": 3.5,
+              "numerator": 7,
+              "denominator": 2
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 179200,
+              "delivered_units": 153600,
+              "unadmitted_units": 25600,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 25600,
+              "delivery_ratio": {
+                "numerator": 6,
+                "denominator": 7
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 5,
+            "alpha": {
+              "value": 3.25,
+              "numerator": 13,
+              "denominator": 4
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 166400,
+              "delivered_units": 153600,
+              "unadmitted_units": 12800,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 12800,
+              "delivery_ratio": {
+                "numerator": 12,
+                "denominator": 13
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 6,
+            "alpha": {
+              "value": 3.125,
+              "numerator": 25,
+              "denominator": 8
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 160000,
+              "delivered_units": 153600,
+              "unadmitted_units": 6400,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 6400,
+              "delivery_ratio": {
+                "numerator": 24,
+                "denominator": 25
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 7,
+            "alpha": {
+              "value": 3.0625,
+              "numerator": 49,
+              "denominator": 16
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 156800,
+              "delivered_units": 153600,
+              "unadmitted_units": 3200,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 3200,
+              "delivery_ratio": {
+                "numerator": 48,
+                "denominator": 49
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 8,
+            "alpha": {
+              "value": 3.03125,
+              "numerator": 97,
+              "denominator": 32
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 155200,
+              "delivered_units": 153600,
+              "unadmitted_units": 1600,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 1600,
+              "delivery_ratio": {
+                "numerator": 96,
+                "denominator": 97
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 9,
+            "alpha": {
+              "value": 3.015625,
+              "numerator": 193,
+              "denominator": 64
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 154400,
+              "delivered_units": 153600,
+              "unadmitted_units": 800,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 800,
+              "delivery_ratio": {
+                "numerator": 192,
+                "denominator": 193
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          },
+          {
+            "index": 10,
+            "alpha": {
+              "value": 3.0078125,
+              "numerator": 385,
+              "denominator": 128
+            },
+            "outcome": "infeasible",
+            "totals": {
+              "reference_request_units": 154000,
+              "delivered_units": 153600,
+              "unadmitted_units": 400,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "reference_shortfall_units": 400,
+              "delivery_ratio": {
+                "numerator": 384,
+                "denominator": 385
+              },
+              "feasible": false
+            },
+            "range_refusal": null
+          }
+        ],
+        "best_rows": [
+          {
+            "kind": "placement",
+            "id": "baseline_traffic_matrix|0|0",
+            "endpoints": {
+              "sources": [
+                "abc1/rsw"
+              ],
+              "destinations": [
+                "xyz1/rsw"
+              ]
+            },
+            "pool": null,
+            "result": {
+              "request_kind": "finite",
+              "requested_units": 76800,
+              "offered_units": null,
+              "delivered_units": 76800,
+              "unadmitted_units": 0,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "termination": "complete",
+              "total_cost": 11161600
+            },
+            "base_id": "baseline_traffic_matrix|0",
+            "reference_request_units": 76800,
+            "reference_shortfall_units": 0
+          },
+          {
+            "kind": "placement",
+            "id": "baseline_traffic_matrix|1|0",
+            "endpoints": {
+              "sources": [
+                "xyz1/rsw"
+              ],
+              "destinations": [
+                "abc1/rsw"
+              ]
+            },
+            "pool": null,
+            "result": {
+              "request_kind": "finite",
+              "requested_units": 76800,
+              "offered_units": null,
+              "delivered_units": 76800,
+              "unadmitted_units": 0,
+              "source_drop_units": 0,
+              "edge_drop_units": 0,
+              "termination": "complete",
+              "total_cost": 11161600
+            },
+            "base_id": "baseline_traffic_matrix|1",
+            "reference_request_units": 76800,
+            "reference_shortfall_units": 0
+          }
+        ],
+        "best_accounting": [
+          {
+            "base_id": "baseline_traffic_matrix|0",
+            "declared_units": 76800,
+            "resolved_units": 76800,
+            "discarded_units": 0,
+            "discards": []
+          },
+          {
+            "base_id": "baseline_traffic_matrix|1",
+            "declared_units": 76800,
+            "resolved_units": 76800,
+            "discarded_units": 0,
+            "discards": []
+          }
+        ]
+      }
     },
-    "tm_lh_path": {
+    {
+      "name": "tm_lh_path",
       "step_type": "TrafficMatrixPlacement",
-      "step_name": "tm_lh_path",
       "execution_order": 1,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step"
+      "seed_source": "explicit-step",
+      "question": {
+        "kind": "placement",
+        "demand_set": "baseline_traffic_matrix",
+        "demands": [
+          {
+            "source": {
+              "path": "^abc1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "target": {
+              "path": "^xyz1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "priority": 0,
+            "id": "baseline_traffic_matrix|0",
+            "model": {
+              "routing": "centralized_te",
+              "admission": "lossless",
+              "allocation": null,
+              "source_allocation": "optimized",
+              "source_weights": null,
+              "weight_basis": null,
+              "edge_weights": null,
+              "tie_break": null,
+              "multipath": null,
+              "parallel_edges": null,
+              "tunnel_count": null,
+              "prefer_headroom": false,
+              "cost_ceiling": null,
+              "min_unreserved_bandwidth_units": null,
+              "route_names": null,
+              "controller": null,
+              "supplied_support": false,
+              "supplied_program": false
+            },
+            "physical_volume": 100.0,
+            "mode": "combine",
+            "group_mode": "flatten"
+          },
+          {
+            "source": {
+              "path": "^xyz1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "target": {
+              "path": "^abc1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "priority": 0,
+            "id": "baseline_traffic_matrix|1",
+            "model": {
+              "routing": "centralized_te",
+              "admission": "lossless",
+              "allocation": null,
+              "source_allocation": "optimized",
+              "source_weights": null,
+              "weight_basis": null,
+              "edge_weights": null,
+              "tie_break": null,
+              "multipath": null,
+              "parallel_edges": null,
+              "tunnel_count": null,
+              "prefer_headroom": false,
+              "cost_ceiling": null,
+              "min_unreserved_bandwidth_units": null,
+              "route_names": null,
+              "controller": null,
+              "supplied_support": false,
+              "supplied_program": false
+            },
+            "physical_volume": 100.0,
+            "mode": "combine",
+            "group_mode": "flatten"
+          }
+        ],
+        "alpha": {
+          "value": 3.0,
+          "numerator": 3,
+          "denominator": 1
+        },
+        "alpha_source": {
+          "kind": "msd_step",
+          "step": "msd_baseline"
+        },
+        "failures": {
+          "policy_name": "fm_lh_path",
+          "inline_policy": null,
+          "iterations": 10,
+          "seed": 42,
+          "failure_trace": false
+        },
+        "states": [
+          "converged"
+        ],
+        "interaction": "ordered"
+      },
+      "result": {
+        "kind": "placement",
+        "metadata": {
+          "workers": 1,
+          "sampling": {
+            "random_rule_algorithm": "per_entity_bernoulli",
+            "rng": "random.Random",
+            "python_version": "3.13.13",
+            "seed": 42,
+            "seed_source": "step",
+            "draw_seed_rule": "base_plus_draw_index",
+            "entity_order": "sorted_identifier",
+            "rule_order": "declaration",
+            "iterations": 10
+          }
+        },
+        "outputs": {
+          "native": {
+            "edge_flows": false,
+            "residual": false,
+            "edge_reservations": false,
+            "saturated_boundary_edges": false,
+            "min_cut": false
+          },
+          "cost_distribution": true,
+          "details": false
+        },
+        "alpha": {
+          "value": 3.0,
+          "numerator": 3,
+          "denominator": 1
+        },
+        "accounting": [
+          {
+            "base_id": "baseline_traffic_matrix|0",
+            "declared_units": 76800,
+            "resolved_units": 76800,
+            "discarded_units": 0,
+            "discards": []
+          },
+          {
+            "base_id": "baseline_traffic_matrix|1",
+            "declared_units": 76800,
+            "resolved_units": 76800,
+            "discarded_units": 0,
+            "discards": []
+          }
+        ],
+        "cases": [
+          {
+            "case": {
+              "id": "baseline",
+              "kind": "baseline",
+              "pattern": {
+                "excluded_nodes": [],
+                "excluded_links": []
+              },
+              "occurrences": 0
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 76800,
+                      "unadmitted_units": 0,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "complete",
+                      "total_cost": 11161600
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 0,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 51200
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 25600
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 76800,
+                      "unadmitted_units": 0,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "complete",
+                      "total_cost": 11161600
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 0,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 51200
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 25600
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 153600,
+                  "unadmitted_units": 0,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 0,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 1
+                  },
+                  "feasible": true
+                }
+              }
+            }
+          },
+          {
+            "case": {
+              "id": "failure-000001",
+              "kind": "failure",
+              "pattern": {
+                "excluded_nodes": [],
+                "excluded_links": [
+                  "bb/abc1/pl1|bb/xyz1/pl1|0",
+                  "bb/abc1/pl2|bb/xyz1/pl2|0"
+                ]
+              },
+              "occurrences": 5
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 25600,
+                      "unadmitted_units": 51200,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5427200
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 51200,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 212,
+                          "units": 25600
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 25600,
+                      "unadmitted_units": 51200,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5427200
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 51200,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 212,
+                          "units": 25600
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 51200,
+                  "unadmitted_units": 102400,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 102400,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 3
+                  },
+                  "feasible": false
+                }
+              }
+            }
+          },
+          {
+            "case": {
+              "id": "failure-000002",
+              "kind": "failure",
+              "pattern": {
+                "excluded_nodes": [],
+                "excluded_links": [
+                  "bb/abc1/pl1|bb/xyz1/pl1|1",
+                  "bb/abc1/pl2|bb/xyz1/pl2|1"
+                ]
+              },
+              "occurrences": 5
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 51200,
+                      "unadmitted_units": 25600,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5734400
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 25600,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 51200
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 51200,
+                      "unadmitted_units": 25600,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5734400
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 25600,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 51200
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 102400,
+                  "unadmitted_units": 51200,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 51200,
+                  "delivery_ratio": {
+                    "numerator": 2,
+                    "denominator": 3
+                  },
+                  "feasible": false
+                }
+              }
+            }
+          }
+        ]
+      }
     },
-    "tm_1x_bb": {
+    {
+      "name": "tm_1x_bb",
       "step_type": "TrafficMatrixPlacement",
-      "step_name": "tm_1x_bb",
       "execution_order": 2,
       "scenario_seed": 42,
       "step_seed": 42,
-      "seed_source": "explicit-step"
-    }
-  },
-  "steps": {
-    "msd_baseline": {
-      "metadata": {
-        "duration_sec": 0.0006818771362304688
-      },
-      "data": {
-        "alpha_star": 3.0,
-        "context": {
-          "alpha_start": 1.0,
-          "growth_factor": 2.0,
-          "alpha_min": 1e-06,
-          "alpha_max": 1000000000.0,
-          "resolution": 0.01,
-          "max_bracket_iters": 32,
-          "max_bisect_iters": 32,
-          "demand_set": "baseline_traffic_matrix"
-        },
-        "base_demands": [
+      "seed_source": "explicit-step",
+      "question": {
+        "kind": "placement",
+        "demand_set": "baseline_traffic_matrix",
+        "demands": [
           {
-            "id": "^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-            "source": "^abc1/rsw$",
-            "target": "^xyz1/rsw$",
-            "volume": 100.0,
+            "source": {
+              "path": "^abc1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "target": {
+              "path": "^xyz1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
             "priority": 0,
+            "id": "baseline_traffic_matrix|0",
+            "model": {
+              "routing": "centralized_te",
+              "admission": "lossless",
+              "allocation": null,
+              "source_allocation": "optimized",
+              "source_weights": null,
+              "weight_basis": null,
+              "edge_weights": null,
+              "tie_break": null,
+              "multipath": null,
+              "parallel_edges": null,
+              "tunnel_count": null,
+              "prefer_headroom": false,
+              "cost_ceiling": null,
+              "min_unreserved_bandwidth_units": null,
+              "route_names": null,
+              "controller": null,
+              "supplied_support": false,
+              "supplied_program": false
+            },
+            "physical_volume": 100.0,
             "mode": "combine",
-            "group_mode": "flatten",
-            "flow_policy": "TE_WCMP_UNLIM",
-            "static_paths": [],
-            "attrs": {}
+            "group_mode": "flatten"
           },
           {
-            "id": "^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-            "source": "^xyz1/rsw$",
-            "target": "^abc1/rsw$",
-            "volume": 100.0,
+            "source": {
+              "path": "^xyz1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
+            "target": {
+              "path": "^abc1/rsw$",
+              "group_by": null,
+              "match": null,
+              "active_only": true
+            },
             "priority": 0,
+            "id": "baseline_traffic_matrix|1",
+            "model": {
+              "routing": "centralized_te",
+              "admission": "lossless",
+              "allocation": null,
+              "source_allocation": "optimized",
+              "source_weights": null,
+              "weight_basis": null,
+              "edge_weights": null,
+              "tie_break": null,
+              "multipath": null,
+              "parallel_edges": null,
+              "tunnel_count": null,
+              "prefer_headroom": false,
+              "cost_ceiling": null,
+              "min_unreserved_bandwidth_units": null,
+              "route_names": null,
+              "controller": null,
+              "supplied_support": false,
+              "supplied_program": false
+            },
+            "physical_volume": 100.0,
             "mode": "combine",
-            "group_mode": "flatten",
-            "flow_policy": "TE_WCMP_UNLIM",
-            "static_paths": [],
-            "attrs": {}
+            "group_mode": "flatten"
           }
         ],
-        "probes": [
+        "alpha": {
+          "value": 3.0,
+          "numerator": 3,
+          "denominator": 1
+        },
+        "alpha_source": {
+          "kind": "msd_step",
+          "step": "msd_baseline"
+        },
+        "failures": {
+          "policy_name": "fm_1x_bb",
+          "inline_policy": null,
+          "iterations": 20,
+          "seed": 42,
+          "failure_trace": false
+        },
+        "states": [
+          "converged"
+        ],
+        "interaction": "ordered"
+      },
+      "result": {
+        "kind": "placement",
+        "metadata": {
+          "workers": 1,
+          "sampling": {
+            "random_rule_algorithm": "per_entity_bernoulli",
+            "rng": "random.Random",
+            "python_version": "3.13.13",
+            "seed": 42,
+            "seed_source": "step",
+            "draw_seed_rule": "base_plus_draw_index",
+            "entity_order": "sorted_identifier",
+            "rule_order": "declaration",
+            "iterations": 20
+          }
+        },
+        "outputs": {
+          "native": {
+            "edge_flows": false,
+            "residual": false,
+            "edge_reservations": false,
+            "saturated_boundary_edges": false,
+            "min_cut": false
+          },
+          "cost_distribution": true,
+          "details": false
+        },
+        "alpha": {
+          "value": 3.0,
+          "numerator": 3,
+          "denominator": 1
+        },
+        "accounting": [
           {
-            "alpha": 1.0,
-            "feasible": true,
-            "placement_ratio": 1.0
+            "base_id": "baseline_traffic_matrix|0",
+            "declared_units": 76800,
+            "resolved_units": 76800,
+            "discarded_units": 0,
+            "discards": []
           },
           {
-            "alpha": 2.0,
-            "feasible": true,
-            "placement_ratio": 1.0
+            "base_id": "baseline_traffic_matrix|1",
+            "declared_units": 76800,
+            "resolved_units": 76800,
+            "discarded_units": 0,
+            "discards": []
+          }
+        ],
+        "cases": [
+          {
+            "case": {
+              "id": "baseline",
+              "kind": "baseline",
+              "pattern": {
+                "excluded_nodes": [],
+                "excluded_links": []
+              },
+              "occurrences": 0
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 76800,
+                      "unadmitted_units": 0,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "complete",
+                      "total_cost": 11161600
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 0,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 51200
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 25600
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 76800,
+                      "unadmitted_units": 0,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "complete",
+                      "total_cost": 11161600
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 0,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 51200
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 25600
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 153600,
+                  "unadmitted_units": 0,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 0,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 1
+                  },
+                  "feasible": true
+                }
+              }
+            }
           },
           {
-            "alpha": 4.0,
-            "feasible": false,
-            "placement_ratio": 0.75
+            "case": {
+              "id": "failure-000001",
+              "kind": "failure",
+              "pattern": {
+                "excluded_nodes": [
+                  "bb/abc1/pl1"
+                ],
+                "excluded_links": []
+              },
+              "occurrences": 5
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 76800,
+                  "unadmitted_units": 76800,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 76800,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 2
+                  },
+                  "feasible": false
+                }
+              }
+            }
           },
           {
-            "alpha": 3.0,
-            "feasible": true,
-            "placement_ratio": 1.0
+            "case": {
+              "id": "failure-000002",
+              "kind": "failure",
+              "pattern": {
+                "excluded_nodes": [
+                  "bb/abc1/pl2"
+                ],
+                "excluded_links": []
+              },
+              "occurrences": 9
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 76800,
+                  "unadmitted_units": 76800,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 76800,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 2
+                  },
+                  "feasible": false
+                }
+              }
+            }
           },
           {
-            "alpha": 3.5,
-            "feasible": false,
-            "placement_ratio": 0.8571428571428571
+            "case": {
+              "id": "failure-000003",
+              "kind": "failure",
+              "pattern": {
+                "excluded_nodes": [
+                  "bb/xyz1/pl2"
+                ],
+                "excluded_links": []
+              },
+              "occurrences": 5
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 76800,
+                  "unadmitted_units": 76800,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 76800,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 2
+                  },
+                  "feasible": false
+                }
+              }
+            }
           },
           {
-            "alpha": 3.25,
-            "feasible": false,
-            "placement_ratio": 0.9230769230769231
-          },
-          {
-            "alpha": 3.125,
-            "feasible": false,
-            "placement_ratio": 0.96
-          },
-          {
-            "alpha": 3.0625,
-            "feasible": false,
-            "placement_ratio": 0.9795918367346939
-          },
-          {
-            "alpha": 3.03125,
-            "feasible": false,
-            "placement_ratio": 0.9896907216494846
-          },
-          {
-            "alpha": 3.015625,
-            "feasible": false,
-            "placement_ratio": 0.9948186528497409
-          },
-          {
-            "alpha": 3.0078125,
-            "feasible": false,
-            "placement_ratio": 0.9974025974025974
+            "case": {
+              "id": "failure-000004",
+              "kind": "failure",
+              "pattern": {
+                "excluded_nodes": [
+                  "bb/xyz1/pl1"
+                ],
+                "excluded_links": []
+              },
+              "occurrences": 1
+            },
+            "states": {
+              "converged": {
+                "rows": [
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|0|0",
+                    "endpoints": {
+                      "sources": [
+                        "abc1/rsw"
+                      ],
+                      "destinations": [
+                        "xyz1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|0",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "kind": "placement",
+                    "id": "baseline_traffic_matrix|1|0",
+                    "endpoints": {
+                      "sources": [
+                        "xyz1/rsw"
+                      ],
+                      "destinations": [
+                        "abc1/rsw"
+                      ]
+                    },
+                    "pool": null,
+                    "result": {
+                      "request_kind": "finite",
+                      "requested_units": 76800,
+                      "offered_units": null,
+                      "delivered_units": 38400,
+                      "unadmitted_units": 38400,
+                      "source_drop_units": 0,
+                      "edge_drop_units": 0,
+                      "termination": "exhausted",
+                      "total_cost": 5580800
+                    },
+                    "base_id": "baseline_traffic_matrix|1",
+                    "reference_request_units": 76800,
+                    "reference_shortfall_units": 38400,
+                    "cost_distribution": {
+                      "kind": "marginal_curve",
+                      "cost_domain": "physical_network",
+                      "bins": [
+                        {
+                          "marginal_cost": 112,
+                          "units": 25600
+                        },
+                        {
+                          "marginal_cost": 212,
+                          "units": 12800
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "totals": {
+                  "reference_request_units": 153600,
+                  "delivered_units": 76800,
+                  "unadmitted_units": 76800,
+                  "source_drop_units": 0,
+                  "edge_drop_units": 0,
+                  "reference_shortfall_units": 76800,
+                  "delivery_ratio": {
+                    "numerator": 1,
+                    "denominator": 2
+                  },
+                  "feasible": false
+                }
+              }
+            }
           }
         ]
-      }
-    },
-    "tm_lh_path": {
-      "metadata": {
-        "iterations": 10,
-        "parallelism": 1,
-        "analysis_function": "demand_placement_analysis",
-        "policy_name": "fm_lh_path",
-        "execution_time": 0.0002040863037109375,
-        "unique_patterns": 2,
-        "occurrence_counts": [
-          5,
-          5
-        ],
-        "duration_sec": 0.0005071163177490234
-      },
-      "data": {
-        "baseline": {
-          "failure_id": "",
-          "failure_state": {
-            "excluded_nodes": [],
-            "excluded_links": []
-          },
-          "failure_trace": null,
-          "occurrence_count": 1,
-          "flows": [
-            {
-              "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-              "priority": 0,
-              "demand": 300.0,
-              "placed": 300.0,
-              "dropped": 0.0,
-              "cost_distribution": {
-                "112": 200.0,
-                "212": 100.0
-              },
-              "data": {}
-            },
-            {
-              "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-              "priority": 0,
-              "demand": 300.0,
-              "placed": 300.0,
-              "dropped": 0.0,
-              "cost_distribution": {
-                "112": 200.0,
-                "212": 100.0
-              },
-              "data": {}
-            }
-          ],
-          "summary": {
-            "total_demand": 600.0,
-            "total_placed": 600.0,
-            "overall_ratio": 1.0,
-            "dropped_flows": 0,
-            "num_flows": 2
-          },
-          "data": {}
-        },
-        "flow_results": [
-          {
-            "failure_id": "88c28b1a2b6a4de7",
-            "failure_state": {
-              "excluded_nodes": [],
-              "excluded_links": [
-                "bb/abc1/pl1|bb/xyz1/pl1|0",
-                "bb/abc1/pl2|bb/xyz1/pl2|0"
-              ]
-            },
-            "failure_trace": null,
-            "occurrence_count": 5,
-            "flows": [
-              {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 100.0,
-                "dropped": 200.0,
-                "cost_distribution": {
-                  "212": 100.0
-                },
-                "data": {}
-              },
-              {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 100.0,
-                "dropped": 200.0,
-                "cost_distribution": {
-                  "212": 100.0
-                },
-                "data": {}
-              }
-            ],
-            "summary": {
-              "total_demand": 600.0,
-              "total_placed": 200.0,
-              "overall_ratio": 0.3333333333333333,
-              "dropped_flows": 2,
-              "num_flows": 2
-            },
-            "data": {}
-          },
-          {
-            "failure_id": "466b1a34af1a7089",
-            "failure_state": {
-              "excluded_nodes": [],
-              "excluded_links": [
-                "bb/abc1/pl1|bb/xyz1/pl1|1",
-                "bb/abc1/pl2|bb/xyz1/pl2|1"
-              ]
-            },
-            "failure_trace": null,
-            "occurrence_count": 5,
-            "flows": [
-              {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 200.0,
-                "dropped": 100.0,
-                "cost_distribution": {
-                  "112": 200.0
-                },
-                "data": {}
-              },
-              {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 200.0,
-                "dropped": 100.0,
-                "cost_distribution": {
-                  "112": 200.0
-                },
-                "data": {}
-              }
-            ],
-            "summary": {
-              "total_demand": 600.0,
-              "total_placed": 400.0,
-              "overall_ratio": 0.6666666666666666,
-              "dropped_flows": 2,
-              "num_flows": 2
-            },
-            "data": {}
-          }
-        ],
-        "context": {
-          "demand_set": "baseline_traffic_matrix",
-          "include_flow_details": true,
-          "include_used_edges": false,
-          "base_demands": [
-            {
-              "id": "^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-              "source": "^abc1/rsw$",
-              "target": "^xyz1/rsw$",
-              "volume": 100.0,
-              "priority": 0,
-              "mode": "combine",
-              "group_mode": "flatten",
-              "flow_policy": "TE_WCMP_UNLIM",
-              "static_paths": [],
-              "attrs": {}
-            },
-            {
-              "id": "^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-              "source": "^xyz1/rsw$",
-              "target": "^abc1/rsw$",
-              "volume": 100.0,
-              "priority": 0,
-              "mode": "combine",
-              "group_mode": "flatten",
-              "flow_policy": "TE_WCMP_UNLIM",
-              "static_paths": [],
-              "attrs": {}
-            }
-          ],
-          "alpha": 3.0,
-          "alpha_source": "msd_baseline"
-        }
-      }
-    },
-    "tm_1x_bb": {
-      "metadata": {
-        "iterations": 20,
-        "parallelism": 1,
-        "analysis_function": "demand_placement_analysis",
-        "policy_name": "fm_1x_bb",
-        "execution_time": 0.0002760887145996094,
-        "unique_patterns": 4,
-        "occurrence_counts": [
-          5,
-          9,
-          5,
-          1
-        ],
-        "duration_sec": 0.0005559921264648438
-      },
-      "data": {
-        "baseline": {
-          "failure_id": "",
-          "failure_state": {
-            "excluded_nodes": [],
-            "excluded_links": []
-          },
-          "failure_trace": null,
-          "occurrence_count": 1,
-          "flows": [
-            {
-              "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-              "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-              "priority": 0,
-              "demand": 300.0,
-              "placed": 300.0,
-              "dropped": 0.0,
-              "cost_distribution": {
-                "112": 200.0,
-                "212": 100.0
-              },
-              "data": {}
-            },
-            {
-              "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-              "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-              "priority": 0,
-              "demand": 300.0,
-              "placed": 300.0,
-              "dropped": 0.0,
-              "cost_distribution": {
-                "112": 200.0,
-                "212": 100.0
-              },
-              "data": {}
-            }
-          ],
-          "summary": {
-            "total_demand": 600.0,
-            "total_placed": 600.0,
-            "overall_ratio": 1.0,
-            "dropped_flows": 0,
-            "num_flows": 2
-          },
-          "data": {}
-        },
-        "flow_results": [
-          {
-            "failure_id": "02f2c516d7bfd658",
-            "failure_state": {
-              "excluded_nodes": [
-                "bb/abc1/pl1"
-              ],
-              "excluded_links": []
-            },
-            "failure_trace": null,
-            "occurrence_count": 5,
-            "flows": [
-              {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              },
-              {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              }
-            ],
-            "summary": {
-              "total_demand": 600.0,
-              "total_placed": 300.0,
-              "overall_ratio": 0.5,
-              "dropped_flows": 2,
-              "num_flows": 2
-            },
-            "data": {}
-          },
-          {
-            "failure_id": "e066dd7e22a05626",
-            "failure_state": {
-              "excluded_nodes": [
-                "bb/abc1/pl2"
-              ],
-              "excluded_links": []
-            },
-            "failure_trace": null,
-            "occurrence_count": 9,
-            "flows": [
-              {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              },
-              {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              }
-            ],
-            "summary": {
-              "total_demand": 600.0,
-              "total_placed": 300.0,
-              "overall_ratio": 0.5,
-              "dropped_flows": 2,
-              "num_flows": 2
-            },
-            "data": {}
-          },
-          {
-            "failure_id": "6449813a572d6e32",
-            "failure_state": {
-              "excluded_nodes": [
-                "bb/xyz1/pl2"
-              ],
-              "excluded_links": []
-            },
-            "failure_trace": null,
-            "occurrence_count": 5,
-            "flows": [
-              {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              },
-              {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              }
-            ],
-            "summary": {
-              "total_demand": 600.0,
-              "total_placed": 300.0,
-              "overall_ratio": 0.5,
-              "dropped_flows": 2,
-              "num_flows": 2
-            },
-            "data": {}
-          },
-          {
-            "failure_id": "ceb1019515d77a4e",
-            "failure_state": {
-              "excluded_nodes": [
-                "bb/xyz1/pl1"
-              ],
-              "excluded_links": []
-            },
-            "failure_trace": null,
-            "occurrence_count": 1,
-            "flows": [
-              {
-                "source": "_src_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "destination": "_snk_^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              },
-              {
-                "source": "_src_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "destination": "_snk_^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-                "priority": 0,
-                "demand": 300.0,
-                "placed": 150.0,
-                "dropped": 150.0,
-                "cost_distribution": {
-                  "112": 100.0,
-                  "212": 50.0
-                },
-                "data": {}
-              }
-            ],
-            "summary": {
-              "total_demand": 600.0,
-              "total_placed": 300.0,
-              "overall_ratio": 0.5,
-              "dropped_flows": 2,
-              "num_flows": 2
-            },
-            "data": {}
-          }
-        ],
-        "context": {
-          "demand_set": "baseline_traffic_matrix",
-          "include_flow_details": true,
-          "include_used_edges": false,
-          "base_demands": [
-            {
-              "id": "^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-              "source": "^abc1/rsw$",
-              "target": "^xyz1/rsw$",
-              "volume": 100.0,
-              "priority": 0,
-              "mode": "combine",
-              "group_mode": "flatten",
-              "flow_policy": "TE_WCMP_UNLIM",
-              "static_paths": [],
-              "attrs": {}
-            },
-            {
-              "id": "^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-              "source": "^xyz1/rsw$",
-              "target": "^abc1/rsw$",
-              "volume": 100.0,
-              "priority": 0,
-              "mode": "combine",
-              "group_mode": "flatten",
-              "flow_policy": "TE_WCMP_UNLIM",
-              "static_paths": [],
-              "attrs": {}
-            }
-          ],
-          "alpha": 3.0,
-          "alpha_source": "msd_baseline"
-        }
       }
     }
-  },
-  "scenario": {
-    "seed": 42,
-    "failures": {
-      "fm_lh_path": {
-        "attrs": {},
-        "expand_groups": false,
-        "modes": [
-          {
-            "weight": 1.0,
-            "rules": [
-              {
-                "scope": "risk_group",
-                "match": {
-                  "logic": "or",
-                  "conditions": [
-                    {
-                      "attr": "type",
-                      "op": "==",
-                      "value": "long_haul_path"
-                    }
-                  ]
-                },
-                "mode": "choice",
-                "probability": 1.0,
-                "count": 1
-              }
-            ],
-            "attrs": {}
-          }
-        ]
-      },
-      "fm_1x_bb": {
-        "attrs": {},
-        "expand_groups": false,
-        "modes": [
-          {
-            "weight": 1.0,
-            "rules": [
-              {
-                "scope": "node",
-                "match": {
-                  "logic": "or",
-                  "conditions": [
-                    {
-                      "attr": "role",
-                      "op": "==",
-                      "value": "bb"
-                    }
-                  ]
-                },
-                "mode": "choice",
-                "probability": 1.0,
-                "count": 1
-              }
-            ],
-            "attrs": {}
-          }
-        ]
-      }
-    },
-    "demands": {
-      "baseline_traffic_matrix": [
-        {
-          "id": "^abc1/rsw$|^xyz1/rsw$|WXTJPlkQQgamxn4bQbvG7g",
-          "source": "^abc1/rsw$",
-          "target": "^xyz1/rsw$",
-          "volume": 100.0,
-          "priority": 0,
-          "mode": "combine",
-          "group_mode": "flatten",
-          "flow_policy": "TE_WCMP_UNLIM",
-          "static_paths": [],
-          "attrs": {}
-        },
-        {
-          "id": "^xyz1/rsw$|^abc1/rsw$|zl4j4O8CRU6Yy5s7R0QnEQ",
-          "source": "^xyz1/rsw$",
-          "target": "^abc1/rsw$",
-          "volume": 100.0,
-          "priority": 0,
-          "mode": "combine",
-          "group_mode": "flatten",
-          "flow_policy": "TE_WCMP_UNLIM",
-          "static_paths": [],
-          "attrs": {}
-        }
-      ]
-    }
-  }
+  ]
 }

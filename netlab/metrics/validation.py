@@ -1,10 +1,23 @@
-"""Validate arithmetic and sample accounting in current NetGraph results."""
+"""Validate native integer accounting and sampled placement results."""
 
 from __future__ import annotations
 
-import math
+from fractions import Fraction
 
-from .common import flow_occurrence_count, nonnegative_number
+from netlab.results import (
+    baseline_case,
+    case_occurrences,
+    cases,
+    converged_state,
+    has_failure_policy,
+    physical_bandwidth,
+    require_step,
+    row_units,
+    rows,
+    sampled_cases,
+)
+
+from .common import nonnegative_number
 from .msd import compute_alpha_star
 
 
@@ -12,17 +25,15 @@ def _require_steps(res: dict, require_maxflow: bool) -> None:
     required = ["msd_baseline", "tm_placement"]
     if require_maxflow:
         required.append("node_to_node_capacity_matrix")
-    for step in required:
-        if step not in res.get("steps", {}):
-            raise ValueError(f"Missing required step in results: {step}")
+    for name in required:
+        require_step(res, name)
 
 
-def _validate_alpha_and_base_demands(res: dict) -> float:
-    demands = (
-        res.get("steps", {}).get("msd_baseline", {}).get("data", {}).get("base_demands")
-    )
+def _validate_alpha_and_base_demands(res: dict) -> None:
+    step = require_step(res, "msd_baseline")
+    demands = step["question"]["demands"]
     if not isinstance(demands, list) or not demands:
-        raise ValueError("MSD base_demands must be a nonempty list")
+        raise ValueError("MSD question.demands must be a nonempty list")
     for demand in demands:
         for field in ("source", "target"):
             value = demand.get(field)
@@ -32,116 +43,151 @@ def _validate_alpha_and_base_demands(res: dict) -> float:
                 raise ValueError(
                     f"MSD demand requires a nonempty source/target selector: {field}"
                 )
-        volume = nonnegative_number(demand.get("volume"), "MSD demand volume")
-        if volume == 0:
-            raise ValueError("MSD base_demands contains a zero-demand entry")
-    alpha = compute_alpha_star(res)
-    if alpha.base_total_demand <= 0:
-        raise ValueError("MSD base_total_demand must be positive")
-    return nonnegative_number(
-        alpha.base_total_demand * alpha.alpha_star, "scaled demand"
-    )
-
-
-def _close(actual: float, expected: float, context: str) -> None:
-    if not math.isclose(actual, expected, rel_tol=1e-9, abs_tol=1e-6):
-        raise ValueError(f"{context}: {actual} does not match {expected}")
-
-
-def _validate_iteration(it: dict, name: str, expected_demand: float | None) -> None:
-    flows = it.get("flows")
-    if not isinstance(flows, list):
-        raise ValueError(f"{name}: flows must be a list")
-    total_demand = total_placed = 0.0
-    for flow in flows:
-        source, target = flow.get("source"), flow.get("destination")
         if (
-            not isinstance(source, str)
-            or not isinstance(target, str)
-            or not source
-            or not target
+            nonnegative_number(demand.get("physical_volume"), "MSD physical_volume")
+            == 0
         ):
-            raise ValueError(f"{name}: invalid flow endpoints")
-        demand, placed, dropped = [
-            nonnegative_number(flow.get(k), f"{name}.{k}")
-            for k in ("demand", "placed", "dropped")
-        ]
-        if source == target and (demand or placed or dropped):
-            raise ValueError(f"{name}: self-pair must have zero flow")
-        _close(placed + dropped, demand, f"{name}: placed + dropped vs demand")
-        costs = flow.get("cost_distribution", {})
-        if not isinstance(costs, dict):
-            raise ValueError(f"{name}: cost_distribution must be a mapping")
-        if costs:
-            volume = 0.0
-            for cost, weight in costs.items():
-                nonnegative_number(cost, f"{name}.cost")
-                volume += nonnegative_number(weight, f"{name}.cost volume")
-            _close(volume, placed, f"{name}: cost_distribution volume vs placed")
-        total_demand += demand
-        total_placed += placed
-    if expected_demand is not None:
-        _close(
-            total_demand,
-            expected_demand,
-            f"{name}: total flow demand vs base_demands × alpha_star",
-        )
-    summary = it.get("summary", {})
-    for key, actual in [("total_demand", total_demand), ("total_placed", total_placed)]:
-        if key in summary:
-            _close(
-                nonnegative_number(summary[key], key),
-                actual,
-                f"{name}: summary.{key} vs flow sum",
-            )
-    if "overall_ratio" in summary and total_demand > 0:
-        _close(
-            nonnegative_number(summary["overall_ratio"], "overall_ratio"),
-            total_placed / total_demand,
-            f"{name}: overall_ratio",
-        )
-    if "num_flows" in summary and summary["num_flows"] != len(flows):
-        raise ValueError(f"{name}: num_flows disagrees with flow records")
+            raise ValueError("MSD question contains a zero-demand entry")
+    alpha = compute_alpha_star(res)
+    nonnegative_number(alpha.base_total_demand * alpha.alpha_star, "scaled demand")
+
+
+def _units(value: object, context: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{context} must be a nonnegative integer")
+    return value
 
 
 def validate_sample_counts(step: dict, name: str) -> None:
-    data = step.get("data", {})
-    failures = data.get("flow_results")
-    if not isinstance(failures, list):
-        raise ValueError(f"{name}: flow_results must be a list")
-    counts = [flow_occurrence_count(it) for it in failures]
-    metadata = step.get("metadata", {})
-    for key, expected in [
-        ("iterations", sum(counts)),
-        ("unique_patterns", len(counts)),
-    ]:
-        if key in metadata and (
-            type(metadata[key]) is not int or metadata[key] != expected
-        ):
-            raise ValueError(f"{name}: metadata.{key} disagrees with occurrence counts")
-    if "occurrence_counts" in metadata and metadata["occurrence_counts"] != counts:
-        raise ValueError(
-            f"{name}: metadata.occurrence_counts disagrees with flow results"
-        )
+    records = cases(step)
+    baseline_case(step)
+    count = sum(case_occurrences(case) for case in records)
+    expected = step["result"]["metadata"]["sampling"]["iterations"]
+    if type(expected) is not int or expected < 0 or count != expected:
+        raise ValueError(f"{name}: sampling.iterations disagrees with case occurrences")
+    # No-policy baseline occurrences describe requested draws, not failure samples.
+    if not has_failure_policy(step) and any(
+        case["case"]["kind"] == "failure" for case in records
+    ):
+        raise ValueError(f"{name}: failure case without a failure policy")
 
 
-def _validate_step(res: dict, name: str, expected_demand: float | None) -> None:
-    step = res["steps"][name]
-    data = step.get("data", {})
-    baseline = data.get("baseline")
-    if not isinstance(baseline, dict):
-        raise ValueError(f"{name}.data.baseline dict required")
+def _validate_case(res: dict, case: dict, capacity: bool) -> None:
+    state = converged_state(case)
+    request = delivered = shortfall = unadmitted = source_drop = edge_drop = 0
+    for row in rows(case):
+        for side in ("sources", "destinations"):
+            endpoints = row["endpoints"][side]
+            if (
+                not isinstance(endpoints, list)
+                or not endpoints
+                or any(not isinstance(node, str) or not node for node in endpoints)
+            ):
+                raise ValueError(f"invalid row endpoints: {side}")
+        amount = row_units(row, "delivered_units")
+        delivered += amount
+        physical_bandwidth(res, amount)
+        if not capacity:
+            reference = row_units(row, "reference_request_units")
+            loss = row_units(row, "reference_shortfall_units")
+            native = row["result"]
+            u, s, e = [
+                _units(native[key], key)
+                for key in ("unadmitted_units", "source_drop_units", "edge_drop_units")
+            ]
+            if reference != amount + loss or loss != u + s + e:
+                raise ValueError(
+                    "row reference request / delivery / shortfall accounting disagrees"
+                )
+            request += reference
+            shortfall += loss
+            unadmitted += u
+            source_drop += s
+            edge_drop += e
+        costs = row.get("cost_distribution")
+        if costs is not None:
+            kind = costs["kind"]
+            if kind == "delivered_by_path_cost":
+                volume_field, cost_field = "delivered_units", "physical_path_cost"
+            elif kind == "marginal_curve":
+                volume_field, cost_field = "units", "marginal_cost"
+            else:
+                raise ValueError(f"Unknown cost report kind: {kind}")
+            volume = 0
+            for bin in costs["bins"]:
+                nonnegative_number(bin[cost_field], cost_field)
+                volume += _units(bin[volume_field], volume_field)
+            if volume != amount:
+                raise ValueError(
+                    "cost distribution volume disagrees with delivered_units"
+                )
+    totals = state["totals"]
+    if capacity:
+        if totals is not None:
+            raise ValueError("capacity totals must be null")
+        return
+    if totals is None:
+        raise ValueError("placement totals required")
+    for field, expected in (
+        ("reference_request_units", request),
+        ("delivered_units", delivered),
+        ("reference_shortfall_units", shortfall),
+        ("unadmitted_units", unadmitted),
+        ("source_drop_units", source_drop),
+        ("edge_drop_units", edge_drop),
+    ):
+        if _units(totals[field], field) != expected:
+            raise ValueError(f"totals.{field} disagrees with row sum")
+    ratio = totals["delivery_ratio"]
+    if ratio["denominator"] <= 0 or Fraction(
+        ratio["numerator"], ratio["denominator"]
+    ) != (Fraction(delivered, request) if request else Fraction(1)):
+        raise ValueError("totals.delivery_ratio disagrees with row sum")
+
+
+def _validate_step(res: dict, name: str, capacity: bool) -> None:
+    step = require_step(res, name)
     validate_sample_counts(step, name)
-    _validate_iteration(baseline, f"{name}.baseline", expected_demand)
-    for index, iteration in enumerate(data["flow_results"]):
-        _validate_iteration(iteration, f"{name}.failure[{index}]", expected_demand)
+    baseline = baseline_case(step)
+    _validate_case(res, baseline, capacity)
+    for case in sampled_cases(step):
+        if case is not baseline:
+            _validate_case(res, case, capacity)
+    if not capacity:
+        accounting = step["result"]["accounting"]
+        for item in accounting:
+            declared, resolved, discarded = [
+                _units(item[key], key)
+                for key in ("declared_units", "resolved_units", "discarded_units")
+            ]
+            if declared != resolved + discarded:
+                raise ValueError("expansion accounting disagrees")
+        resolved = sum(item["resolved_units"] for item in accounting)
+        request = sum(
+            row_units(row, "reference_request_units") for row in rows(baseline)
+        )
+        if resolved != request:
+            raise ValueError(
+                "resolved_units disagrees with baseline reference requests"
+            )
 
 
-def _validate_tm_placement_baseline(
-    res: dict, expected_total_at_alpha: float | None
-) -> None:
-    _validate_step(res, "tm_placement", expected_total_at_alpha)
+def _validate_tm_placement_baseline(res: dict) -> None:
+    msd = require_step(res, "msd_baseline")
+    placement = require_step(res, "tm_placement")
+    if (
+        placement["question"]["demand_set"] != msd["question"]["demand_set"]
+        or placement["question"]["demands"] != msd["question"]["demands"]
+    ):
+        raise ValueError("placement declared demands must match the MSD question")
+    expected = msd["result"]["alpha_feasible"]
+    actual = placement["result"]["alpha"]
+    if Fraction(actual["numerator"], actual["denominator"]) != Fraction(
+        expected["numerator"], expected["denominator"]
+    ):
+        raise ValueError("placement alpha must equal the exact MSD feasible alpha")
+    _validate_step(res, "tm_placement", False)
 
 
 def _validate_maxflow_baseline(res: dict) -> None:
-    _validate_step(res, "node_to_node_capacity_matrix", None)
+    _validate_step(res, "node_to_node_capacity_matrix", True)

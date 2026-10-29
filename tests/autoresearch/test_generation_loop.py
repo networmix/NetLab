@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from netlab.autoresearch.backend import MockBackend
 from netlab.autoresearch.generation_loop import (
     _extract_yaml,
@@ -29,17 +31,15 @@ demands:
       target: ^B$
       volume: 10
       mode: combine
-      flow_policy: SHORTEST_PATHS_ECMP
+      preset: SHORTEST_PATHS_ECMP
 workflow:
   - type: MaximumSupportedDemand
     name: msd_baseline
     demand_set: tm
-    resolution: 0.1
+    alpha_tolerance: 0.1
 """
 
-# Syntactically valid but structurally broken — ngraph accepts it
-# but inspect shows 0 links (the target doesn't exist, link is dropped).
-# The generation loop should reject this because links=0 is not viable.
+# Unknown link targets are refused during model loading.
 BROKEN_SCENARIO = """\
 seed: 42
 network:
@@ -78,15 +78,10 @@ class TestInspectScenario:
         assert result.node_count == 2
         assert result.link_count == 1
 
-    def test_broken_scenario_passes_inspect_but_has_no_links(
-        self, tmp_path: Path
-    ) -> None:
-        """ngraph silently drops links to nonexistent nodes."""
-        scenario_path = tmp_path / "scenario.yml"
-        scenario_path.write_text(BROKEN_SCENARIO)
-        result = inspect_scenario(scenario_path.read_text())
-        # inspect succeeds (valid YAML) but link count is 0
-        assert result.link_count == 0
+    def test_unknown_link_target_is_refused(self, tmp_path):
+        with pytest.raises(ValueError, match=r"network.links\[0\].*NONEXISTENT"):
+            inspect_scenario(BROKEN_SCENARIO)
+        assert inspect_scenario(VALID_SCENARIO).link_count == 1
 
 
 class TestGenerationLoop:
@@ -104,7 +99,7 @@ class TestGenerationLoop:
         assert result.inspect.node_count == 2
 
     def test_succeeds_after_revision(self, tmp_path: Path) -> None:
-        """Broken scenario (0 links) fails viability, then valid on second attempt."""
+        """Unknown target is refused, then valid on second attempt."""
         backend = MockBackend([BROKEN_SCENARIO, VALID_SCENARIO])
         result = run_generation_loop(
             idea="Two connected nodes",

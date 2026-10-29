@@ -9,12 +9,19 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
     Args:
         results: NetGraph simulation results.
         step_names: Placement steps to analyze. If omitted, select steps with
-            baseline and failure flow records.
+            baseline and sampled placement cases.
     """
     from netlab.metrics.bac import compute_bac
-    from netlab.metrics.common import flow_occurrence_count
     from netlab.metrics.latency import compute_latency_stretch
     from netlab.metrics.msd import compute_alpha_star
+    from netlab.results import (
+        baseline_case,
+        case_occurrences,
+        delivery_ratio,
+        require_step,
+        sampled_cases,
+        total_bandwidth,
+    )
 
     lines: list[str] = ["# Metrics Report\n"]
 
@@ -33,38 +40,26 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
         step_names = _detect_tmp_steps(results)
 
     for step_name in step_names:
-        step_data = results.get("steps", {}).get(step_name, {}).get("data", {})
-        if not step_data or not step_data.get("flow_results"):
-            continue
-
+        step = require_step(results, step_name)
+        samples = sampled_cases(step)
         lines.append(f"## {step_name}\n")
-
-        fr = step_data.get("flow_results", [])
-        n_patterns = len(fr)
-        n_iters = sum(flow_occurrence_count(f) for f in fr)
-        lines.append(f"- failure iterations: {n_iters}")
-        lines.append(f"- unique patterns: {n_patterns}")
-
-        baseline = step_data.get("baseline", {})
-        if baseline:
-            s = baseline.get("summary", {})
-            lines.append(
-                f"- baseline: placed={s.get('total_placed')}, demand={s.get('total_demand')}, ratio={s.get('overall_ratio')}"
-            )
-
+        lines.append(
+            f"- failure iterations: {sum(case_occurrences(case) for case in samples)}"
+        )
+        lines.append(f"- unique patterns: {len(samples)}")
+        baseline = baseline_case(step)
+        lines.append(
+            f"- baseline: placed={total_bandwidth(results, baseline)}, demand={total_bandwidth(results, baseline, 'reference_request_units')}, ratio={delivery_ratio(baseline)}"
+        )
         lines.append("- failure patterns:")
-        for _idx, f in enumerate(fr):
-            s = f.get("summary", {})
-            fs = f.get("failure_state", {})
-            excl = fs.get("excluded_nodes", []) or [
-                lid.split("|")[0] for lid in fs.get("excluded_links", [])
+        for case in samples:
+            pattern = case["case"]["pattern"]
+            excluded = pattern["excluded_nodes"] or [
+                link.split("|")[0] for link in pattern["excluded_links"]
             ]
-            excl_str = ", ".join(excl[:3]) if excl else "none"
+            labels = ", ".join(excluded[:3]) if excluded else "none"
             lines.append(
-                f"  - [{flow_occurrence_count(f)}x] "
-                f"ratio={s.get('overall_ratio', 0):.4f}, "
-                f"placed={s.get('total_placed')}, "
-                f"excluded: {excl_str}"
+                f"  - [{case_occurrences(case)}x] ratio={delivery_ratio(case):.4f}, placed={total_bandwidth(results, case)}, excluded: {labels}"
             )
 
         try:
@@ -114,11 +109,7 @@ def build_metrics_report(results: dict, step_names: list[str] | None = None) -> 
 
 
 def _detect_tmp_steps(results: dict) -> list[str]:
-    """Find steps containing baseline and failure flow records."""
-    steps = results.get("steps", {})
-    tmp_steps: list[str] = []
-    for name, step in steps.items():
-        data = step.get("data", {})
-        if isinstance(data, dict) and "baseline" in data and "flow_results" in data:
-            tmp_steps.append(name)
-    return tmp_steps
+    """Find steps containing baseline and sampled placement cases."""
+    from netlab.results import placement_steps
+
+    return [step["name"] for step in placement_steps(results)]

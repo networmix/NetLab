@@ -7,103 +7,33 @@ from netlab.metrics.latency import compute_latency_stretch
 from netlab.metrics.matrixdump import compute_pair_matrices
 from netlab.metrics.msd import compute_alpha_star
 from netlab.metrics.sps import compute_sps
+from tests.result_samples import case, exported, msd, placement, row
 
 
 def _make_results_payload() -> dict:
-    # tm_placement baseline and two failures
-    base_tm = [
-        {
-            "source": "m1/d1/r",
-            "destination": "m1/d2/x",
-            "demand": 100.0,
-            "placed": 100.0,
-            "cost_distribution": {"10": 5.0},
-        },
-        {
-            "source": "m1/d1/r",
-            "destination": "m2/d3/x",
-            "demand": 50.0,
-            "placed": 50.0,
-            "cost_distribution": {"20": 2.0},
-        },
-    ]
-    tm_i1 = [
-        {
-            "source": "m1/d1/r",
-            "destination": "m1/d2/x",
-            "placed": 80.0,
-            "cost_distribution": {"10": 2.5, "12": 2.5},
-        },
-        {
-            "source": "m1/d1/r",
-            "destination": "m2/d3/x",
-            "placed": 40.0,
-            "cost_distribution": {"20": 1.0, "30": 1.0},
-        },
-    ]
-    tm_i2 = [
-        {
-            "source": "m1/d1/r",
-            "destination": "m1/d2/x",
-            "placed": 60.0,
-            "cost_distribution": {"10": 5.0},
-        },
-        {
-            "source": "m1/d1/r",
-            "destination": "m2/d3/x",
-            "placed": 50.0,
-            "cost_distribution": {"20": 0.5, "40": 1.5},
-        },
-    ]
-    # maxflow capacities per iteration
-    mf_i0 = [
-        {"source": "m1/d1/r", "destination": "m1/d2/x", "placed": 120.0},
-        {"source": "m1/d1/r", "destination": "m2/d3/x", "placed": 45.0},
-    ]
-    mf_i1 = [
-        {"source": "m1/d1/r", "destination": "m1/d2/x", "placed": 50.0},
-        {"source": "m1/d1/r", "destination": "m2/d3/x", "placed": 55.0},
-    ]
+    def records(a, b, ca=None, cb=None):
+        return [
+            row("m1/d1/r", "m1/d2/x", a, 200, costs=ca),
+            row("m1/d1/r", "m2/d3/x", b, 100, costs=cb),
+        ]
 
-    results = {
-        "workflow": {"tm_placement": {"step_type": "TrafficMatrixPlacement"}},
-        "steps": {
-            "msd_baseline": {
-                "data": {
-                    "alpha_star": 1.1,
-                    "base_demands": [{"volume": 100.0}, {"volume": 50.0}],
-                }
-            },
-            "tm_placement": {
-                "metadata": {"iterations": 2, "unique_patterns": 2},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": base_tm,
-                    },
-                    "flow_results": [
-                        {"occurrence_count": 1, "failure_id": "f1", "flows": tm_i1},
-                        {"occurrence_count": 1, "failure_id": "f2", "flows": tm_i2},
-                    ],
-                },
-            },
-            "node_to_node_capacity_matrix": {
-                "metadata": {"iterations": 1, "unique_patterns": 1},
-                "data": {
-                    "baseline": {
-                        "occurrence_count": 1,
-                        "failure_id": "baseline",
-                        "flows": mf_i0,
-                    },
-                    "flow_results": [
-                        {"occurrence_count": 1, "failure_id": "f1", "flows": mf_i1},
-                    ],
-                },
-            },
-        },
-    }
-    return results
+    return exported(
+        msd(1.1, (100, 50)),
+        placement(
+            records(200, 100, {10: 200}, {20: 100}),
+            [
+                case(records(160, 80, {10: 80, 12: 80}, {20: 40, 30: 40})),
+                case(records(120, 100, {10: 120}, {20: 25, 40: 75}), name="f2"),
+            ],
+        ),
+        placement(
+            records(240, 90),
+            [case(records(100, 110), capacity=True)],
+            name="node_to_node_capacity_matrix",
+            capacity=True,
+        ),
+        q=0.5,
+    )
 
 
 def test_end_to_end_metrics_pipeline() -> None:

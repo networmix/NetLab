@@ -59,17 +59,25 @@ failures:
                   op: "=="     # == | != | contains | in
                   value: bb
 
-TrafficMatrixPlacement workflow step (all fields required):
+Example TrafficMatrixPlacement workflow step:
   - type: TrafficMatrixPlacement
     name: tm_step
     demand_set: tm
     failure_policy: policy_name
     iterations: 10
-    parallelism: 1
+    workers: 1
     seed: 42
-    include_flow_details: true
+    outputs: {cost_distribution: true}
     alpha_from_step: msd_baseline
-    alpha_from_field: data.alpha_star
+The named MSD step must appear earlier in the workflow.
+
+Units and results:
+- Leave units unset for the automatic bandwidth quantum q.
+- Preparation chooses one q from static input and count bounds; all steps,
+  failure cases and MSD probes use that same q.
+- Convert exported whole bandwidth units to physical bandwidth with units_report.q.
+  Declared capacities and demand volumes are already physical; do not scale them.
+- The input/count precision budget is not a general guarantee for every answer.
 """
 
 
@@ -95,7 +103,7 @@ The original connectivity idea was:
 
 Common issues:
 - Demand source/target regex must match existing node names
-- Failure rule mode must be "choice" (not "random") with count: N
+- Failure rule mode "choice" needs count; "random" needs probability; "all" needs neither
 - All nodes referenced in links must be defined in the nodes section
 - WorkflowType is TrafficMatrixPlacement (not TrafficMatrixPerformance)
 

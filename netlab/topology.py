@@ -5,11 +5,12 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-from topogen import build_integrated_graph, load_from_json, save_to_json
-from topogen.config import TopologyConfig
-from topogen.context import RunContext
-from topogen.scenario import build_scenario
-from topogen.validation import validate_scenario_yaml
+from netlab_topogen import build_integrated_graph, load_from_json, save_to_json
+from netlab_topogen.config import TopologyConfig
+from netlab_topogen.context import RunContext
+from netlab_topogen.library import load_library
+from netlab_topogen.scenario import build_scenario, write_artifacts, write_scenario
+from netlab_topogen.validation import validate_scenario
 
 from .artifacts import (
     atomic_path,
@@ -19,7 +20,6 @@ from .artifacts import (
     package_versions,
     record_cache,
     sha256_file,
-    write_text_atomic,
 )
 
 
@@ -72,16 +72,12 @@ def build_seed_scenario(
             f"Graph CRS {crs} differs from configured {config.projection.target_crs}"
         )
     scenario_path.parent.mkdir(parents=True, exist_ok=True)
-    text = build_scenario(
-        graph, config, context=RunContext(scenario_path.parent, config_path.stem)
+    build = build_scenario(graph, config, load_library(Path("lib")))
+    validation = validate_scenario(build.yaml, config.components)
+    if validation.issues:
+        raise ValueError("Scenario validation failed:\n" + "\n".join(validation.issues))
+    write_scenario(scenario_path, build.yaml)
+    write_artifacts(
+        build, validation, config, RunContext(scenario_path.parent, config_path.stem)
     )
-    issues = validate_scenario_yaml(
-        text,
-        integrated_graph_path=graph_path,
-        hw_component_map=config.components.hw_component,
-        optics_map=config.components.optics,
-    )
-    if issues:
-        raise ValueError("Scenario validation failed:\n" + "\n".join(issues))
-    write_text_atomic(scenario_path, text)
     return scenario_path
