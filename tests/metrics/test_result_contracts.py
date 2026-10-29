@@ -362,8 +362,9 @@ def test_netlab_git_provenance_names_only_a_clean_tree(status, tmp_path, monkeyp
     }
 
 
-def test_regenerator_refuses_dirty_netlab_before_creating_outputs(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize("dirty", [True, None])
+def test_regenerator_requires_proven_clean_netlab_before_creating_outputs(
+    tmp_path, monkeypatch, dirty
 ):
     from dev import regenerate_fixtures as regenerate
 
@@ -374,9 +375,11 @@ def test_regenerator_refuses_dirty_netlab_before_creating_outputs(
     monkeypatch.setattr(
         regenerate,
         "package_provenance",
-        lambda: {"netlab": {"dirty": True, "commit": None}},
+        lambda: {"netlab": {"dirty": dirty, "commit": None}},
     )
-    with pytest.raises(SystemExit, match="NetLab has uncommitted changes"):
+    with pytest.raises(
+        SystemExit, match="uncommitted changes or its Git state is unknown"
+    ):
         regenerate.main()
     assert not (tmp_path / "build").exists()
     monkeypatch.setattr(
@@ -442,3 +445,81 @@ def test_group_pairwise_keeps_both_source_and_target_group_keys():
     assert set(bac.per_flow) == expected
     assert bac.series.tolist() == [40]
     assert all(flow.series.tolist() == [10] for flow in bac.per_flow.values())
+
+
+@pytest.mark.parametrize("failure_at", ["status", "rev-parse"])
+@pytest.mark.parametrize("exception", [subprocess.CalledProcessError, OSError])
+def test_git_failure_preserves_unknown_provenance_and_metrics_output(
+    failure_at, exception, tmp_path, monkeypatch
+):
+    from netlab import artifacts
+    from netlab.metrics.batch import run_metrics
+
+    outcome = simulate(yaml.safe_dump(combine_document()))
+    assert outcome.success, outcome.error
+    root = tmp_path / "runs"
+    root.mkdir()
+    result = root / "combine__seed42_scenario.results.json"
+    result.write_text(json.dumps(outcome.results))
+    run_record_path(result).write_text(json.dumps(outcome.run_record()))
+    (tmp_path / ".git").mkdir()
+    monkeypatch.setattr(artifacts, "__file__", str(tmp_path / "netlab/artifacts.py"))
+    calls = []
+    original_run = subprocess.run
+
+    def git(command, **options):
+        if command[0] != "git":
+            return original_run(command, **options)
+        assert options["check"]
+        calls.append(command)
+        if failure_at in command:
+            if exception is subprocess.CalledProcessError:
+                raise subprocess.CalledProcessError(128, command)
+            raise OSError("git is unavailable")
+        assert "status" in command
+        return subprocess.CompletedProcess(command, 0, stdout="")
+
+    monkeypatch.setattr(artifacts.subprocess, "run", git)
+    record = artifacts.package_provenance()["netlab"]
+    assert record["commit"] is None and record["dirty"] is None
+    assert record["version"] and "source" not in record
+    run_metrics(root, no_plots=True)
+    report = tmp_path / "runs_metrics"
+    bac = json.loads((report / "combine/seed42/bac.json").read_text())
+    assert bac["series"] == [200, 100, 100, 100, 100]
+    assert bac["auc_normalized"] == 3 / 5
+    for path in (report / "provenance.json", report / "combine/provenance.json"):
+        published = json.loads(path.read_text())["packages"]["netlab"]
+        assert published == record
+    assert any(failure_at in command for command in calls)
+
+
+@pytest.mark.parametrize(
+    "source,commit,dirty",
+    [
+        (
+            {
+                "url": "https://github.com/networmix/NetLab",
+                "vcs_info": {"vcs": "git", "commit_id": "b" * 40},
+            },
+            "b" * 40,
+            False,
+        ),
+        ({"url": "file:///local/NetLab", "dir_info": {}}, None, None),
+        ({"url": "file:///local/NetLab", "dir_info": {"editable": True}}, None, None),
+    ],
+)
+def test_non_checkout_provenance_uses_only_pip_vcs_identity(
+    source, commit, dirty, tmp_path, monkeypatch
+):
+    from netlab import artifacts
+
+    monkeypatch.setattr(artifacts, "__file__", str(tmp_path / "netlab/artifacts.py"))
+    monkeypatch.setattr(
+        artifacts,
+        "package_versions",
+        lambda: {"netlab": {"version": "0.5.0", "source": source}},
+    )
+    record = artifacts.package_provenance()["netlab"]
+    assert record == {"version": "0.5.0", "commit": commit, "dirty": dirty}
+    assert "file://" not in json.dumps(record)

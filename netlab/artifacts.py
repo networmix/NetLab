@@ -79,37 +79,43 @@ def package_versions() -> dict[str, dict[str, Any]]:
 
 
 def package_provenance() -> dict[str, dict[str, Any]]:
-    """Record NetLab's commit only for a clean Git tree; retain content identity and report unknown Git state as null."""
+    """Record verified Git or pip VCS identity without local URLs, and use null for unknown Git state."""
     packages = package_versions()
     netlab = packages["netlab"]
-    netlab.pop("source", None)
+    source = netlab.pop("source", {})
     commit = None
     dirty = None
     root = Path(__file__).resolve().parents[1]
     if (root / ".git").exists():
-        status = subprocess.run(
-            [
-                "git",
-                "--no-optional-locks",
-                "status",
-                "--porcelain",
-                "--untracked-files=normal",
-                "--ignore-submodules=none",
-            ],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        dirty = bool(status.stdout)
-        if not dirty:
-            commit = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
+        try:
+            status = subprocess.run(
+                [
+                    "git",
+                    "--no-optional-locks",
+                    "status",
+                    "--porcelain",
+                    "--untracked-files=normal",
+                    "--ignore-submodules=none",
+                ],
                 cwd=root,
                 capture_output=True,
                 text=True,
                 check=True,
-            ).stdout.strip()
+            )
+            dirty = bool(status.stdout)
+            if not dirty:
+                commit = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+        except (subprocess.CalledProcessError, OSError):
+            commit = dirty = None
+    elif installed_commit := source.get("vcs_info", {}).get("commit_id"):
+        commit = installed_commit
+        dirty = False
     netlab.update(commit=commit, dirty=dirty)
     return packages
 

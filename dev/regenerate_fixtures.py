@@ -68,9 +68,9 @@ def main() -> None:
     root = Path(__file__).resolve().parents[1]
     os.chdir(root)
     netlab = package_provenance()["netlab"]
-    if netlab["dirty"]:
+    if netlab["dirty"] is not False:
         sys.exit(
-            "NetLab has uncommitted changes; fixtures must be reproducible from a committed revision."
+            "NetLab has uncommitted changes or its Git state is unknown; fixtures must be reproducible from a clean committed revision."
         )
     provenance = {
         "python": sys.version.split()[0],
