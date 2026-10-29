@@ -1,8 +1,8 @@
 {
-  "scenario": "/Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1/tests/data/mini_dcbb.yaml",
+  "scenario": "tests/data/mini_dcbb.yaml",
   "status": "success",
   "error": "",
-  "duration_s": 0.016464916989207268,
+  "duration_s": 0.01694704103283584,
   "inspection": {
     "node_count": 10,
     "link_count": 12,
@@ -14,8 +14,8 @@
     "workflow_steps": 3
   },
   "step_durations_sec": {
-    "msd_baseline": 0.0006726658903062344,
-    "tm_lh_path": 0.0006288751028478146,
-    "tm_1x_bb": 0.0003542918711900711
+    "msd_baseline": 0.0010102919768542051,
+    "tm_lh_path": 0.000725707970559597,
+    "tm_1x_bb": 0.00038441596552729607
   }
 }

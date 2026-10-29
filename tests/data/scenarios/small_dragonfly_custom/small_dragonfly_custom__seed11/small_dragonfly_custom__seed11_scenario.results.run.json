@@ -1,8 +1,8 @@
 {
-  "scenario": "/Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1/build/fixture-regeneration/run-cl5b5kj_/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.yml",
+  "scenario": "build/fixture-regeneration/run-g3gqtad7/scenarios/small_dragonfly_custom/small_dragonfly_custom__seed11/small_dragonfly_custom__seed11_scenario.yml",
   "status": "success",
   "error": "",
-  "duration_s": 0.2503036248963326,
+  "duration_s": 0.2545413749758154,
   "inspection": {
     "node_count": 103,
     "link_count": 612,
@@ -20,9 +20,9 @@
     "workflow_steps": 4
   },
   "step_durations_sec": {
-    "network_statistics": 0.0002575421240180731,
-    "msd_baseline": 0.002538749948143959,
-    "tm_placement": 0.1367699580732733,
-    "cost_power": 0.007878500036895275
+    "network_statistics": 0.0002486668527126312,
+    "msd_baseline": 0.002601874992251396,
+    "tm_placement": 0.1364377080462873,
+    "cost_power": 0.00851200008764863
   }
 }

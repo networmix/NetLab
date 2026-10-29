@@ -1,8 +1,8 @@
 {
-  "scenario": "/Users/networmix/ws/work/2026-10-netlab-port.noindex/worktrees/NetLab-T1/build/fixture-regeneration/run-cl5b5kj_/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.yml",
+  "scenario": "build/fixture-regeneration/run-g3gqtad7/scenarios/small_clos/small_clos__seed11/small_clos__seed11_scenario.yml",
   "status": "success",
   "error": "",
-  "duration_s": 0.25713624991476536,
+  "duration_s": 0.25398837495595217,
   "inspection": {
     "node_count": 127,
     "link_count": 756,
@@ -20,9 +20,9 @@
     "workflow_steps": 4
   },
   "step_durations_sec": {
-    "network_statistics": 0.0002967079635709524,
-    "msd_baseline": 0.0022829589433968067,
-    "tm_placement": 0.1523807079065591,
-    "cost_power": 0.008673208998516202
+    "network_statistics": 0.0003037499263882637,
+    "msd_baseline": 0.0024223339278250933,
+    "tm_placement": 0.1447767079807818,
+    "cost_power": 0.008918666047975421
   }
 }
