@@ -373,6 +373,9 @@ def test_regenerator_requires_proven_clean_netlab_before_creating_outputs(
         regenerate, "__file__", str(tmp_path / "dev/regenerate_fixtures.py")
     )
     monkeypatch.setattr(
+        regenerate.netlab, "__file__", str(tmp_path / "netlab/__init__.py")
+    )
+    monkeypatch.setattr(
         regenerate,
         "package_provenance",
         lambda: {"netlab": {"dirty": dirty, "commit": None}},
@@ -523,3 +526,33 @@ def test_non_checkout_provenance_uses_only_pip_vcs_identity(
     record = artifacts.package_provenance()["netlab"]
     assert record == {"version": "0.5.0", "commit": commit, "dirty": dirty}
     assert "file://" not in json.dumps(record)
+
+
+def test_regenerator_refuses_outside_netlab_before_provenance_or_outputs(
+    tmp_path, monkeypatch
+):
+    from dev import regenerate_fixtures as regenerate
+
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    monkeypatch.chdir(checkout)
+    monkeypatch.setattr(
+        regenerate, "__file__", str(checkout / "dev/regenerate_fixtures.py")
+    )
+    monkeypatch.setattr(
+        regenerate.netlab, "__file__", str(tmp_path / "pip-vcs/netlab/__init__.py")
+    )
+    calls = []
+
+    def installed_provenance():
+        calls.append("provenance")
+        return {"netlab": {"dirty": False, "commit": "a" * 40}}
+
+    monkeypatch.setattr(regenerate, "package_provenance", installed_provenance)
+    with pytest.raises(SystemExit) as error:
+        regenerate.main()
+    assert str(error.value) == (
+        "NetLab must be imported from this checkout (an editable install)."
+    )
+    assert calls == []
+    assert list(checkout.iterdir()) == []

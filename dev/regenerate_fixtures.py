@@ -16,6 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import netlab
 from netlab.artifacts import (
     cache_path,
     package_provenance,
@@ -67,8 +68,10 @@ def normalize_fixture_record(results_path: Path, root: Path) -> None:
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     os.chdir(root)
-    netlab = package_provenance()["netlab"]
-    if netlab["dirty"] is not False:
+    if not Path(netlab.__file__).resolve().is_relative_to(root):
+        sys.exit("NetLab must be imported from this checkout (an editable install).")
+    netlab_provenance = package_provenance()["netlab"]
+    if netlab_provenance["dirty"] is not False:
         sys.exit(
             "NetLab has uncommitted changes or its Git state is unknown; fixtures must be reproducible from a clean committed revision."
         )
@@ -76,7 +79,7 @@ def main() -> None:
         "python": sys.version.split()[0],
         "sources": {
             **{name: source_provenance(name) for name in SOURCES},
-            "netlab": netlab,
+            "netlab": netlab_provenance,
         },
     }
     build = root / "build/fixture-regeneration"
