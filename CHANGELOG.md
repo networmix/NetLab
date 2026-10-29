@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-29
+
 ### Changed
 
 - **BREAKING**: **Dependencies**: Require `ngraph>=0.26.0,<0.27` and `netlab-topogen>=0.6.1,<0.7`, which replaces TopoGen.
