@@ -8,7 +8,7 @@
 # Python interpreter detection
 # --------------------------------------------------------------------------
 # VENV_BIN: path to local virtualenv bin directory
-VENV_BIN := $(PWD)/venv/bin
+VENV_BIN := $(CURDIR)/venv/bin
 
 # PY_BEST: scan for newest supported Python (used when creating new venvs)
 # Supports 3.11-3.13 to match common CI matrix
