@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 
-VENV_BIN := $(PWD)/venv/bin
+VENV_BIN := $(CURDIR)/venv/bin
 
 # Choose a Python version from the CI matrix for new virtual environments.
 PY_BEST := $(shell for v in 3.13 3.12 3.11; do command -v python$$v >/dev/null 2>&1 && { echo python$$v; exit 0; }; done; command -v python3 2>/dev/null || command -v python 2>/dev/null)
