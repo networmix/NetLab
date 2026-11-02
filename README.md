@@ -11,18 +11,19 @@ supports parameter searches and experiments proposed by a language model.
 
 ## Install
 
-Use Python 3.11 or later and Git. To install the command:
+Use Python 3.11 or later in a virtual environment of its own. To install the command:
 
 ```bash
-python -m pip install git+https://github.com/networmix/NetLab
+python -m pip install netlab
 ```
 
-NetLab is installed from GitHub because the name `netlab` on PyPI belongs to
-another project. The command also installs NetGraph (`ngraph`), NetLab-TopoGen
+The command also installs NetGraph (`ngraph`), NetLab-TopoGen
 (`netlab-topogen`) and the other dependencies from PyPI;
-[pyproject.toml](pyproject.toml) lists their supported versions.
+[pyproject.toml](https://github.com/networmix/NetLab/blob/main/pyproject.toml) lists their supported versions.
 
-To use the included examples, clone the repository and create its environment:
+ipSpace's `networklab` package installs a command of the same name, so use separate environments for the two tools.
+
+To use the included examples, clone the repository with Git and create its environment:
 
 ```bash
 git clone https://github.com/networmix/NetLab
@@ -118,7 +119,7 @@ The workflow must include these step names:
 
 `--enable-maxflow` also needs a `node_to_node_capacity_matrix` step for pairwise
 capacity analysis. Each result needs the run record NetLab writes beside it.
-See [metrics.md](metrics.md) for definitions, required fields, worked examples
+See [metrics.md](https://github.com/networmix/NetLab/blob/main/metrics.md) for definitions, required fields, worked examples
 and output files. Failure statistics describe the configured
 experiment; they are not measurements of network uptime.
 
@@ -150,7 +151,7 @@ if __name__ == "__main__":
 the wall time of each step it ran in `scenario.results.run.json`. The `__main__`
 guard keeps a spawned worker from running the script again. Use `simulate(yaml_text)` to run in the calling
 process, or `inspect_scenario(yaml_text)` to validate and count network objects.
-See [architecture and batch APIs](dev/ARCHITECTURE.md).
+See [architecture and batch APIs](https://github.com/networmix/NetLab/blob/main/dev/ARCHITECTURE.md).
 
 Metric functions read a saved result dictionary:
 
@@ -168,7 +169,7 @@ print(compute_bac(results, step_name="tm_placement").auc_normalized)
 print(compute_latency_stretch(results).failures.get("p99"))
 ```
 
-They return the per-seed values described in [metrics.md](metrics.md).
+They return the per-seed values described in [metrics.md](https://github.com/networmix/NetLab/blob/main/metrics.md).
 `netlab metrics` also checks the result arithmetic before it computes them.
 
 ## Automated experiments
@@ -202,8 +203,8 @@ ones. Higher scores rank better; candidates that fail the configured constraints
 cannot become best.
 
 For data-center-to-backbone designs, see the
-[research project](research_projects/dc-bb-autoresearch/program.md) and
-[included interconnect experiments](experiments/dc-bb-interconnect/README.md).
+[research project](https://github.com/networmix/NetLab/blob/main/research_projects/dc-bb-autoresearch/program.md) and
+[included interconnect experiments](https://github.com/networmix/NetLab/blob/main/experiments/dc-bb-interconnect/README.md).
 
 ## Development
 
@@ -212,8 +213,8 @@ make check-ci
 ```
 
 This checks formatting, lint, types and tests, including NetLab-TopoGen → NetGraph →
-metrics runs using saved geography. See [fixture regeneration](tests/data/README.md)
-and [metric verification](dev/METRICS_VERIFICATION.md).
+metrics runs using saved geography. See [fixture regeneration](https://github.com/networmix/NetLab/blob/main/tests/data/README.md)
+and [metric verification](https://github.com/networmix/NetLab/blob/main/dev/METRICS_VERIFICATION.md).
 
 In Superset, `bash .superset/workspace.sh setup` creates a `venv`, installs the
 development dependencies and copies missing untracked `.env` files from the root
@@ -229,4 +230,4 @@ Replace the paths with your checkouts. The script builds Core and runs checks in
 a temporary environment. It saves source revisions, dependency versions and
 results under `build/ngraph-integration/`.
 
-[Changelog](CHANGELOG.md) · [MIT license](LICENSE)
+[Changelog](https://github.com/networmix/NetLab/blob/main/CHANGELOG.md) · [MIT license](https://github.com/networmix/NetLab/blob/main/LICENSE)

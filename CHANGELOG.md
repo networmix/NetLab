@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-02
+
+### Changed
+
+- **Installation**: NetLab is published on PyPI; install with `python -m pip install netlab` in its own virtual environment.
+- **Packaging**: The source distribution no longer ships tests that need repository-only resources.
+
+### Fixed
+
+- **Development**: Make locates the project's virtual environment when invoked from another directory with `make -C`.
+
 ## [0.6.0] - 2026-10-29
 
 ### Changed
