@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlab"
-version = "0.6.1"
+version = "0.7.0"
 description = "Metrics and analysis tools for NetGraph scenarios."
 readme = "README.md"
 authors = [{ name = "Andrey Golovanov" }]
@@ -27,8 +27,8 @@ dependencies = [
     "seaborn>=0.13",
     "scipy>=1.11",
     "rich>=13.0",
-    "ngraph>=0.26.0,<0.27",
-    "netlab-topogen>=0.6.1,<0.7",
+    "ngraph>=0.27.0,<0.28",
+    "netlab-topogen>=0.7.0,<0.8",
     "pebble>=5.2.0,<6",
     "pyyaml>=6",
     "cairosvg>=2.7",

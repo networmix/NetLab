@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-04
+
+### Changed
+
+- **Dependencies**: Require `ngraph>=0.27.0,<0.28` and `netlab-topogen>=0.7.0,<0.8`.
+
 ## [0.6.1] - 2026-11-02
 
 ### Changed
